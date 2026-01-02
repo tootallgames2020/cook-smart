@@ -76,7 +76,7 @@ const HomeScreen: React.FC = () => {
       subtitle: 'Chat on Discord',
       icon: 'forum',
       color: '#5865F2',
-      onPress: () => Linking.openURL('https://discord.gg/7mAeMvjGVH'),
+      onPress: () => Linking.openURL('https://discord.gg/btemMmWy2e'),
     },
     {
       id: 'feedback',

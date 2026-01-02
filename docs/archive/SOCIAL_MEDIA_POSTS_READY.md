@@ -99,7 +99,7 @@ It's completely FREE during beta and I'm looking for feedback from real cooks (n
 Would anyone be interested in trying it out? I'd love to hear what you think!
 
 Download: https://cooksmartapp.com
-Join our community: https://discord.gg/7mAeMvjGVH
+Join our community: https://discord.gg/btemMmWy2e
 
 P.S. If you like it, there's a referral system where you can earn rewards for sharing with friends!
 ```
@@ -423,7 +423,7 @@ I'm looking for feedback from real cooks. What features would make this actually
 - Help shape the app's future
 
 **Download:** https://cooksmartapp.com  
-**Discord:** https://discord.gg/7mAeMvjGVH
+**Discord:** https://discord.gg/btemMmWy2e
 
 Would love to hear your thoughts! What would make this app indispensable for you?
 

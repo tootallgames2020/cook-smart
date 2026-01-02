@@ -29,7 +29,7 @@ export function Footer(): React.ReactElement {
               </p>
               <div className="flex items-center gap-2">
                 <a
-                  href="https://discord.gg/7mAeMvjGVH"
+                  href="https://discord.gg/btemMmWy2e"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"

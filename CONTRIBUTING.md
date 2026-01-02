@@ -300,7 +300,7 @@ Any other context or screenshots about the feature.
 
 ### Team Communication
 - **Slack**: #cook-smart-dev (internal team)
-- **Discord**: [Community Server](https://discord.gg/7mAeMvjGVH) (public)
+- **Discord**: [Community Server](https://discord.gg/btemMmWy2e) (public)
 - **Email**: services.cooksmart@gmail.com (technical issues)
 
 ### Code Reviews

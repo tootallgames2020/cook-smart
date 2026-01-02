@@ -318,12 +318,12 @@ export default function PrivacyPolicyPage() {
                 <p className="text-gray-700">
                   <strong>Discord Community:</strong>{' '}
                   <a
-                    href="https://discord.gg/7mAeMvjGVH"
+                    href="https://discord.gg/btemMmWy2e"
                     className="text-green-600 hover:text-green-700 underline"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    https://discord.gg/7mAeMvjGVH
+                    https://discord.gg/btemMmWy2e
                   </a>
                 </p>
               </div>

@@ -57,7 +57,7 @@ I'm a solo developer trying to make cooking easier for everyone. The app is free
 - Shape the app's future
 
 **Download:** [Your Firebase link or website]
-**Discord Community:** https://discord.gg/7mAeMvjGVH
+**Discord Community:** https://discord.gg/btemMmWy2e
 
 Would love to hear what you think! What features would make this useful for you?
 
@@ -134,7 +134,7 @@ As a solo developer who loves cooking, I wanted an app that helps you cook with 
 - Grocery list generation
 - Recipe collections sharing
 
-Join our Discord: https://discord.gg/7mAeMvjGVH
+Join our Discord: https://discord.gg/btemMmWy2e
 ```
 
 ---

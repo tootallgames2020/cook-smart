@@ -6,7 +6,7 @@ Cook Smart is a production-ready, enterprise-grade mobile application that revol
 
 **🔗 Live Application**: [cooksmartapp.com](https://cooksmartapp.com)  
 **📱 API Endpoint**: [api.cooksmartapp.com](https://api.cooksmartapp.com)  
-**💬 Community**: [Discord Server](https://discord.gg/7mAeMvjGVH)
+**💬 Community**: [Discord Server](https://discord.gg/btemMmWy2e)
 
 ## 📊 Project Metrics
 
@@ -241,7 +241,7 @@ Cook Smart is a production-ready, enterprise-grade mobile application that revol
 
 ### Technical Support
 - **Email**: services.cooksmart@gmail.com
-- **Discord**: [Community Server](https://discord.gg/7mAeMvjGVH)
+- **Discord**: [Community Server](https://discord.gg/btemMmWy2e)
 - **Documentation**: [docs.cooksmartapp.com](https://docs.cooksmartapp.com)
 
 ### Media & Press

@@ -209,7 +209,7 @@ export default function ContactPage(): React.ReactElement {
                   <h3 className="mb-1 font-semibold">Join Our Community</h3>
                   <p className="text-sm text-muted-foreground">
                     <a
-                      href="https://discord.gg/7mAeMvjGVH"
+                      href="https://discord.gg/btemMmWy2e"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-primary hover:underline"

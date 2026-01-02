@@ -169,7 +169,7 @@ RESEND_API_KEY=[stored securely]
 
 ### Discord Community
 - **Purpose**: User community, support, feedback
-- **Invite Link**: https://discord.gg/7mAeMvjGVH
+- **Invite Link**: https://discord.gg/btemMmWy2e
 - **Cost**: FREE
 - **Integration**: Website footer, contact page, mobile app home screen
 - **Channels**: announcements, bug-reports, feature-ideas, general, recipe-sharing, help

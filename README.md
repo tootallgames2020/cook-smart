@@ -14,7 +14,7 @@ Cook Smart is a production-ready mobile application that revolutionizes meal pla
 
 **🔗 Live Application**: [cooksmartapp.com](https://cooksmartapp.com)  
 **📱 API Endpoint**: [api.cooksmartapp.com](https://api.cooksmartapp.com)  
-**💬 Community**: [Discord Server](https://discord.gg/7mAeMvjGVH)
+**💬 Community**: [Discord Server](https://discord.gg/btemMmWy2e)
 
 ## ✨ Key Features
 
@@ -241,7 +241,7 @@ Unauthorized copying, distribution, or modification of this software is strictly
 
 ### For Users
 - **📧 Email**: services.cooksmart@gmail.com
-- **💬 Discord**: [Community Server](https://discord.gg/7mAeMvjGVH)
+- **💬 Discord**: [Community Server](https://discord.gg/btemMmWy2e)
 - **📖 Documentation**: [User Guide](docs/user-guide/)
 
 ### For Developers
@@ -255,6 +255,6 @@ Unauthorized copying, distribution, or modification of this software is strictly
 
 **Built with ❤️ by the Cook Smart Team**
 
-[Website](https://cooksmartapp.com) • [API](https://api.cooksmartapp.com) • [Community](https://discord.gg/7mAeMvjGVH) • [Support](mailto:services.cooksmart@gmail.com)
+[Website](https://cooksmartapp.com) • [API](https://api.cooksmartapp.com) • [Community](https://discord.gg/btemMmWy2e) • [Support](mailto:services.cooksmart@gmail.com)
 
 </div>

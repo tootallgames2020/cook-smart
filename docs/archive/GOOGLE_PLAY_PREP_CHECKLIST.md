@@ -123,7 +123,7 @@ Your data is secure and private. We never sell your information.
 
 💬 JOIN OUR COMMUNITY
 Connect with other home cooks, share recipes, and get cooking tips:
-Discord: https://discord.gg/7mAeMvjGVH
+Discord: https://discord.gg/btemMmWy2e
 
 📧 SUPPORT
 Need help? Contact us at services.cooksmart@gmail.com
@@ -261,7 +261,7 @@ cd android
   - Facebook: Cook Smart App
 
 #### Discord Community (DONE ✅)
-- [x] https://discord.gg/7mAeMvjGVH
+- [x] https://discord.gg/btemMmWy2e
 - [x] Channels set up
 - [x] Ready for users
 

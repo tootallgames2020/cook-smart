@@ -68,7 +68,7 @@ It's Android only right now (iOS coming soon), and I genuinely want honest feedb
 
 **Links:**
 - Website: https://cooksmartapp.com
-- Discord community: https://discord.gg/7mAeMvjGVH
+- Discord community: https://discord.gg/btemMmWy2e
 - Download: [Your Firebase link or website download]
 
 **Questions for you:**
@@ -144,7 +144,7 @@ As someone who cooks on a budget, I was tired of buying ingredients for one reci
 - Active development (I add features based on feedback)
 
 **Download:** https://cooksmartapp.com  
-**Community:** https://discord.gg/7mAeMvjGVH
+**Community:** https://discord.gg/btemMmWy2e
 
 **Question:** What's the weirdest combination of ingredients you've had to work with? Let me see if the app can find recipes for it! 😄
 ```
@@ -204,7 +204,7 @@ App finds: 30+ meal prep friendly recipes with full nutrition info
 - Report any bugs
 
 **Download:** https://cooksmartapp.com  
-**Join us:** https://discord.gg/7mAeMvjGVH
+**Join us:** https://discord.gg/btemMmWy2e
 
 **Question for the community:** What's your go-to meal prep recipe? I'll check if it's in the app!
 
@@ -395,7 +395,7 @@ Once you've posted in the first 3 and learned what works:
 ## 📱 Your Links to Include
 
 **Website:** https://cooksmartapp.com  
-**Discord:** https://discord.gg/7mAeMvjGVH  
+**Discord:** https://discord.gg/btemMmWy2e  
 **Referral Code:** 51JK0AGU (mention this in comments)  
 **Download:** [Your Firebase App Distribution link or website]
 
