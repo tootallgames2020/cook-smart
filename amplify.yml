@@ -1,20 +1,21 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - cd website
-        - node --version
-        - npm --version
-        - npm ci --legacy-peer-deps --no-audit
-    build:
-      commands:
-        - npm run build
-  artifacts:
-    baseDirectory: website/.next
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - website/node_modules/**/*
-      - website/.next/cache/**/*
+applications:
+  - appRoot: website
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - node --version
+            - npm --version
+            - npm ci --legacy-peer-deps --no-audit
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
