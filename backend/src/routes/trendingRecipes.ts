@@ -57,12 +57,14 @@ router.get('/trending-recipes', optionalAuth, async (req: AuthRequest, res) => {
       'pasta recipes'
     ];
 
-    let allRecipes: any[] = [];
+    let recipes: any[] = [];
     
     // Check if FatSecret is configured
     const isFatSecretConfigured = process.env.FATSECRET_CLIENT_ID && process.env.FATSECRET_CLIENT_SECRET;
     
     if (isFatSecretConfigured) {
+      let allRecipes: any[] = [];
+      
       // Get recipes from multiple trending searches to ensure variety
       for (const query of trendingQueries.slice(0, 3)) {
         try {
@@ -82,7 +84,7 @@ router.get('/trending-recipes', optionalAuth, async (req: AuthRequest, res) => {
         index === self.findIndex(r => r.id === recipe.id)
       );
       
-      const recipes = uniqueRecipes.slice(0, limit);
+      recipes = uniqueRecipes.slice(0, limit);
     } else {
       console.log('[Trending] FatSecret not configured, using mock trending recipes');
       // Mock trending recipes for when FatSecret isn't configured
@@ -149,7 +151,7 @@ router.get('/trending-recipes', optionalAuth, async (req: AuthRequest, res) => {
         }
       ];
       
-      const recipes = mockRecipes.slice(0, limit);
+      recipes = mockRecipes.slice(0, limit);
     }
 
     console.log(
