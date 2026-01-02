@@ -59,26 +59,98 @@ router.get('/trending-recipes', optionalAuth, async (req: AuthRequest, res) => {
 
     let allRecipes: any[] = [];
     
-    // Get recipes from multiple trending searches to ensure variety
-    for (const query of trendingQueries.slice(0, 3)) {
-      try {
-        const searchResults = await recipeProviderService.searchByIngredients(
-          [query], // Use query as search term
-          Math.ceil(limit / 3),
-          {mealType: 'Main Dishes'},
-        );
-        allRecipes = allRecipes.concat(searchResults);
-      } catch (error) {
-        console.log(`[Trending] Failed to get recipes for "${query}":`, error);
-      }
-    }
-
-    // Remove duplicates and limit results
-    const uniqueRecipes = allRecipes.filter((recipe, index, self) => 
-      index === self.findIndex(r => r.id === recipe.id)
-    );
+    // Check if FatSecret is configured
+    const isFatSecretConfigured = process.env.FATSECRET_CLIENT_ID && process.env.FATSECRET_CLIENT_SECRET;
     
-    const recipes = uniqueRecipes.slice(0, limit);
+    if (isFatSecretConfigured) {
+      // Get recipes from multiple trending searches to ensure variety
+      for (const query of trendingQueries.slice(0, 3)) {
+        try {
+          const searchResults = await recipeProviderService.searchByIngredients(
+            [query], // Use query as search term
+            Math.ceil(limit / 3),
+            {mealType: 'Main Dishes'},
+          );
+          allRecipes = allRecipes.concat(searchResults);
+        } catch (error) {
+          console.log(`[Trending] Failed to get recipes for "${query}":`, error);
+        }
+      }
+
+      // Remove duplicates and limit results
+      const uniqueRecipes = allRecipes.filter((recipe, index, self) => 
+        index === self.findIndex(r => r.id === recipe.id)
+      );
+      
+      const recipes = uniqueRecipes.slice(0, limit);
+    } else {
+      console.log('[Trending] FatSecret not configured, using mock trending recipes');
+      // Mock trending recipes for when FatSecret isn't configured
+      const mockRecipes = [
+        {
+          id: 'trending_1',
+          title: 'Classic Chicken Parmesan',
+          image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400',
+          servings: 4,
+          readyInMinutes: 45,
+          sourceUrl: 'https://cooksmartapp.com',
+          summary: 'Crispy breaded chicken topped with marinara sauce and melted cheese.',
+          ingredients: ['chicken breast', 'breadcrumbs', 'parmesan cheese', 'marinara sauce'],
+          instructions: '1. Bread the chicken\n2. Fry until golden\n3. Top with sauce and cheese\n4. Bake until melted',
+          cuisines: ['Italian'],
+          dishTypes: ['main course'],
+          diets: [],
+          provider: 'mock-trending',
+          calories: 520,
+          protein: 45,
+          carbs: 25,
+          fat: 28,
+          likes: 0,
+        },
+        {
+          id: 'trending_2', 
+          title: 'Easy Beef Stir Fry',
+          image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400',
+          servings: 4,
+          readyInMinutes: 20,
+          sourceUrl: 'https://cooksmartapp.com',
+          summary: 'Quick and healthy beef stir fry with fresh vegetables.',
+          ingredients: ['beef strips', 'bell peppers', 'broccoli', 'soy sauce', 'garlic'],
+          instructions: '1. Heat oil in wok\n2. Cook beef until browned\n3. Add vegetables\n4. Stir in sauce',
+          cuisines: ['Asian'],
+          dishTypes: ['main course'],
+          diets: [],
+          provider: 'mock-trending',
+          calories: 380,
+          protein: 35,
+          carbs: 15,
+          fat: 22,
+          likes: 0,
+        },
+        {
+          id: 'trending_3',
+          title: 'Creamy Pasta Primavera',
+          image: 'https://images.unsplash.com/photo-1621996346565-e3dbc353d2e5?w=400',
+          servings: 6,
+          readyInMinutes: 30,
+          sourceUrl: 'https://cooksmartapp.com',
+          summary: 'Fresh seasonal vegetables in a light cream sauce over pasta.',
+          ingredients: ['pasta', 'heavy cream', 'mixed vegetables', 'parmesan', 'herbs'],
+          instructions: '1. Cook pasta\n2. Sauté vegetables\n3. Make cream sauce\n4. Combine and serve',
+          cuisines: ['Italian'],
+          dishTypes: ['main course'],
+          diets: ['vegetarian'],
+          provider: 'mock-trending',
+          calories: 420,
+          protein: 15,
+          carbs: 55,
+          fat: 18,
+          likes: 0,
+        }
+      ];
+      
+      const recipes = mockRecipes.slice(0, limit);
+    }
 
     console.log(
       `[Trending] RecipeProviderService returned ${recipes.length} recipes`,
