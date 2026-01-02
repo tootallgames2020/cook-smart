@@ -47,20 +47,38 @@ router.get('/trending-recipes', optionalAuth, async (req: AuthRequest, res) => {
       FatSecretAdapter, // Primary: FatSecret Premier (free, unlimited for our needs)
     ]);
 
-    // Get trending recipes by searching for popular ingredients
-    const trendingIngredients = [
-      'chicken',
-      'pasta',
-      'rice',
-      'beef',
-      'salmon',
-      'cheese',
+    // Get trending recipes using FatSecret's popular recipe searches
+    const trendingQueries = [
+      'popular chicken recipes',
+      'easy dinner recipes', 
+      'healthy recipes',
+      'quick meals',
+      'comfort food',
+      'pasta recipes'
     ];
-    const recipes = await recipeProviderService.searchByIngredients(
-      trendingIngredients.slice(0, 3), // Use top 3 popular ingredients
-      limit,
-      {mealType: 'Main Dishes'},
+
+    let allRecipes: any[] = [];
+    
+    // Get recipes from multiple trending searches to ensure variety
+    for (const query of trendingQueries.slice(0, 3)) {
+      try {
+        const searchResults = await recipeProviderService.searchByIngredients(
+          [query], // Use query as search term
+          Math.ceil(limit / 3),
+          {mealType: 'Main Dishes'},
+        );
+        allRecipes = allRecipes.concat(searchResults);
+      } catch (error) {
+        console.log(`[Trending] Failed to get recipes for "${query}":`, error);
+      }
+    }
+
+    // Remove duplicates and limit results
+    const uniqueRecipes = allRecipes.filter((recipe, index, self) => 
+      index === self.findIndex(r => r.id === recipe.id)
     );
+    
+    const recipes = uniqueRecipes.slice(0, limit);
 
     console.log(
       `[Trending] RecipeProviderService returned ${recipes.length} recipes`,

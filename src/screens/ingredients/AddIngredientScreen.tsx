@@ -8,6 +8,8 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -360,7 +362,9 @@ export const AddIngredientScreen: React.FC = () => {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setShowCustomModal(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Custom Ingredient</Text>
@@ -371,6 +375,7 @@ export const AddIngredientScreen: React.FC = () => {
 
             <ScrollView
               style={styles.scrollContent}
+              contentContainerStyle={styles.scrollContentContainer}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled">
               <PhotoPicker onPhotoSelected={setPhoto} currentPhoto={photo} />
@@ -435,15 +440,19 @@ export const AddIngredientScreen: React.FC = () => {
                   />
                 </View>
               </View>
-            </ScrollView>
 
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleAddCustom}>
-              <Text style={styles.saveButtonText}>Add Ingredient</Text>
-            </TouchableOpacity>
+              {/* Save button inside ScrollView with extra padding */}
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleAddCustom}>
+                <Text style={styles.saveButtonText}>Add Ingredient</Text>
+              </TouchableOpacity>
+
+              {/* Extra padding at bottom to ensure button is always visible */}
+              <View style={styles.bottomPadding} />
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -546,8 +555,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '85%',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 0, // Remove bottom padding since ScrollView handles it
+    maxHeight: '90%', // Increased from 85% to give more space
     minHeight: '60%',
   },
   modalHeader: {
@@ -563,7 +574,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flex: 1,
-    marginBottom: 16,
+  },
+  scrollContentContainer: {
+    paddingBottom: 24, // Padding inside scroll content
   },
   formGroup: {
     marginBottom: 20,
@@ -624,11 +637,15 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 24, // Increased margin for better spacing
+    marginHorizontal: 0, // Ensure full width within scroll content
   },
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  bottomPadding: {
+    height: 40, // Extra space at bottom to ensure save button is always accessible
   },
 });

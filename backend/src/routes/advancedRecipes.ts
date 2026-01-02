@@ -1,6 +1,8 @@
 import express from 'express';
 import AdvancedRecipeService from '../services/AdvancedRecipeService';
 import {authenticateToken} from '../middleware/auth';
+import {RecipeProviderService} from '../services/RecipeProviderService';
+import FatSecretAdapter from '../services/FatSecretProviderAdapter';
 
 const router = express.Router();
 
@@ -188,12 +190,43 @@ router.get('/seasonal/current/recipes', async (req, res) => {
   try {
     const season = AdvancedRecipeService.getCurrentSeason();
     const limit = parseInt(req.query.limit as string) || 20;
-    const recipes = await AdvancedRecipeService.getSeasonalRecipes(
+    const seasonalRecipeIds = await AdvancedRecipeService.getSeasonalRecipes(
       season,
       limit,
     );
-    res.json({success: true, season, recipes});
+
+    // Create RecipeProviderService instance
+    const recipeProviderService = new RecipeProviderService([FatSecretAdapter]);
+
+    // Fetch full recipe details for each seasonal recipe ID
+    const recipesWithDetails = [];
+    for (const seasonalRecipe of seasonalRecipeIds) {
+      try {
+        const recipeDetails = await recipeProviderService.getRecipeDetails(
+          seasonalRecipe.recipe_id,
+        );
+        if (recipeDetails) {
+          // Add seasonal metadata to the recipe
+          recipesWithDetails.push({
+            ...recipeDetails,
+            seasonalPriority: seasonalRecipe.priority,
+            addedToSeasonalAt: seasonalRecipe.created_at,
+          });
+        }
+      } catch (error) {
+        console.log(`Failed to fetch details for seasonal recipe ${seasonalRecipe.recipe_id}:`, error);
+      }
+    }
+
+    console.log(`[Seasonal] Returning ${recipesWithDetails.length} seasonal recipes with full details`);
+    res.json({
+      success: true, 
+      season, 
+      recipes: recipesWithDetails,
+      count: recipesWithDetails.length
+    });
   } catch (error: any) {
+    console.error('[Seasonal] Error:', error);
     res.status(500).json({error: error.message});
   }
 });
