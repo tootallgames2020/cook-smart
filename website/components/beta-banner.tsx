@@ -23,7 +23,7 @@ export function BetaBanner(): React.ReactElement {
           </p>
         </div>
         <Link
-          href="/contact"
+          href="/contact/"
           className="inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-lg font-semibold text-sm hover:bg-gray-100 transition-colors"
         >
           Join Beta →

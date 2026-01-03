@@ -1,5 +1,6 @@
 import { ChefHat, Users, Heart, Target } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import Link from 'next/link';
 
 export default function AboutPage(): React.ReactElement {
   return (
@@ -90,18 +91,18 @@ export default function AboutPage(): React.ReactElement {
               🎉 100% FREE during BETA • Early access to new features • Direct input on development
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <a
+              <Link
                 href="/contact/"
                 className="rounded-lg bg-white px-6 py-3 font-semibold text-blue-600 hover:bg-gray-100 transition-colors"
               >
                 Apply for Beta Access
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/faq/"
                 className="rounded-lg border-2 border-white px-6 py-3 font-semibold text-white hover:bg-white/10 transition-colors"
               >
                 Learn More
-              </a>
+              </Link>
             </div>
           </div>
         </div>

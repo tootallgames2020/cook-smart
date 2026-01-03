@@ -2,6 +2,7 @@
 
 import { Button } from './ui/button';
 import { Smartphone } from 'lucide-react';
+import Link from 'next/link';
 
 export function HeroSection() {
   return (
@@ -79,21 +80,14 @@ export function HeroSection() {
 
             {/* Download Buttons */}
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Button
-                size="lg"
-                className="gap-2"
-                onClick={() => (window.location.href = '/contact')}
-              >
-                <Smartphone className="h-5 w-5" />
-                Join Beta Program
+              <Button size="lg" className="gap-2" asChild>
+                <Link href="/contact/">
+                  <Smartphone className="h-5 w-5" />
+                  Join Beta Program
+                </Link>
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="gap-2"
-                onClick={() => (window.location.href = '/faq')}
-              >
-                Learn More
+              <Button size="lg" variant="outline" className="gap-2" asChild>
+                <Link href="/faq/">Learn More</Link>
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">

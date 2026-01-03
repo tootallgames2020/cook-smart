@@ -1,7 +1,39 @@
+'use client';
+
 import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import Link from 'next/link';
 
 export default function ContactPage(): React.ReactElement {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      // Use a simple mailto link as fallback since backend is down
+      const name = formData.get('name') as string;
+      const email = formData.get('email') as string;
+      const subject = formData.get('subject') as string;
+      const message = formData.get('message') as string;
+      
+      const mailtoLink = `mailto:services.cooksmart@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`From: ${name} (${email})\n\nMessage:\n${message}`)}`;
+      
+      window.location.href = mailtoLink;
+      setSubmitStatus('success');
+      (e.target as HTMLFormElement).reset();
+    } catch (error) {
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -21,7 +53,22 @@ export default function ContactPage(): React.ReactElement {
           {/* Contact Form */}
           <div>
             <h2 className="mb-6 text-2xl font-bold">Send us a message</h2>
-            <form action="https://formspree.io/f/mrbgbqpz" method="POST" className="space-y-6">
+            
+            {submitStatus === 'success' && (
+              <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+                <p className="font-medium">Email client opened!</p>
+                <p className="text-sm">Your default email app should open with the message pre-filled.</p>
+              </div>
+            )}
+
+            {submitStatus === 'error' && (
+              <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+                <p className="font-medium">Unable to open email client</p>
+                <p className="text-sm">Please email us directly at services.cooksmart@gmail.com</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-1">Name *</label>
@@ -77,12 +124,17 @@ export default function ContactPage(): React.ReactElement {
               {/* Submit Button */}
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
               >
                 <Mail className="h-4 w-4" />
-                Send Message
+                {isSubmitting ? 'Opening Email...' : 'Send via Email'}
               </button>
             </form>
+            
+            <div className="mt-4 text-sm text-muted-foreground">
+              <p>This will open your default email client with the message pre-filled.</p>
+            </div>
           </div>
 
           {/* Contact Information */}
@@ -143,7 +195,7 @@ export default function ContactPage(): React.ReactElement {
                 Check out our FAQ page for answers to common questions.
               </p>
               <Button variant="outline" asChild>
-                <a href="/faq/">Visit FAQ</a>
+                <Link href="/faq/">Visit FAQ</Link>
               </Button>
             </div>
           </div>
