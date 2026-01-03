@@ -1,13 +1,11 @@
 /**
- * Recipe API - Unified interface for internal and TheMealDB recipes
- * Handles caching and fallback to TheMealDB when internal API is unavailable
+ * Recipe API - Interface for FatSecret recipes via Cook Smart backend
+ * Uses the same FatSecret API as the mobile app
  */
-
-import { themealdb } from './themealdb';
 
 export interface Recipe {
   id: string;
-  name: string;
+  title: string;
   description: string;
   cookingTime: number;
   servings: number;
@@ -22,7 +20,18 @@ export interface Recipe {
   instructions?: string[];
   ingredients?: Array<{ name: string; amount: string }>;
   youtubeUrl?: string;
-  source: 'themealdb' | 'internal';
+  provider: string;
+  // FatSecret specific fields
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+  matchPercentage?: number;
+  matchingIngredients?: string[];
+  missingIngredients?: string[];
 }
 
 interface RecipeFilters {
@@ -41,20 +50,20 @@ interface PaginatedRecipes {
   hasMore: boolean;
 }
 
-// Internal API base URL
+// Cook Smart API base URL - same backend as mobile app
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.cooksmartapp.com';
 
-// Cache for internal recipes
-const internalCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 5; // 5 minutes for internal API
+// Cache for recipes
+const recipeCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
 
 function getCached<T>(key: string): T | null {
-  const cached = internalCache.get(key);
+  const cached = recipeCache.get(key);
   if (!cached) return null;
 
   const isExpired = Date.now() - cached.timestamp > CACHE_TTL;
   if (isExpired) {
-    internalCache.delete(key);
+    recipeCache.delete(key);
     return null;
   }
 
@@ -62,57 +71,138 @@ function getCached<T>(key: string): T | null {
 }
 
 function setCache(key: string, data: any): void {
-  internalCache.set(key, { data, timestamp: Date.now() });
+  recipeCache.set(key, { data, timestamp: Date.now() });
 }
 
 /**
- * Fetch recipes from internal API
+ * Fetch recipes from Cook Smart backend (FatSecret API)
  */
-async function fetchInternalRecipes(filters: RecipeFilters = {}): Promise<Recipe[]> {
-  const cacheKey = `internal:${JSON.stringify(filters)}`;
+async function fetchRecipesFromBackend(filters: RecipeFilters = {}): Promise<Recipe[]> {
+  const cacheKey = `backend:${JSON.stringify(filters)}`;
   const cached = getCached<Recipe[]>(cacheKey);
   if (cached) return cached;
 
   try {
     const params = new URLSearchParams();
-    if (filters.search) params.append('search', filters.search);
-    if (filters.category) params.append('category', filters.category);
-    if (filters.difficulty) params.append('difficulty', filters.difficulty);
-    if (filters.maxCookingTime) params.append('maxCookingTime', filters.maxCookingTime.toString());
+    
+    // Build ingredients string for search
+    if (filters.search) {
+      params.append('ingredients', filters.search);
+    }
+    if (filters.maxCookingTime) {
+      params.append('maxCalories', (filters.maxCookingTime * 50).toString()); // Rough conversion
+    }
+    if (filters.category) {
+      params.append('mealType', filters.category);
+    }
 
-    const response = await fetch(`${API_BASE_URL}/api/recipes?${params.toString()}`, {
+    const response = await fetch(`${API_BASE_URL}/api/recipes/search?${params.toString()}`, {
       headers: { 'Content-Type': 'application/json' },
       next: { revalidate: 300 }, // Revalidate every 5 minutes
     });
 
-    if (!response.ok) throw new Error('Internal API failed');
+    if (!response.ok) {
+      console.warn('Backend API failed:', response.status, response.statusText);
+      return [];
+    }
 
     const data = await response.json();
-    const recipes = data.recipes.map((r: any) => ({ ...r, source: 'internal' as const }));
+    const recipes = (data.recipes || []).map((r: any) => ({
+      id: r.id,
+      title: r.title || r.name,
+      description: r.description || `${r.category || 'Recipe'} with ${r.servings || 4} servings`,
+      cookingTime: r.cookingTime || r.cooking_time || 30,
+      servings: r.servings || 4,
+      difficulty: r.difficulty || 'medium',
+      dietaryTags: r.dietaryTags || r.dietary_tags || [],
+      approved: true,
+      featured: r.featured || false,
+      imageUrl: r.imageUrl || r.image_url || r.image || '',
+      createdAt: new Date(),
+      category: r.category,
+      cuisine: r.cuisine,
+      instructions: r.instructions || [],
+      ingredients: r.ingredients || [],
+      youtubeUrl: r.youtubeUrl || r.youtube_url,
+      provider: r.provider || 'fatsecret',
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fat,
+      fiber: r.fiber,
+      sugar: r.sugar,
+      sodium: r.sodium,
+      matchPercentage: r.matchPercentage,
+      matchingIngredients: r.matchingIngredients,
+      missingIngredients: r.missingIngredients,
+    }));
 
     setCache(cacheKey, recipes);
     return recipes;
   } catch (error) {
-    console.warn('Internal API unavailable, using TheMealDB fallback');
+    console.error('Backend API error:', error);
     return [];
   }
 }
 
 /**
- * Merge and deduplicate recipes from multiple sources
+ * Get trending/popular recipes from backend
  */
-function mergeRecipes(internal: Recipe[], external: Recipe[]): Recipe[] {
-  const merged = [...internal];
-  const existingIds = new Set(internal.map(r => r.id));
+async function fetchTrendingRecipes(limit: number = 20): Promise<Recipe[]> {
+  const cacheKey = `trending:${limit}`;
+  const cached = getCached<Recipe[]>(cacheKey);
+  if (cached) return cached;
 
-  for (const recipe of external) {
-    if (!existingIds.has(recipe.id)) {
-      merged.push(recipe);
-      existingIds.add(recipe.id);
+  try {
+    // Use common ingredients to get popular recipes
+    const commonIngredients = ['chicken', 'beef', 'pasta', 'rice', 'tomato'];
+    const response = await fetch(`${API_BASE_URL}/api/recipes/search?ingredients=${commonIngredients.join(',')}`, {
+      headers: { 'Content-Type': 'application/json' },
+      next: { revalidate: 600 }, // Cache for 10 minutes
+    });
+
+    if (!response.ok) {
+      console.warn('Trending recipes API failed');
+      return [];
     }
-  }
 
-  return merged;
+    const data = await response.json();
+    const recipes = (data.recipes || []).slice(0, limit).map((r: any) => ({
+      id: r.id,
+      title: r.title || r.name,
+      description: r.description || `${r.category || 'Recipe'} with ${r.servings || 4} servings`,
+      cookingTime: r.cookingTime || r.cooking_time || 30,
+      servings: r.servings || 4,
+      difficulty: r.difficulty || 'medium',
+      dietaryTags: r.dietaryTags || r.dietary_tags || [],
+      approved: true,
+      featured: true, // Mark trending as featured
+      imageUrl: r.imageUrl || r.image_url || r.image || '',
+      createdAt: new Date(),
+      category: r.category,
+      cuisine: r.cuisine,
+      instructions: r.instructions || [],
+      ingredients: r.ingredients || [],
+      youtubeUrl: r.youtubeUrl || r.youtube_url,
+      provider: r.provider || 'fatsecret',
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fat,
+      fiber: r.fiber,
+      sugar: r.sugar,
+      sodium: r.sodium,
+      matchPercentage: r.matchPercentage,
+      matchingIngredients: r.matchingIngredients,
+      missingIngredients: r.missingIngredients,
+    }));
+
+    setCache(cacheKey, recipes);
+    return recipes;
+  } catch (error) {
+    console.error('Trending recipes error:', error);
+    return [];
+  }
 }
 
 /**
@@ -124,7 +214,7 @@ function applyFilters(recipes: Recipe[], filters: RecipeFilters): Recipe[] {
   if (filters.search) {
     const searchLower = filters.search.toLowerCase();
     filtered = filtered.filter(r =>
-      r.name.toLowerCase().includes(searchLower) ||
+      r.title.toLowerCase().includes(searchLower) ||
       r.description.toLowerCase().includes(searchLower)
     );
   }
@@ -155,31 +245,19 @@ function applyFilters(recipes: Recipe[], filters: RecipeFilters): Recipe[] {
 export const recipeApi = {
   /**
    * Get all recipes with optional filters
-   * Combines internal and TheMealDB recipes
+   * Uses Cook Smart backend (FatSecret API) - same as mobile app
    */
   async getRecipes(filters: RecipeFilters = {}): Promise<Recipe[]> {
-    // Try internal API first
-    const internalRecipes = await fetchInternalRecipes(filters);
-
-    // If we have internal recipes, use them
-    if (internalRecipes.length > 0) {
-      return internalRecipes;
+    // Get recipes from Cook Smart backend (FatSecret)
+    const recipes = await fetchRecipesFromBackend(filters);
+    
+    // If no specific search, get trending recipes
+    if (recipes.length === 0 && !filters.search) {
+      return fetchTrendingRecipes(20);
     }
 
-    // Fallback to TheMealDB
-    let externalRecipes: Recipe[] = [];
-
-    if (filters.search) {
-      externalRecipes = await themealdb.searchByName(filters.search);
-    } else if (filters.category) {
-      externalRecipes = await themealdb.getByCategory(filters.category);
-    } else {
-      // Get random recipes for homepage
-      externalRecipes = await themealdb.getRandom(20);
-    }
-
-    // Apply additional filters
-    return applyFilters(externalRecipes, filters);
+    // Apply additional client-side filters
+    return applyFilters(recipes, filters);
   },
 
   /**
@@ -207,10 +285,9 @@ export const recipeApi = {
 
   /**
    * Get recipe by ID
-   * Checks internal API first, then TheMealDB
+   * Uses Cook Smart backend (FatSecret API)
    */
   async getRecipeById(id: string): Promise<Recipe | null> {
-    // Try internal API first
     try {
       const response = await fetch(`${API_BASE_URL}/api/recipes/${id}`, {
         headers: { 'Content-Type': 'application/json' },
@@ -218,46 +295,72 @@ export const recipeApi = {
       });
 
       if (response.ok) {
-        const recipe = await response.json();
-        return { ...recipe, source: 'internal' as const };
+        const data = await response.json();
+        const recipe = data.recipe;
+        
+        if (!recipe) return null;
+
+        return {
+          id: recipe.id,
+          title: recipe.title || recipe.name,
+          description: recipe.description || `${recipe.category || 'Recipe'} with ${recipe.servings || 4} servings`,
+          cookingTime: recipe.cookingTime || recipe.cooking_time || 30,
+          servings: recipe.servings || 4,
+          difficulty: recipe.difficulty || 'medium',
+          dietaryTags: recipe.dietaryTags || recipe.dietary_tags || [],
+          approved: true,
+          featured: recipe.featured || false,
+          imageUrl: recipe.imageUrl || recipe.image_url || recipe.image || '',
+          createdAt: new Date(),
+          category: recipe.category,
+          cuisine: recipe.cuisine,
+          instructions: recipe.instructions || [],
+          ingredients: recipe.ingredients || [],
+          youtubeUrl: recipe.youtubeUrl || recipe.youtube_url,
+          provider: recipe.provider || 'fatsecret',
+          calories: recipe.calories,
+          protein: recipe.protein,
+          carbs: recipe.carbs,
+          fat: recipe.fat,
+          fiber: recipe.fiber,
+          sugar: recipe.sugar,
+          sodium: recipe.sodium,
+          matchPercentage: recipe.matchPercentage,
+          matchingIngredients: recipe.matchingIngredients,
+          missingIngredients: recipe.missingIngredients,
+        };
       }
     } catch (error) {
-      console.warn('Internal API unavailable for recipe:', id);
+      console.error('Recipe details error:', error);
     }
 
-    // Fallback to TheMealDB
-    return themealdb.getById(id);
+    return null;
   },
 
   /**
    * Get featured recipes
    */
   async getFeaturedRecipes(limit: number = 6): Promise<Recipe[]> {
-    const recipes = await this.getRecipes();
-    return recipes.filter(r => r.featured).slice(0, limit);
+    return fetchTrendingRecipes(limit);
   },
 
   /**
    * Get categories
    */
   async getCategories(): Promise<string[]> {
-    // Try internal API first
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/recipes/categories`, {
-        headers: { 'Content-Type': 'application/json' },
-        next: { revalidate: 3600 }, // Cache for 1 hour
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.categories;
-      }
-    } catch (error) {
-      console.warn('Internal API unavailable for categories');
-    }
-
-    // Fallback to TheMealDB
-    return themealdb.getCategories();
+    // Common meal types from FatSecret
+    return [
+      'Breakfast',
+      'Lunch', 
+      'Dinner',
+      'Snack',
+      'Dessert',
+      'Appetizer',
+      'Side Dish',
+      'Soup',
+      'Salad',
+      'Main Course'
+    ];
   },
 
   /**
@@ -271,8 +374,7 @@ export const recipeApi = {
    * Clear all caches
    */
   clearCache(): void {
-    internalCache.clear();
-    themealdb.clearCache();
+    recipeCache.clear();
   },
 };
 

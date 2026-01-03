@@ -5,6 +5,8 @@ export interface User {
   name: string;
   role: 'user' | 'admin' | 'super_admin';
   isActive: boolean;
+  isAdmin?: boolean;
+  suspended?: boolean;
   createdAt: Date;
   lastLoginAt: Date;
 }

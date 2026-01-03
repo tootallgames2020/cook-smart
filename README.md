@@ -62,54 +62,21 @@ Backup       │ Automated daily snapshots
 - **Resend** - Transactional email delivery
 - **Discord** - Community integration and notifications
 
-## 🚀 Quick Start
+## 🚀 Website Deployment
 
-### Prerequisites
-- Node.js 18+ and npm 8+
-- React Native CLI
-- Android Studio (for Android development)
-- PostgreSQL 12+ (local development)
+**ONLY METHOD - S3 + CloudFront:**
 
-### Installation
+1. Make changes to website files
+2. Run `deploy.bat`
+3. Wait 2-3 minutes for updates to go live
 
-```bash
-# Clone repository
-git clone https://github.com/tootallgames2020/cook-smart.git
-cd cook-smart
+**Infrastructure:**
+- S3 Bucket: `cook-smart-website-bucket`
+- CloudFront Distribution: `E31XPFYZVQELB6`
+- Domain: `cooksmartapp.com`
+- SSL: Auto-managed by AWS
 
-# Install dependencies
-npm install
-
-# Backend setup
-cd backend
-cp .env.example .env.secure
-# Edit .env.secure with your configuration
-npm install
-npm run dev
-
-# Mobile app setup (new terminal)
-cd ..
-npx react-native run-android
-```
-
-### Environment Configuration
-
-Create `backend/.env.secure` with your configuration:
-
-```bash
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/cooksmartdb
-
-# APIs
-FATSECRET_CLIENT_ID=your_client_id
-FATSECRET_CLIENT_SECRET=your_client_secret
-
-# Stripe (use test keys for development)
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-
-# See .env.example for complete configuration
-```
+**Cost:** ~$1-5/month
 
 ## 📚 Documentation
 
@@ -177,27 +144,24 @@ npm run test:performance
 
 ## 🚀 Deployment
 
-### Production Deployment
+## 🚀 Deployment
+
+**Website Deployment (ONLY METHOD):**
 ```bash
-# Deploy backend
-./scripts/deploy-production.sh
-
-# Build mobile app
-cd android && ./gradlew assembleRelease
-
 # Deploy website
-# Automatic deployment via GitHub Actions
+deploy.bat
 ```
 
-### Staging Environment
-```bash
-# Deploy to staging
-./scripts/deploy-staging.sh
-```
+**Infrastructure Details:**
+- S3 Bucket: cook-smart-website-bucket
+- CloudFront Distribution: E31XPFYZVQELB6  
+- Domain: cooksmartapp.com
+- SSL: Auto-managed
 
-**Deployment Strategy**: Blue-green deployment with zero downtime  
-**Rollback**: Automated rollback on deployment failure  
-**Monitoring**: Real-time deployment monitoring and alerting
+**Deployment Process:**
+1. Syncs files to S3
+2. Invalidates CloudFront cache
+3. Changes live in 2-3 minutes
 
 ## 📊 Analytics & Monitoring
 

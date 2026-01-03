@@ -81,7 +81,7 @@ export default function AboutPage(): React.ReactElement {
             </div>
           </div>
 
-          <div className="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-center text-white">
+          <div className="rounded-lg bg-linear-to-r from-blue-600 to-purple-600 p-8 text-center text-white">
             <h2 className="mb-4 text-3xl font-bold">Join Our BETA Program</h2>
             <p className="mb-2 text-lg opacity-90">
               Be part of shaping the future of Cook Smart! Join our beta testing program today.
@@ -91,13 +91,13 @@ export default function AboutPage(): React.ReactElement {
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <a
-                href="/contact"
+                href="/contact/"
                 className="rounded-lg bg-white px-6 py-3 font-semibold text-blue-600 hover:bg-gray-100 transition-colors"
               >
                 Apply for Beta Access
               </a>
               <a
-                href="/faq"
+                href="/faq/"
                 className="rounded-lg border-2 border-white px-6 py-3 font-semibold text-white hover:bg-white/10 transition-colors"
               >
                 Learn More

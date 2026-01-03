@@ -21,10 +21,9 @@ export function Header() {
 
   const navigation = [
     { name: 'Features', href: '#features' },
-    { name: 'Recipes', href: '/recipes' },
-    { name: 'Blog', href: '/blog' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'Recipes', href: '/recipes/' },
+    { name: 'About', href: '/about/' },
+    { name: 'Contact', href: '/contact/' },
   ];
 
   return (
@@ -60,10 +59,10 @@ export function Header() {
         {/* Desktop CTA */}
         <div className="hidden items-center space-x-4 md:flex">
           <Button variant="outline" asChild>
-            <Link href="/faq">Learn More</Link>
+            <Link href="/faq/">Learn More</Link>
           </Button>
           <Button asChild>
-            <Link href="/contact">Join Beta</Link>
+            <Link href="/contact/">Join Beta</Link>
           </Button>
         </div>
 
@@ -94,12 +93,12 @@ export function Header() {
             ))}
             <div className="space-y-2 pt-4">
               <Button variant="outline" className="w-full" asChild>
-                <Link href="/faq" onClick={() => setMobileMenuOpen(false)}>
+                <Link href="/faq/" onClick={() => setMobileMenuOpen(false)}>
                   Learn More
                 </Link>
               </Button>
               <Button className="w-full" asChild>
-                <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
+                <Link href="/contact/" onClick={() => setMobileMenuOpen(false)}>
                   Join Beta
                 </Link>
               </Button>

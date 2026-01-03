@@ -54,27 +54,22 @@ export function Footer(): React.ReactElement {
             <h3 className="text-white text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/recipes" className="hover:text-white transition-colors">
+                <Link href="/recipes/" className="hover:text-white transition-colors">
                   Recipes
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="hover:text-white transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="hover:text-white transition-colors">
+                <Link href="/about/" className="hover:text-white transition-colors">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-white transition-colors">
+                <Link href="/contact/" className="hover:text-white transition-colors">
                   Contact
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="hover:text-white transition-colors">
+                <Link href="/faq/" className="hover:text-white transition-colors">
                   FAQ
                 </Link>
               </li>

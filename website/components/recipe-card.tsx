@@ -16,7 +16,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           {recipe.imageUrl ? (
             <img
               src={recipe.imageUrl}
-              alt={recipe.name}
+              alt={recipe.title}
               className="h-full w-full object-cover transition-transform group-hover:scale-105"
             />
           ) : (
@@ -34,7 +34,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <CardContent className="p-4">
           {/* Recipe Title */}
           <h3 className="mb-2 line-clamp-2 text-lg font-semibold group-hover:text-primary">
-            {recipe.name}
+            {recipe.title}
           </h3>
 
           {/* Recipe Description */}
@@ -58,8 +58,8 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <CardFooter className="border-t p-4">
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center gap-2">
-              {recipe.source === 'themealdb' ? (
-                <span className="text-xs text-muted-foreground">TheMealDB</span>
+              {recipe.provider === 'fatsecret' ? (
+                <span className="text-xs text-muted-foreground">FatSecret</span>
               ) : (
                 <span className="text-xs text-muted-foreground">Cook Smart</span>
               )}
