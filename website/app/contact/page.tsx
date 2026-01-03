@@ -21,7 +21,7 @@ export default function ContactPage(): React.ReactElement {
           {/* Contact Form */}
           <div>
             <h2 className="mb-6 text-2xl font-bold">Send us a message</h2>
-            <form action="https://api.cooksmartapp.com/contact" method="POST" className="space-y-6">
+            <form action="https://formspree.io/f/mrbgbqpz" method="POST" className="space-y-6">
               {/* Name */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-1">Name *</label>
