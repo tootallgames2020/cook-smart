@@ -14,9 +14,8 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
     const client = await pool.connect();
     try {
       let query = `
-        SELECT sli.id, sli.item_name, sli.quantity, sli.unit, sli.category,
-               sli.notes, sli.needed_for_recipe, sli.recipe_id, sli.completed,
-               sli.completed_at, sli.added_at, sli.updated_at
+        SELECT sli.id, sli.ingredient, sli.quantity, sli.unit, sli.category,
+               sli.recipe_id, sli.is_completed, sli.date_added, sli.date_updated
         FROM shopping_list_items sli
         WHERE sli.user_id = $1
       `;
@@ -29,11 +28,11 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
 
       if (completed !== undefined) {
         const completedIndex = params.length + 1;
-        query += ` AND sli.completed = $${completedIndex}`;
+        query += ` AND sli.is_completed = $${completedIndex}`;
         params.push(completed === 'true');
       }
 
-      query += ' ORDER BY sli.completed ASC, sli.added_at DESC';
+      query += ' ORDER BY sli.is_completed ASC, sli.date_added DESC';
 
       const result = await client.query(query, params);
 
@@ -53,8 +52,8 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
           items: result.rows,
           itemsByCategory,
           totalItems: result.rows.length,
-          completedItems: result.rows.filter((item: any) => item.completed).length,
-          pendingItems: result.rows.filter((item: any) => !item.completed).length,
+          completedItems: result.rows.filter((item: any) => item.is_completed).length,
+          pendingItems: result.rows.filter((item: any) => !item.is_completed).length,
         },
       });
     } finally {
