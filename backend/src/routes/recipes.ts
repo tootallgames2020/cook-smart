@@ -360,6 +360,14 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
       const matchPercentage = totalCount > 0 ? Math.round((matchedCount / totalCount) * 100) : 0;
 
       logger.info(`Recipe ${id} ingredient matching: ${matchedCount}/${totalCount} (${matchPercentage}%)`);
+      logger.info(`Recipe ${id} image URL from FatSecret: "${recipe.recipe_image}"`);
+
+      // Use fallback image if FatSecret doesn't provide a valid image URL
+      const imageUrl = recipe.recipe_image && recipe.recipe_image.startsWith('http') 
+        ? recipe.recipe_image 
+        : 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop';
+
+      logger.info(`Recipe ${id} final image URL: "${imageUrl}"`);
 
       // Return mobile app compatible format
       return res.json({
@@ -367,7 +375,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
         recipe: {
           id: parseInt(recipe.recipe_id) || parseInt(id),
           title: recipe.recipe_name || 'Unknown Recipe',
-          image: recipe.recipe_image || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop',
+          image: imageUrl,
           servings: parseInt(recipe.number_of_servings) || 4,
           readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
           sourceUrl: recipe.recipe_url || '',
