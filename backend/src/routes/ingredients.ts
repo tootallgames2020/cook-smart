@@ -53,12 +53,16 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
 // Add ingredient to pantry
 router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const { ingredient_name, quantity, unit, expiration_date, notes, category } = req.body;
+    const { ingredient_name, customName, quantity, unit, expiration_date, expirationDate, notes, category } = req.body;
 
-    if (!ingredient_name) {
+    // Handle both field name formats (mobile app uses customName, web might use ingredient_name)
+    const ingredientName = ingredient_name || customName;
+    const expDate = expiration_date || expirationDate;
+
+    if (!ingredientName) {
       return res.status(400).json({
         success: false,
-        message: 'Ingredient name is required',
+        message: 'Ingredient name is required (ingredient_name or customName)',
       });
     }
 
@@ -71,11 +75,11 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
          RETURNING *`,
         [
           req.user!.id,
-          ingredient_name.toLowerCase().replace(/\s+/g, '_'), // Generate simple ID
-          ingredient_name,
+          ingredientName.toLowerCase().replace(/\s+/g, '_'), // Generate simple ID
+          ingredientName,
           quantity || null,
           unit || 'piece',
-          expiration_date || null,
+          expDate || null,
           notes || null,
           category || 'other',
         ]
@@ -87,7 +91,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
         [req.user!.id]
       );
 
-      logger.info(`Ingredient added by user ${req.user!.id}: ${ingredient_name}`);
+      logger.info(`Ingredient added by user ${req.user!.id}: ${ingredientName}`);
 
       return res.status(201).json({
         success: true,
