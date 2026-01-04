@@ -65,6 +65,58 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
   }
 });
 
+// Get recipe details (public endpoint for browsing)
+router.get('/:id/public', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    logger.info(`Public recipe details request: ${id}`);
+
+    // Get recipe details from FatSecret API
+    const recipe = await fatSecretService.getRecipeDetails(id);
+
+    if (!recipe) {
+      return res.status(404).json({
+        success: false,
+        message: 'Recipe not found',
+      });
+    }
+
+    // Return basic recipe details without user-specific features
+    return res.json({
+      success: true,
+      recipe: {
+        ...recipe,
+        // Ensure we have a proper image
+        image: recipe.recipe_image || recipe.image || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop',
+        // Clean up the response for mobile app
+        id: recipe.recipe_id || id,
+        title: recipe.recipe_name || 'Unknown Recipe',
+        servings: recipe.number_of_servings || '4',
+        cookingTime: recipe.cooking_time_min || '30',
+        description: recipe.recipe_description || '',
+        ingredients: recipe.ingredients?.ingredient || [],
+        instructions: recipe.directions?.direction || [],
+        nutrition: {
+          calories: recipe.calories,
+          protein: recipe.protein,
+          carbs: recipe.carbohydrate,
+          fat: recipe.fat,
+          fiber: recipe.fiber,
+          sugar: recipe.sugar,
+          sodium: recipe.sodium,
+        },
+      },
+      provider: 'FatSecret',
+      isPublic: true,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error('Public recipe details error:', error);
+    return next(createError('Failed to get recipe details', 500));
+  }
+});
+
 // Get recipe details
 router.get('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
