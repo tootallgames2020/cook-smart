@@ -26,39 +26,123 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
 
     logger.info(`Recipe search for user ${req.user!.id}: ${ingredientList.join(', ')}`);
 
-    // Search recipes using FatSecret API
-    const recipes = await fatSecretService.searchRecipesByIngredients(
-      ingredientList,
-      parseInt(limit as string)
-    );
-
-    // Apply dietary filtering if user has restrictions
-    let filteredRecipes = recipes;
-    if (dietary_restrictions || allergies) {
-      // TODO: Implement dietary filtering logic
-      logger.info('Dietary filtering requested but not yet implemented');
-    }
-
-    // Award points for recipe search
     const client = await pool.connect();
     try {
+      // Get user's pantry ingredients for matching
+      const userIngredientsResult = await client.query(
+        'SELECT LOWER(ingredient_name) as ingredient_name FROM user_ingredients WHERE user_id = $1',
+        [req.user!.id]
+      );
+      
+      const userIngredients = userIngredientsResult.rows.map(row => row.ingredient_name);
+      logger.info(`User ${req.user!.id} has ${userIngredients.length} pantry ingredients: ${userIngredients.join(', ')}`);
+
+      // Search recipes using FatSecret API
+      const recipes = await fatSecretService.searchRecipesByIngredients(
+        ingredientList,
+        parseInt(limit as string) * 2 // Get more recipes to filter and sort
+      );
+
+      // Calculate match percentages for each recipe
+      const recipesWithMatches = recipes.map(recipe => {
+        const recipeIngredients = recipe.ingredients.map(ing => 
+          ing.toLowerCase().replace(/[^a-z\s]/g, '').trim()
+        );
+        
+        let matchCount = 0;
+        const matchedIngredients: string[] = [];
+        const missingIngredients: string[] = [];
+
+        recipeIngredients.forEach(recipeIng => {
+          // Check for exact matches or partial matches
+          const isMatch = userIngredients.some(userIng => {
+            // Exact match
+            if (userIng === recipeIng) return true;
+            
+            // Partial match - check if user ingredient contains recipe ingredient or vice versa
+            if (userIng.includes(recipeIng) || recipeIng.includes(userIng)) return true;
+            
+            // Word-based matching for compound ingredients
+            const userWords = userIng.split(' ');
+            const recipeWords = recipeIng.split(' ');
+            
+            return userWords.some(userWord => 
+              recipeWords.some(recipeWord => 
+                userWord.length > 2 && recipeWord.length > 2 && 
+                (userWord.includes(recipeWord) || recipeWord.includes(userWord))
+              )
+            );
+          });
+
+          if (isMatch) {
+            matchCount++;
+            matchedIngredients.push(recipeIng);
+          } else {
+            missingIngredients.push(recipeIng);
+          }
+        });
+
+        const matchPercentage = recipeIngredients.length > 0 
+          ? Math.round((matchCount / recipeIngredients.length) * 100)
+          : 0;
+
+        return {
+          ...recipe,
+          matchPercentage,
+          matchedIngredients,
+          missingIngredients,
+          totalIngredients: recipeIngredients.length,
+          matchedCount: matchCount,
+        };
+      });
+
+      // Sort by match percentage (highest first), then by recipe quality
+      const sortedRecipes = recipesWithMatches
+        .sort((a, b) => {
+          // Primary sort: match percentage
+          if (b.matchPercentage !== a.matchPercentage) {
+            return b.matchPercentage - a.matchPercentage;
+          }
+          
+          // Secondary sort: fewer total ingredients (simpler recipes)
+          if (a.totalIngredients !== b.totalIngredients) {
+            return a.totalIngredients - b.totalIngredients;
+          }
+          
+          // Tertiary sort: recipe ID (consistent ordering)
+          return a.id - b.id;
+        })
+        .slice(0, parseInt(limit as string)); // Apply final limit
+
+      // Apply dietary filtering if user has restrictions
+      let filteredRecipes = sortedRecipes;
+      if (dietary_restrictions || allergies) {
+        // TODO: Implement dietary filtering logic
+        logger.info('Dietary filtering requested but not yet implemented');
+      }
+
+      // Award points for recipe search
       await client.query(
         'UPDATE users SET points = points + 1 WHERE id = $1',
         [req.user!.id]
       );
+
+      logger.info(`Recipe search completed for user ${req.user!.id}: ${filteredRecipes.length} recipes, best match: ${filteredRecipes[0]?.matchPercentage || 0}%`);
+
+      return res.json({
+        success: true,
+        recipes: filteredRecipes,
+        count: filteredRecipes.length,
+        provider: 'FatSecret',
+        searchedIngredients: ingredientList,
+        userPantryCount: userIngredients.length,
+        bestMatch: filteredRecipes[0]?.matchPercentage || 0,
+        dietaryFiltering: !!(dietary_restrictions || allergies),
+        timestamp: new Date().toISOString(),
+      });
     } finally {
       client.release();
     }
-
-    return res.json({
-      success: true,
-      recipes: filteredRecipes,
-      count: filteredRecipes.length,
-      provider: 'FatSecret',
-      searchedIngredients: ingredientList,
-      dietaryFiltering: !!(dietary_restrictions || allergies),
-      timestamp: new Date().toISOString(),
-    });
   } catch (error) {
     logger.error('Recipe search error:', error);
     return next(createError('Recipe search failed', 500));

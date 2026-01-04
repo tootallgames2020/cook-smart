@@ -21,6 +21,12 @@ export interface Recipe {
   fiber?: number;
   sugar?: number;
   sodium?: number;
+  // Match percentage fields
+  matchPercentage?: number;
+  matchedIngredients?: string[];
+  missingIngredients?: string[];
+  totalIngredients?: number;
+  matchedCount?: number;
 }
 
 export class FatSecretService {
@@ -230,16 +236,39 @@ export class FatSecretService {
   private parseIngredients(ingredients: any): string[] {
     if (!ingredients) return [];
     
-    if (Array.isArray(ingredients)) return ingredients;
+    let ingredientList: string[] = [];
     
-    if (ingredients.ingredient) {
+    if (Array.isArray(ingredients)) {
+      ingredientList = ingredients.map(ing => this.cleanIngredientName(ing));
+    } else if (ingredients.ingredient) {
       if (Array.isArray(ingredients.ingredient)) {
-        return ingredients.ingredient;
+        ingredientList = ingredients.ingredient.map((ing: any) => 
+          this.cleanIngredientName(ing.ingredient_description || ing.food_name || ing.name || ing)
+        );
+      } else {
+        const ing = ingredients.ingredient;
+        ingredientList = [this.cleanIngredientName(ing.ingredient_description || ing.food_name || ing.name || ing)];
       }
-      return [ingredients.ingredient];
     }
     
-    return [];
+    return ingredientList.filter(ing => ing && ing.length > 0);
+  }
+
+  private cleanIngredientName(ingredient: string | any): string {
+    if (typeof ingredient !== 'string') {
+      if (ingredient?.ingredient_description) return this.cleanIngredientName(ingredient.ingredient_description);
+      if (ingredient?.food_name) return this.cleanIngredientName(ingredient.food_name);
+      if (ingredient?.name) return this.cleanIngredientName(ingredient.name);
+      return '';
+    }
+
+    return ingredient
+      .toLowerCase()
+      .replace(/^\d+\s*(cups?|tbsp|tsp|oz|lbs?|grams?|kg|ml|l|pieces?|slices?|cloves?|medium|large|small|whole|fresh|dried|chopped|diced|minced|ground|shredded|grated|cooked|raw|organic|extra|virgin|unsalted|salted|fat-free|low-fat|non-fat|reduced|light|heavy|thick|thin|fine|coarse)\s*/gi, '')
+      .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical content
+      .replace(/\s*,.*$/g, '') // Remove everything after first comma
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
   }
 
   private parseIngredientsForDetails(ingredients: any): { ingredient: string[] } {
