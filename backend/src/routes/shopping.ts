@@ -368,7 +368,7 @@ router.post('/bulk', authenticateToken, async (req: AuthRequest, res, next) => {
 
         // Check if item already exists
         const existingItem = await client.query(
-          'SELECT id FROM shopping_list_items WHERE user_id = $1 AND item_name = $2 AND completed = false',
+          'SELECT id FROM shopping_list_items WHERE user_id = $1 AND ingredient = $2 AND is_completed = false',
           [req.user!.id, ingredient]
         );
 
@@ -380,16 +380,15 @@ router.post('/bulk', authenticateToken, async (req: AuthRequest, res, next) => {
         // Add new item
         const result = await client.query(
           `INSERT INTO shopping_list_items 
-           (user_id, item_name, quantity, unit, category, needed_for_recipe, recipe_id, added_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+           (user_id, ingredient, quantity, unit, category, recipe_id, date_added)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())
            RETURNING *`,
           [
             req.user!.id,
             ingredient,
-            quantity || null,
+            quantity || '1',
             unit || 'piece',
             category || 'other',
-            !!recipeId,
             recipeId || null,
           ]
         );
