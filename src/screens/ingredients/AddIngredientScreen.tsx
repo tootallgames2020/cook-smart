@@ -14,15 +14,37 @@ import {
 import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {useIngredients} from '../../contexts/IngredientContext';
+import {BarcodeScannerModal} from '../../components/barcode/BarcodeScannerModal';
+import {ScannedProduct} from '../../services/productLookupService';
 
 export const AddIngredientScreen: React.FC = () => {
   const navigation = useNavigation();
   const {addIngredient} = useIngredients();
   const [showCustomModal, setShowCustomModal] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customCategory, setCustomCategory] = useState('Other');
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('unit');
+
+  const handleBarcodeScanned = async (productData: ScannedProduct) => {
+    try {
+      await addIngredient({
+        customName: productData.name,
+        category: productData.category || 'Other',
+        quantity: 1,
+        unit: 'unit',
+        barcode: productData.barcode,
+      });
+
+      Alert.alert('Success', `${productData.name} added to your ingredients!`, [
+        {text: 'OK', onPress: () => navigation.goBack()},
+      ]);
+    } catch (error) {
+      console.error('Error adding scanned ingredient:', error);
+      Alert.alert('Error', 'Failed to add ingredient');
+    }
+  };
 
   const handleAddCustom = async () => {
     if (!customName.trim()) {
@@ -67,15 +89,24 @@ export const AddIngredientScreen: React.FC = () => {
       <View style={styles.centerContainer}>
         <Icon name="kitchen" size={64} color="#10B981" />
         <Text style={styles.emptyTitle}>Add Ingredients</Text>
-        <Text style={styles.emptySubtext}>Add a custom ingredient below</Text>
+        <Text style={styles.emptySubtext}>Scan a barcode or add a custom ingredient</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.customButton}
-        onPress={() => setShowCustomModal(true)}>
-        <Icon name="add" size={20} color="#FFFFFF" />
-        <Text style={styles.customButtonText}>Add Custom Ingredient</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.scanButton}
+          onPress={() => setShowBarcodeScanner(true)}>
+          <Icon name="qr-code-scanner" size={20} color="#FFFFFF" />
+          <Text style={styles.scanButtonText}>Scan Barcode</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.customButton}
+          onPress={() => setShowCustomModal(true)}>
+          <Icon name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.customButtonText}>Add Custom Ingredient</Text>
+        </TouchableOpacity>
+      </View>
 
       <Modal
         visible={showCustomModal}
@@ -167,6 +198,17 @@ export const AddIngredientScreen: React.FC = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        visible={showBarcodeScanner}
+        onClose={() => setShowBarcodeScanner(false)}
+        onBarcodeScanned={handleBarcodeScanned}
+        onManualEntry={() => {
+          setShowBarcodeScanner(false);
+          setShowCustomModal(true);
+        }}
+      />
     </View>
   );
 };
@@ -216,12 +258,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  buttonContainer: {
+    padding: 16,
+    gap: 12,
+  },
+  scanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3B82F6',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scanButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
   customButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#10B981',
-    margin: 16,
     padding: 16,
     borderRadius: 12,
     shadowColor: '#000',

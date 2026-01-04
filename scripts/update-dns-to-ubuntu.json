@@ -1,0 +1,21 @@
+{
+  "HostedZoneId": "Z0980869VT72IDSPDPAX",
+  "ChangeBatch": {
+    "Comment": "Update API to point to new Ubuntu server",
+    "Changes": [
+      {
+        "Action": "UPSERT",
+        "ResourceRecordSet": {
+          "Name": "api.cooksmartapp.com",
+          "Type": "A",
+          "TTL": 300,
+          "ResourceRecords": [
+            {
+              "Value": "3.237.41.103"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

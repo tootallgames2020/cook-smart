@@ -1,8 +1,5 @@
 -- ============================================================================
--- COOK SMART COMPLETE DATABASE SETUP
--- ============================================================================
--- This script creates ALL tables needed for Cook Smart to function completely
--- Including: Users, Recipes, Shopping Lists, Points, Dietary Restrictions, etc.
+-- COOK SMART COMPLETE DATABASE SETUP - FIXED VERSION
 -- ============================================================================
 
 BEGIN;
@@ -393,47 +390,6 @@ CREATE INDEX IF NOT EXISTS idx_referrals_code ON referrals(referral_code);
 CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_error_logs_severity ON error_logs(severity);
-
--- ============================================================================
--- TRIGGERS FOR AUTOMATIC TIMESTAMPS
--- ============================================================================
-
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Shopping list update trigger
-CREATE OR REPLACE FUNCTION update_shopping_list_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.date_updated = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Apply triggers
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_user_ingredients_updated_at BEFORE UPDATE ON user_ingredients
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_user_recipes_updated_at BEFORE UPDATE ON user_recipes
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_shopping_lists_updated_at BEFORE UPDATE ON shopping_lists
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON subscriptions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER shopping_list_items_updated_at BEFORE UPDATE ON shopping_list_items
-    FOR EACH ROW EXECUTE FUNCTION update_shopping_list_updated_at();
 
 -- ============================================================================
 -- DEFAULT DATA POPULATION

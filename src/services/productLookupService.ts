@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import {API_BASE_URL} from '../config/api';
 
 export interface ScannedProduct {
   barcode: string;
@@ -7,19 +7,41 @@ export interface ScannedProduct {
   brand?: string;
   category?: string;
   imageUrl?: string;
+  nutrition?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    fiber?: number;
+    sugar?: number;
+    sodium?: number;
+  };
+  serving_size?: string;
   cachedAt?: number;
   lastAccessedAt?: number;
   accessCount?: number;
 }
 
-interface OpenFoodFactsResponse {
-  status: number;
+interface BarcodeApiResponse {
+  success: boolean;
   product?: {
-    product_name?: string;
-    brands?: string;
-    categories?: string;
-    image_url?: string;
+    barcode: string;
+    name: string;
+    brand?: string;
+    category?: string;
+    nutrition?: {
+      calories?: number;
+      protein?: number;
+      carbs?: number;
+      fat?: number;
+      fiber?: number;
+      sugar?: number;
+      sodium?: number;
+    };
+    serving_size?: string;
   };
+  provider?: string;
+  message?: string;
 }
 
 export interface ProductLookupService {
@@ -31,11 +53,21 @@ export interface ProductLookupService {
 }
 
 class ProductLookupServiceImpl implements ProductLookupService {
-  private readonly API_BASE_URL = 'https://world.openfoodfacts.org/api/v0/product';
   private readonly CACHE_PREFIX = 'barcode_cache_';
   private readonly API_TIMEOUT = 10000; // 10 seconds
   private lastRequestTime = 0;
   private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second rate limit
+
+  /**
+   * Get auth token for API requests
+   */
+  private async getAuthToken(): Promise<string> {
+    const token = await AsyncStorage.getItem('auth_token');
+    if (!token) {
+      throw new Error('No authentication token');
+    }
+    return token;
+  }
 
   /**
    * Lookup product by barcode (cache-first strategy)
@@ -168,28 +200,38 @@ class ProductLookupServiceImpl implements ProductLookupService {
   }
 
   /**
-   * Fetch product data from Open Food Facts API
+   * Fetch product data from Cook Smart API (FatSecret backend)
    * @param barcode - The barcode to lookup
    * @returns Promise<ScannedProduct | null>
    */
   private async fetchFromAPI(barcode: string): Promise<ScannedProduct | null> {
     try {
-      const url = `${this.API_BASE_URL}/${barcode}.json`;
-      const response = await axios.get<OpenFoodFactsResponse>(url, {
+      const token = await this.getAuthToken();
+      const url = `${API_BASE_URL}/api/v1/barcode/lookup/${barcode}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         timeout: this.API_TIMEOUT,
       });
 
-      if (response.data.status === 1 && response.data.product) {
-        return this.parseProductData(barcode, response.data);
+      const data: BarcodeApiResponse = await response.json();
+
+      if (data.success && data.product) {
+        return this.parseProductData(data.product);
       }
 
       return null;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.code === 'ECONNABORTED') {
+      console.error('API lookup error:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
           throw new Error('Request timeout - please try again');
         }
-        if (!error.response) {
+        if (error.message.includes('Network')) {
           throw new Error('Network error - check your connection');
         }
       }
@@ -198,40 +240,22 @@ class ProductLookupServiceImpl implements ProductLookupService {
   }
 
   /**
-   * Parse Open Food Facts API response
-   * @param barcode - The barcode
-   * @param response - The API response
+   * Parse Cook Smart API response
+   * @param product - The API response product
    * @returns ScannedProduct
    */
-  private parseProductData(
-    barcode: string,
-    response: OpenFoodFactsResponse
-  ): ScannedProduct {
-    const product = response.product!;
-    
-    // Extract product name (required)
-    let name = product.product_name?.trim() || 'Unknown Product';
-    
-    // Extract brand (optional)
-    const brand = product.brands?.split(',')[0]?.trim();
-    
-    // If we have a brand, append it to the name
-    if (brand) {
-      name = `${name} (${brand})`;
+  private parseProductData(product: BarcodeApiResponse['product']): ScannedProduct {
+    if (!product) {
+      throw new Error('Invalid product data');
     }
     
-    // Extract category (optional)
-    const category = product.categories?.split(',')[0]?.trim();
-    
-    // Extract image URL (optional)
-    const imageUrl = product.image_url;
-
     return {
-      barcode,
-      name,
-      brand,
-      category,
-      imageUrl,
+      barcode: product.barcode,
+      name: product.name || 'Unknown Product',
+      brand: product.brand,
+      category: product.category || 'food',
+      nutrition: product.nutrition,
+      serving_size: product.serving_size,
     };
   }
 

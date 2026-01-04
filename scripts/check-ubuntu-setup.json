@@ -1,0 +1,25 @@
+{
+  "InstanceIds": ["i-06366021916987eda"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "echo '=== Ubuntu Setup Status Check ==='",
+      "echo 'Step 1: Check Node.js installation'",
+      "node --version || echo 'Node.js not installed yet'",
+      "npm --version || echo 'npm not installed yet'",
+      "echo 'Step 2: Check if code was cloned'",
+      "ls -la /home/ubuntu/ || echo 'No ubuntu home directory'",
+      "ls -la /home/ubuntu/cook-smart/ || echo 'No cook-smart directory'",
+      "echo 'Step 3: Check PM2 status'",
+      "pm2 status || echo 'PM2 not available'",
+      "echo 'Step 4: Check if backend is running'",
+      "ps aux | grep node || echo 'No node processes'",
+      "curl -s http://localhost:3000/health || echo 'Backend not responding'",
+      "echo 'Step 5: Check system logs'",
+      "tail -20 /var/log/cloud-init-output.log || echo 'No cloud-init log'",
+      "echo 'Step 6: Check if setup is still running'",
+      "ps aux | grep apt || echo 'No apt processes'",
+      "ps aux | grep npm || echo 'No npm processes'"
+    ]
+  }
+}

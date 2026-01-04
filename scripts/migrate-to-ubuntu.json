@@ -1,0 +1,29 @@
+{
+  "ImageId": "ami-0030e4319cbf4dbf2",
+  "InstanceType": "t3.small",
+  "KeyName": "cook-smart-key",
+  "SecurityGroupIds": ["sg-0b72c335d79282f46"],
+  "SubnetId": "subnet-099358dc4a94a775b",
+  "UserData": "IyEvYmluL2Jhc2gKCiMgVXBkYXRlIHN5c3RlbQphcHQgdXBkYXRlIC15CmFwdCB1cGdyYWRlIC15CgojIEluc3RhbGwgTm9kZS5qcyAyMCBMVFMKY3VybCAtZnNTTCBodHRwczovL2Rldi5ub2Rlc291cmNlLmNvbS9ncGdrZXkgfCBncGcgLS1kZWFybW9yIC1vIC9ldGMvYXB0L2tleXJpbmdzL25vZGVzb3VyY2UuZ3BnCmVjaG8gImRlYiBbaGFzaD1zaGE1MTJdIGh0dHBzOi8vZGViLm5vZGVzb3VyY2UuY29tL25vZGVfMjAueCBqYW1teSBtYWluIiA+IC9ldGMvYXB0L3NvdXJjZXMubGlzdC5kL25vZGVzb3VyY2UubGlzdAphcHQgdXBkYXRlCmFwdCBpbnN0YWxsIC15IG5vZGVqcyBucG0KCiMgSW5zdGFsbCBQTTIgZ2xvYmFsbHkKbnBtIGluc3RhbGwgLWcgcG0yCgojIEluc3RhbGwgTmdpbngKYXB0IGluc3RhbGwgLXkgbmdpbngKCiMgSW5zdGFsbCBDZXJ0Ym90IGZvciBTU0wKYXB0IGluc3RhbGwgLXkgY2VydGJvdCBweXRob24zLWNlcnRib3QtbmdpbngKCiMgSW5zdGFsbCBHaXQKYXB0IGluc3RhbGwgLXkgZ2l0CgojIEluc3RhbGwgUG9zdGdyZVNRTCBjbGllbnQKYXB0IGluc3RhbGwgLXkgcG9zdGdyZXNxbC1jbGllbnQKCiMgQ3JlYXRlIHVidW50dSB1c2VyIGhvbWUgZGlyZWN0b3J5CmNkIC9ob21lL3VidW50dQoKIyBDbG9uZSBmcmVzaCBjb2RlCmdpdCBjbG9uZSBodHRwczovL2dpdGh1Yi5jb20vdG9vdGFsbGdhbWVzMjAyMC9jb29rLXNtYXJ0LmdpdApjZCBjb29rLXNtYXJ0CmdpdCBjaGVja291dCBmcmVzaC1wcm9qZWN0LW1pZ3JhdGlvbgoKIyBTZXR1cCBiYWNrZW5kCmNkIGJhY2tlbmQKY3AgLmVudi5leGFtcGxlIC5lbnYKc2VkIC1pICdzL3lvdXItZGF0YWJhc2UtaG9zdC9jb29rLXNtYXJ0LWRiLWJldGEuY2dmd2lneTJpOWsudXMtZWFzdC0xLnJkcy5hbWF6b25hd3MuY29tL2cnIC5lbnYKc2VkIC1pICdzL3lvdXItZGItdXNlci9jb29rc21hcnRhZG1pbi9nJyAuZW52CnNlZCAtaSAncy95b3VyLWRiLXBhc3N3b3JkL0Nvb2tTbWFydDIwMjQhL2cnIC5lbnYKc2VkIC1pICdzL3lvdXItand0LXNlY3JldC9jb29rLXNtYXJ0LWp3dC1zZWNyZXQtMjAyNC9nJyAuZW52CgojIEluc3RhbGwgZGVwZW5kZW5jaWVzIGFuZCBidWlsZApucG0gaW5zdGFsbApucG0gcnVuIGJ1aWxkCgojIFN0YXJ0IHNlcnZlciB3aXRoIFBNMgpwbTIgc3RhcnQgZGlzdC9zZXJ2ZXIuanMgLS1uYW1lIGNvb2stc21hcnQtYmFja2VuZApwbTIgc2F2ZQpwbTIgc3RhcnR1cAoKIyBDaGFuZ2Ugb3duZXJzaGlwIHRvIHVidW50dSB1c2VyCmNob3duIC1SIHVidW50dTp1YnVudHUgL2hvbWUvdWJ1bnR1L2Nvb2stc21hcnQK",
+  "TagSpecifications": [
+    {
+      "ResourceType": "instance",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "cook-smart-backend-ubuntu"
+        },
+        {
+          "Key": "Project",
+          "Value": "cook-smart"
+        },
+        {
+          "Key": "Environment",
+          "Value": "production"
+        }
+      ]
+    }
+  ],
+  "MinCount": 1,
+  "MaxCount": 1
+}

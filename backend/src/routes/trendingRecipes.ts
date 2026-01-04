@@ -274,23 +274,11 @@ router.get('/seasonal-recipes', optionalAuth, async (req: AuthRequest, res) => {
       FatSecretAdapter, // Primary: FatSecret Premier (free, unlimited for our needs)
     ]);
 
-    let recipes: any[] = [];
-    
-    // Check if FatSecret is configured
-    const isFatSecretConfigured = process.env.FATSECRET_CLIENT_ID && process.env.FATSECRET_CLIENT_SECRET;
-    
-    if (isFatSecretConfigured) {
-      const seasonalIngredients = getSeasonalIngredients(season);
-      recipes = await recipeProviderService.searchByIngredients(
-        seasonalIngredients.slice(0, 3),
-        limit,
-      );
-    } else {
-      console.log(`[Seasonal] FatSecret not configured, using mock seasonal recipes for ${season}`);
-      // Mock seasonal recipes based on current season
-      const seasonalMockRecipes = getSeasonalMockRecipes(season);
-      recipes = seasonalMockRecipes.slice(0, limit);
-    }
+    const seasonalIngredients = getSeasonalIngredients(season);
+    const recipes = await recipeProviderService.searchByIngredients(
+      seasonalIngredients.slice(0, 3),
+      limit,
+    );
 
     console.log(
       `[Seasonal] RecipeProviderService returned ${recipes.length} recipes`,
@@ -408,23 +396,11 @@ router.get('/seasonal/current', optionalAuth, async (req: AuthRequest, res) => {
       FatSecretAdapter, // Primary: FatSecret Premier (free, unlimited for our needs)
     ]);
 
-    let recipes: any[] = [];
-    
-    // Check if FatSecret is configured
-    const isFatSecretConfigured = process.env.FATSECRET_CLIENT_ID && process.env.FATSECRET_CLIENT_SECRET;
-    
-    if (isFatSecretConfigured) {
-      const seasonalIngredients = getSeasonalIngredients(season);
-      recipes = await recipeProviderService.searchByIngredients(
-        seasonalIngredients.slice(0, 3),
-        limit,
-      );
-    } else {
-      console.log(`[Seasonal Current] FatSecret not configured, using mock seasonal recipes for ${season}`);
-      // Mock seasonal recipes based on current season
-      const seasonalMockRecipes = getSeasonalMockRecipes(season);
-      recipes = seasonalMockRecipes.slice(0, limit);
-    }
+    const seasonalIngredients = getSeasonalIngredients(season);
+    const recipes = await recipeProviderService.searchByIngredients(
+      seasonalIngredients.slice(0, 3),
+      limit,
+    );
 
     console.log(
       `[Seasonal Current] RecipeProviderService returned ${recipes.length} recipes`,

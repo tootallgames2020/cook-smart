@@ -1,0 +1,43 @@
+{
+  "InstanceIds": ["i-0e2c8623378f172c8"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "echo '=== Installing Node.js Binary Compatible with Amazon Linux 2 ==='",
+      "cd /home/ec2-user",
+      "echo 'Step 1: Download Node.js 16.20.2 binary (compatible with glibc 2.17+)'",
+      "wget https://nodejs.org/dist/v16.20.2/node-v16.20.2-linux-x64.tar.xz",
+      "echo 'Step 2: Extract Node.js binary'",
+      "tar -xf node-v16.20.2-linux-x64.tar.xz",
+      "echo 'Step 3: Create symlinks to make node and npm available'",
+      "sudo ln -sf /home/ec2-user/node-v16.20.2-linux-x64/bin/node /usr/local/bin/node",
+      "sudo ln -sf /home/ec2-user/node-v16.20.2-linux-x64/bin/npm /usr/local/bin/npm",
+      "sudo ln -sf /home/ec2-user/node-v16.20.2-linux-x64/bin/npx /usr/local/bin/npx",
+      "echo 'Step 4: Verify Node.js installation'",
+      "node --version",
+      "npm --version",
+      "echo 'Step 5: Install PM2 globally'",
+      "npm install -g pm2",
+      "sudo ln -sf /home/ec2-user/node-v16.20.2-linux-x64/bin/pm2 /usr/local/bin/pm2",
+      "echo 'Step 6: Navigate to backend and start server'",
+      "cd cook-smart/backend",
+      "echo 'Step 7: Stop any existing processes'",
+      "pm2 delete all || echo 'No existing PM2 processes'",
+      "pkill -f 'node.*server' || echo 'No node server processes'",
+      "echo 'Step 8: Start backend server'",
+      "pm2 start dist/server.js --name cook-smart-backend",
+      "pm2 save",
+      "echo 'Step 9: Verify deployment'",
+      "sleep 5",
+      "pm2 status",
+      "pm2 logs cook-smart-backend --lines 10",
+      "echo 'Step 10: Test endpoints'",
+      "curl -s http://localhost:3000/health",
+      "echo ''",
+      "curl -X POST -H 'Content-Type: application/json' -d '{\"email\":\"test@test.com\",\"password\":\"test\"}' http://localhost:3000/api/v1/auth/login",
+      "echo ''",
+      "echo '=== Deployment Complete ==='",
+      "echo 'Backend should now be running with Node.js 16.20.2 binary!'"
+    ]
+  }
+}
