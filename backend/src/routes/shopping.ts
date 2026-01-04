@@ -62,6 +62,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
 
       return res.json({
         success: true,
+        items: mappedItems,
         shopping_list: {
           items: mappedItems,
           itemsByCategory,
