@@ -6,6 +6,29 @@ import { createError } from '../middleware/errorHandler';
 
 const router = express.Router();
 
+// Get user's points summary (root endpoint)
+router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT points FROM users WHERE id = $1',
+        [req.user!.id]
+      );
+
+      res.json({
+        success: true,
+        points: result.rows[0]?.points || 0,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get points error:', error);
+    next(createError('Failed to get points', 500));
+  }
+});
+
 // Get user's points
 router.get('/my-points', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
