@@ -66,8 +66,8 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
             const userWords = userIng.split(' ');
             const recipeWords = recipeIng.split(' ');
             
-            return userWords.some(userWord => 
-              recipeWords.some(recipeWord => 
+            return userWords.some((userWord: string) => 
+              recipeWords.some((recipeWord: string) => 
                 userWord.length > 2 && recipeWord.length > 2 && 
                 (userWord.includes(recipeWord) || recipeWord.includes(userWord))
               )
