@@ -267,72 +267,137 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
 
     logger.info(`Recipe details request for user ${req.user!.id}: ${id}`);
 
-    // Get recipe details from FatSecret API
-    const recipe = await fatSecretService.getRecipeDetails(id);
+    const client = await pool.connect();
+    try {
+      // Get user's pantry ingredients for matching
+      const userIngredientsResult = await client.query(
+        'SELECT LOWER(ingredient_name) as ingredient_name FROM user_ingredients WHERE user_id = $1',
+        [req.user!.id]
+      );
+      
+      const userIngredients = userIngredientsResult.rows.map(row => row.ingredient_name);
+      logger.info(`User ${req.user!.id} has ${userIngredients.length} pantry ingredients for recipe ${id}`);
 
-    if (!recipe) {
-      return res.status(404).json({
-        success: false,
-        message: 'Recipe not found',
+      // Get recipe details from FatSecret API
+      const recipe = await fatSecretService.getRecipeDetails(id);
+
+      if (!recipe) {
+        return res.status(404).json({
+          success: false,
+          message: 'Recipe not found',
+        });
+      }
+
+      // Parse ingredients into simple string array
+      let ingredientsList: string[] = [];
+      if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+        ingredientsList = recipe.ingredients.map((ing: any) => 
+          ing.ingredient_description || ing.food_name || ing.name || ing
+        );
+      } else if (recipe.ingredients?.ingredient) {
+        const ingredients = Array.isArray(recipe.ingredients.ingredient) 
+          ? recipe.ingredients.ingredient 
+          : [recipe.ingredients.ingredient];
+        ingredientsList = ingredients.map((ing: any) => 
+          ing.ingredient_description || ing.food_name || ing.name || ing
+        );
+      }
+
+      // Check which ingredients the user has
+      const ingredientsWithStatus = ingredientsList.map(ingredient => {
+        const cleanIngredient = ingredient
+          .toLowerCase()
+          .replace(/^\d+\s*(cups?|tbsp|tsp|oz|lbs?|grams?|kg|ml|l|pieces?|slices?|cloves?|medium|large|small|whole|fresh|dried|chopped|diced|minced|ground|shredded|grated|cooked|raw|organic|extra|virgin|unsalted|salted|fat-free|low-fat|non-fat|reduced|light|heavy|thick|thin|fine|coarse)\s*/gi, '')
+          .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical content
+          .replace(/\s*,.*$/g, '') // Remove everything after first comma
+          .replace(/^or\s+\d+\s+/gi, '') // Remove "or 1 packet" type prefixes
+          .replace(/^yields\s+/gi, '') // Remove "yields" prefix
+          .replace(/^tbsps?\s+/gi, '') // Remove "tbsp" prefix
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .trim();
+
+        // Check if user has this ingredient
+        const hasIngredient = userIngredients.some(userIng => {
+          // Exact match after cleaning
+          if (userIng === cleanIngredient) return true;
+          
+          // Partial match - check if cleaned ingredients contain each other
+          if (userIng.includes(cleanIngredient) || cleanIngredient.includes(userIng)) return true;
+          
+          // Word-based matching for compound ingredients
+          const userWords = userIng.split(' ').filter((w: string) => w.length > 2);
+          const ingredientWords = cleanIngredient.split(' ').filter((w: string) => w.length > 2);
+          
+          // Check if any significant words match
+          return userWords.some((userWord: string) => 
+            ingredientWords.some((ingredientWord: string) => 
+              userWord === ingredientWord || 
+              userWord.includes(ingredientWord) || 
+              ingredientWord.includes(userWord)
+            )
+          );
+        });
+
+        return {
+          name: ingredient,
+          hasIngredient: hasIngredient
+        };
       });
-    }
 
-    // Parse ingredients into simple string array
-    let ingredientsList: string[] = [];
-    if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
-      ingredientsList = recipe.ingredients.map((ing: any) => 
-        ing.ingredient_description || ing.food_name || ing.name || ing
-      );
-    } else if (recipe.ingredients?.ingredient) {
-      const ingredients = Array.isArray(recipe.ingredients.ingredient) 
-        ? recipe.ingredients.ingredient 
-        : [recipe.ingredients.ingredient];
-      ingredientsList = ingredients.map((ing: any) => 
-        ing.ingredient_description || ing.food_name || ing.name || ing
-      );
-    }
+      // Parse instructions into simple string
+      let instructionsText = '';
+      if (recipe.directions?.direction) {
+        const directions = Array.isArray(recipe.directions.direction) 
+          ? recipe.directions.direction 
+          : [recipe.directions.direction];
+        instructionsText = directions.map((dir: any, index: number) => 
+          `${index + 1}. ${dir.direction_description || dir}`
+        ).join('\n');
+      }
 
-    // Parse instructions into simple string
-    let instructionsText = '';
-    if (recipe.directions?.direction) {
-      const directions = Array.isArray(recipe.directions.direction) 
-        ? recipe.directions.direction 
-        : [recipe.directions.direction];
-      instructionsText = directions.map((dir: any, index: number) => 
-        `${index + 1}. ${dir.direction_description || dir}`
-      ).join('\n');
-    }
+      const matchedCount = ingredientsWithStatus.filter(ing => ing.hasIngredient).length;
+      const totalCount = ingredientsWithStatus.length;
+      const matchPercentage = totalCount > 0 ? Math.round((matchedCount / totalCount) * 100) : 0;
 
-    // Return mobile app compatible format
-    return res.json({
-      success: true,
-      recipe: {
-        id: parseInt(recipe.recipe_id) || parseInt(id),
-        title: recipe.recipe_name || 'Unknown Recipe',
-        image: recipe.recipe_image || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop',
-        servings: parseInt(recipe.number_of_servings) || 4,
-        readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
-        sourceUrl: recipe.recipe_url || '',
-        summary: recipe.recipe_description || '',
-        cuisines: recipe.recipe_types?.recipe_type || ['Unknown'],
-        dishTypes: ['main course'],
-        instructions: instructionsText,
-        ingredients: ingredientsList,
+      logger.info(`Recipe ${id} ingredient matching: ${matchedCount}/${totalCount} (${matchPercentage}%)`);
+
+      // Return mobile app compatible format
+      return res.json({
+        success: true,
+        recipe: {
+          id: parseInt(recipe.recipe_id) || parseInt(id),
+          title: recipe.recipe_name || 'Unknown Recipe',
+          image: recipe.recipe_image || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop',
+          servings: parseInt(recipe.number_of_servings) || 4,
+          readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
+          sourceUrl: recipe.recipe_url || '',
+          summary: recipe.recipe_description || '',
+          cuisines: recipe.recipe_types?.recipe_type || ['Unknown'],
+          dishTypes: ['main course'],
+          instructions: instructionsText,
+          ingredients: ingredientsList, // Keep original format for compatibility
+          ingredientsWithStatus: ingredientsWithStatus, // New field with matching info
+          matchPercentage: matchPercentage,
+          matchedCount: matchedCount,
+          totalIngredients: totalCount,
+          provider: 'FatSecret',
+          // Nutrition info
+          calories: parseFloat(recipe.calories) || 0,
+          protein: parseFloat(recipe.protein) || 0,
+          carbs: parseFloat(recipe.carbohydrate) || 0,
+          fat: parseFloat(recipe.fat) || 0,
+          fiber: parseFloat(recipe.fiber) || 0,
+          sugar: parseFloat(recipe.sugar) || 0,
+          sodium: parseFloat(recipe.sodium) || 0,
+          saturatedFat: parseFloat(recipe.saturated_fat) || 0,
+          cholesterol: parseFloat(recipe.cholesterol) || 0,
+        },
         provider: 'FatSecret',
-        // Nutrition info
-        calories: parseFloat(recipe.calories) || 0,
-        protein: parseFloat(recipe.protein) || 0,
-        carbs: parseFloat(recipe.carbohydrate) || 0,
-        fat: parseFloat(recipe.fat) || 0,
-        fiber: parseFloat(recipe.fiber) || 0,
-        sugar: parseFloat(recipe.sugar) || 0,
-        sodium: parseFloat(recipe.sodium) || 0,
-        saturatedFat: parseFloat(recipe.saturated_fat) || 0,
-        cholesterol: parseFloat(recipe.cholesterol) || 0,
-      },
-      provider: 'FatSecret',
-      timestamp: new Date().toISOString(),
-    });
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
+      client.release();
+    }
   } catch (error) {
     logger.error('Recipe details error:', error);
     return next(createError('Failed to get recipe details', 500));
