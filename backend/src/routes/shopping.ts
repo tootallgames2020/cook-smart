@@ -341,6 +341,88 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res, next) => {
   }
 });
 
+// Add multiple items (bulk endpoint)
+router.post('/bulk', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Items array is required',
+      });
+    }
+
+    const client = await pool.connect();
+    try {
+      const addedItems = [];
+      const skippedItems = [];
+
+      for (const item of items) {
+        const { ingredient, quantity, unit, category, recipeId } = item;
+
+        if (!ingredient) {
+          skippedItems.push({ item, reason: 'Missing ingredient name' });
+          continue;
+        }
+
+        // Check if item already exists
+        const existingItem = await client.query(
+          'SELECT id FROM shopping_list_items WHERE user_id = $1 AND item_name = $2 AND completed = false',
+          [req.user!.id, ingredient]
+        );
+
+        if (existingItem.rows.length > 0) {
+          skippedItems.push({ item: ingredient, reason: 'Already exists' });
+          continue;
+        }
+
+        // Add new item
+        const result = await client.query(
+          `INSERT INTO shopping_list_items 
+           (user_id, item_name, quantity, unit, category, needed_for_recipe, recipe_id, added_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+           RETURNING *`,
+          [
+            req.user!.id,
+            ingredient,
+            quantity || null,
+            unit || 'piece',
+            category || 'other',
+            !!recipeId,
+            recipeId || null,
+          ]
+        );
+
+        addedItems.push(result.rows[0]);
+      }
+
+      // Award points for adding items
+      if (addedItems.length > 0) {
+        await client.query(
+          'UPDATE users SET points = points + $1 WHERE id = $2',
+          [addedItems.length, req.user!.id]
+        );
+      }
+
+      logger.info(`Bulk added ${addedItems.length} items to shopping list for user ${req.user!.id}`);
+
+      return res.json({
+        success: true,
+        message: `Added ${addedItems.length} items to shopping list`,
+        items: addedItems,
+        skipped: skippedItems,
+        points_awarded: addedItems.length,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Bulk add shopping list items error:', error);
+    return next(createError('Failed to add items to shopping list', 500));
+  }
+});
+
 // Add multiple items from recipe
 router.post('/add-from-recipe', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
