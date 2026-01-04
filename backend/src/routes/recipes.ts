@@ -84,8 +84,8 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
             if (cleanUserIng.includes(cleanRecipeIng) || cleanRecipeIng.includes(cleanUserIng)) return true;
             
             // Word-based matching for compound ingredients
-            const userWords = cleanUserIng.split(' ').filter(w => w.length > 2);
-            const recipeWords = cleanRecipeIng.split(' ').filter(w => w.length > 2);
+            const userWords = cleanUserIng.split(' ').filter((w: string) => w.length > 2);
+            const recipeWords = cleanRecipeIng.split(' ').filter((w: string) => w.length > 2);
             
             // Check if any significant words match
             const hasWordMatch = userWords.some((userWord: string) => 
