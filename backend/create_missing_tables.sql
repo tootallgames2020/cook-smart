@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS api_usage_logs (
     method VARCHAR(10) NOT NULL,
     status_code INTEGER,
     response_time_ms INTEGER,
-    user_id INTEGER REFERENCES users(id),
+    user_id VARCHAR(255) REFERENCES users(id),
     ip_address INET,
     user_agent TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
