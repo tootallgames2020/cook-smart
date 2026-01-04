@@ -164,6 +164,9 @@ export class FatSecretService {
 
       const recipe = data.recipe;
       
+      // Debug log the raw ingredients structure
+      logger.info(`Raw ingredients structure for recipe ${recipeId}:`, JSON.stringify(recipe.ingredients, null, 2));
+      
       // Transform FatSecret response to our format
       const recipeDetails = {
         recipe_id: recipe.recipe_id,
@@ -272,8 +275,56 @@ export class FatSecretService {
   }
 
   private parseIngredientsForDetails(ingredients: any): { ingredient: string[] } {
-    const parsedIngredients = this.parseIngredients(ingredients);
-    return { ingredient: parsedIngredients };
+    logger.info('Parsing ingredients for details:', JSON.stringify(ingredients, null, 2));
+    
+    if (!ingredients) {
+      logger.warn('No ingredients data provided');
+      return { ingredient: [] };
+    }
+    
+    let ingredientArray: string[] = [];
+    
+    // Handle different possible structures from FatSecret API
+    if (Array.isArray(ingredients)) {
+      // Direct array of ingredients
+      ingredientArray = ingredients.map(ing => this.extractIngredientText(ing));
+    } else if (ingredients.ingredient) {
+      // Nested under 'ingredient' key
+      if (Array.isArray(ingredients.ingredient)) {
+        ingredientArray = ingredients.ingredient.map((ing: any) => this.extractIngredientText(ing));
+      } else {
+        ingredientArray = [this.extractIngredientText(ingredients.ingredient)];
+      }
+    } else if (typeof ingredients === 'object') {
+      // Single ingredient object
+      ingredientArray = [this.extractIngredientText(ingredients)];
+    }
+    
+    // Filter out empty or invalid ingredients
+    ingredientArray = ingredientArray.filter(ing => ing && ing.length > 0 && ing !== 'Unknown ingredient');
+    
+    logger.info(`Parsed ${ingredientArray.length} ingredients:`, ingredientArray);
+    return { ingredient: ingredientArray };
+  }
+
+  private extractIngredientText(ing: any): string {
+    if (typeof ing === 'string') {
+      return ing;
+    }
+    
+    if (typeof ing === 'object' && ing !== null) {
+      // Try different possible field names from FatSecret API
+      return ing.ingredient_description || 
+             ing.food_name || 
+             ing.name || 
+             ing.description || 
+             ing.ingredient_name ||
+             ing.text ||
+             (typeof ing.ingredient === 'string' ? ing.ingredient : '') ||
+             'Unknown ingredient';
+    }
+    
+    return 'Unknown ingredient';
   }
 
   private parseDirectionsForDetails(directions: any): { direction: string[] } {
