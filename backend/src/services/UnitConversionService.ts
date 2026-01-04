@@ -112,8 +112,7 @@ export class UnitConversionService {
    */
   static convertRecipeUnits(
     recipe: any, 
-    targetSystem: 'metric' | 'imperial',
-    userCountry?: string
+    targetSystem: 'metric' | 'imperial'
   ): any {
     if (!recipe.ingredients) {
       return recipe;
@@ -160,17 +159,17 @@ export class UnitConversionService {
     }
 
     // Volume conversions
-    if (this.VOLUME_CONVERSIONS[unit]) {
+    if (unit in this.VOLUME_CONVERSIONS) {
       return this.convertVolume(amount, unit, targetSystem);
     }
 
     // Weight conversions
-    if (this.WEIGHT_CONVERSIONS[unit]) {
+    if (unit in this.WEIGHT_CONVERSIONS) {
       return this.convertWeight(amount, unit, targetSystem);
     }
 
     // Temperature conversions
-    if (this.TEMPERATURE_CONVERSIONS[unit]) {
+    if (unit in this.TEMPERATURE_CONVERSIONS) {
       return this.convertTemperature(amount, unit, targetSystem);
     }
 
@@ -192,7 +191,7 @@ export class UnitConversionService {
     fromUnit: string, 
     targetSystem: 'metric' | 'imperial'
   ): ConversionResult {
-    const mlAmount = amount * this.VOLUME_CONVERSIONS[fromUnit];
+    const mlAmount = amount * (this.VOLUME_CONVERSIONS as Record<string, number>)[fromUnit];
     
     if (targetSystem === 'metric') {
       // Convert to metric
@@ -267,7 +266,7 @@ export class UnitConversionService {
     fromUnit: string, 
     targetSystem: 'metric' | 'imperial'
   ): ConversionResult {
-    const gramAmount = amount * this.WEIGHT_CONVERSIONS[fromUnit];
+    const gramAmount = amount * (this.WEIGHT_CONVERSIONS as Record<string, number>)[fromUnit];
     
     if (targetSystem === 'metric') {
       // Convert to metric
@@ -318,7 +317,7 @@ export class UnitConversionService {
     fromUnit: string, 
     targetSystem: 'metric' | 'imperial'
   ): ConversionResult {
-    const fromTemp = this.TEMPERATURE_CONVERSIONS[fromUnit];
+    const fromTemp = (this.TEMPERATURE_CONVERSIONS as any)[fromUnit];
     
     if (targetSystem === 'metric' && fromTemp === 'fahrenheit') {
       // Fahrenheit to Celsius

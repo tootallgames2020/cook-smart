@@ -9,7 +9,7 @@ import Stripe from 'stripe';
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
--- Get pricing plans
+// Get pricing plans
 router.get('/plans', async (req, res, next) => {
   try {
     const client = await pool.connect();
@@ -326,13 +326,14 @@ router.post('/create-checkout-session', authenticateToken, async (req: AuthReque
 });
 
 // Stripe webhook handler
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res): Promise<void> => {
   const sig = req.headers['stripe-signature'] as string;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
     logger.warn('Stripe webhook secret not configured');
-    return res.status(400).json({ error: 'Webhook secret not configured' });
+    res.status(400).json({ error: 'Webhook secret not configured' });
+    return;
   }
 
   let event: Stripe.Event;
@@ -341,7 +342,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (err) {
     logger.error('Webhook signature verification failed:', err);
-    return res.status(400).json({ error: 'Invalid signature' });
+    res.status(400).json({ error: 'Invalid signature' });
+    return;
   }
 
   // Log webhook event
@@ -554,7 +556,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
         userId,
         subscriptionResult.rows[0].id,
         invoice.id,
-        invoice.last_payment_error?.message || 'Payment failed'
+        (invoice as any).last_payment_error?.message || 'Payment failed'
       );
     }
   } finally {

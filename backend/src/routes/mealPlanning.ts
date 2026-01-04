@@ -8,15 +8,16 @@ import { RecipeEnhancementService } from '../services/RecipeEnhancementService';
 const router = express.Router();
 
 // Get meal plans for a date range
-router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
+router.get('/', authenticateToken, async (req: AuthRequest, res, next): Promise<void> => {
   try {
     const { startDate, endDate } = req.query;
     
     if (!startDate || !endDate) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Start date and end date are required',
       });
+      return;
     }
 
     const mealPlans = await RecipeEnhancementService.getMealPlans(
@@ -37,24 +38,26 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
 });
 
 // Add a meal plan
-router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
+router.post('/', authenticateToken, async (req: AuthRequest, res, next): Promise<void> => {
   try {
     const { recipeId, recipeType = 'api', plannedDate, mealType = 'dinner', notes } = req.body;
 
     if (!recipeId || !plannedDate) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Recipe ID and planned date are required',
       });
+      return;
     }
 
     // Validate meal type
     const validMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
     if (!validMealTypes.includes(mealType)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Invalid meal type. Must be: breakfast, lunch, dinner, or snack',
       });
+      return;
     }
 
     const mealPlan = await RecipeEnhancementService.addMealPlan(
@@ -92,7 +95,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
 });
 
 // Update a meal plan
-router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
+router.put('/:id', authenticateToken, async (req: AuthRequest, res, next): Promise<void> => {
   try {
     const { id } = req.params;
     const { plannedDate, mealType, notes, completed } = req.body;
@@ -112,10 +115,11 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
       if (mealType !== undefined) {
         const validMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
         if (!validMealTypes.includes(mealType)) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             message: 'Invalid meal type. Must be: breakfast, lunch, dinner, or snack',
           });
+          return;
         }
         updates.push(`meal_type = $${paramCount++}`);
         values.push(mealType);
@@ -132,10 +136,11 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
       }
 
       if (updates.length === 0) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'No valid fields to update',
         });
+        return;
       }
 
       values.push(id, req.user!.id);
@@ -149,10 +154,11 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
       );
 
       if (result.rows.length === 0) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'Meal plan not found or not owned by user',
         });
+        return;
       }
 
       res.json({
@@ -170,7 +176,7 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
 });
 
 // Delete a meal plan
-router.delete('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res, next): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -180,10 +186,11 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res, next) => 
     );
 
     if (!deletedMealPlan) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Meal plan not found or not owned by user',
       });
+      return;
     }
 
     res.json({
@@ -197,7 +204,7 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res, next) => 
 });
 
 // Mark meal as completed
-router.post('/:id/complete', authenticateToken, async (req: AuthRequest, res, next) => {
+router.post('/:id/complete', authenticateToken, async (req: AuthRequest, res, next): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -207,10 +214,11 @@ router.post('/:id/complete', authenticateToken, async (req: AuthRequest, res, ne
     );
 
     if (!mealPlan) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Meal plan not found or not owned by user',
       });
+      return;
     }
 
     // Award points for completing a meal
@@ -237,7 +245,7 @@ router.post('/:id/complete', authenticateToken, async (req: AuthRequest, res, ne
 });
 
 // Get meal plan statistics
-router.get('/stats', authenticateToken, async (req: AuthRequest, res, next) => {
+router.get('/stats', authenticateToken, async (req: AuthRequest, res, next): Promise<void> => {
   try {
     const client = await pool.connect();
     try {
@@ -288,19 +296,20 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res, next) => {
 });
 
 // Get weekly meal plan template
-router.get('/template/weekly', authenticateToken, async (req: AuthRequest, res, next) => {
+router.get('/template/weekly', authenticateToken, async (req: AuthRequest, res, next): Promise<void> => {
   try {
     const { startDate } = req.query;
     
     if (!startDate) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Start date is required',
       });
+      return;
     }
 
     // Generate 7-day template
-    const template = [];
+    const template: any[] = [];
     const start = new Date(startDate as string);
     
     for (let i = 0; i < 7; i++) {

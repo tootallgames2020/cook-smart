@@ -29,6 +29,9 @@ import contactRoutes from './routes/contact';
 import feedbackRoutes from './routes/feedback';
 import welcomeContentRoutes from './routes/welcomeContent';
 import mealPlanningRoutes from './routes/mealPlanning';
+import trendingRecipesRoutes from './routes/trendingRecipes';
+import achievementsRoutes from './routes/achievements';
+import recipeEnhancementsRoutes from './routes/recipeEnhancements';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -74,6 +77,9 @@ app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
 }));
+
+// Trust proxy for rate limiting (behind nginx/load balancer)
+app.set('trust proxy', 1);
 
 // CORS configuration
 app.use(cors({
@@ -186,6 +192,9 @@ app.use('/contact', contactRoutes);
 app.use('/api/v1/feedback', feedbackRoutes);
 app.use('/api/v1/welcome', welcomeContentRoutes);
 app.use('/api/v1/meal-planning', mealPlanningRoutes);
+app.use('/api/v1', trendingRecipesRoutes);
+app.use('/api/v1/achievements', achievementsRoutes);
+app.use('/api/v1/recipe-enhancements', recipeEnhancementsRoutes);
 
 // Test endpoint
 app.get('/api/v1/test', (req, res) => {
