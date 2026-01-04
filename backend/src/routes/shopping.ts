@@ -173,7 +173,7 @@ router.post('/:id/mark-bought', authenticateToken, async (req: AuthRequest, res,
 
       // Mark shopping list item as completed
       await client.query(
-        'UPDATE shopping_list_items SET completed = true, completed_at = NOW() WHERE id = $1',
+        'UPDATE shopping_list_items SET is_completed = true, date_updated = NOW() WHERE id = $1',
         [id]
       );
 
@@ -188,12 +188,12 @@ router.post('/:id/mark-bought', authenticateToken, async (req: AuthRequest, res,
          RETURNING *`,
         [
           req.user!.id,
-          item.item_name.toLowerCase().replace(/\s+/g, '_'),
-          item.item_name,
-          item.quantity || 1,
+          item.ingredient.toLowerCase().replace(/\s+/g, '_'),
+          item.ingredient,
+          parseFloat(item.quantity) || 1,
           item.unit || 'piece',
           expiration_date || null,
-          notes || item.notes,
+          notes || null,
           item.category || 'other',
         ]
       );
@@ -204,12 +204,12 @@ router.post('/:id/mark-bought', authenticateToken, async (req: AuthRequest, res,
         [req.user!.id]
       );
 
-      logger.info(`Shopping item marked as bought and moved to inventory: ${item.item_name}`);
+      logger.info(`Shopping item marked as bought and moved to inventory: ${item.ingredient}`);
 
       return res.json({
         success: true,
         message: 'Item marked as bought and added to inventory',
-        shoppingItem: { ...item, completed: true, completed_at: new Date() },
+        shoppingItem: { ...item, is_completed: true, date_updated: new Date() },
         inventoryItem: inventoryResult.rows[0],
         points_awarded: 2,
       });
@@ -253,6 +253,34 @@ router.patch('/:id/toggle', authenticateToken, async (req: AuthRequest, res, nex
 
       const updatedItem = result.rows[0];
 
+      // If marking as completed, add to inventory
+      if (newCompletedStatus) {
+        await client.query(
+          `INSERT INTO user_ingredients 
+           (user_id, ingredient_id, ingredient_name, quantity, unit, category, added_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())
+           ON CONFLICT (user_id, ingredient_name) DO UPDATE SET
+           quantity = COALESCE(user_ingredients.quantity, 0) + COALESCE($4, 1),
+           updated_at = NOW()`,
+          [
+            req.user!.id,
+            item.ingredient.toLowerCase().replace(/\s+/g, '_'),
+            item.ingredient,
+            parseFloat(item.quantity) || 1,
+            item.unit || 'piece',
+            item.category || 'other',
+          ]
+        );
+
+        // Award points for completing shopping
+        await client.query(
+          'UPDATE users SET points = points + 2 WHERE id = $1',
+          [req.user!.id]
+        );
+
+        logger.info(`Item ${item.ingredient} marked as bought and added to inventory for user ${req.user!.id}`);
+      }
+
       // Map to mobile app format
       const mappedItem = {
         id: updatedItem.id.toString(),
@@ -271,8 +299,9 @@ router.patch('/:id/toggle', authenticateToken, async (req: AuthRequest, res, nex
 
       return res.json({
         success: true,
-        message: `Item marked as ${newCompletedStatus ? 'completed' : 'pending'}`,
+        message: `Item marked as ${newCompletedStatus ? 'completed and added to inventory' : 'pending'}`,
         item: mappedItem,
+        points_awarded: newCompletedStatus ? 2 : 0,
       });
     } finally {
       client.release();
