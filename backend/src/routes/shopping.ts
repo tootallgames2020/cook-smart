@@ -178,25 +178,37 @@ router.post('/:id/mark-bought', authenticateToken, async (req: AuthRequest, res,
       );
 
       // Add item to user's inventory
-      const inventoryResult = await client.query(
-        `INSERT INTO user_ingredients 
-         (user_id, ingredient_id, ingredient_name, quantity, unit, expiration_date, notes, category, added_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-         ON CONFLICT (user_id, ingredient_name) DO UPDATE SET
-         quantity = COALESCE(user_ingredients.quantity, 0) + COALESCE($4, 1),
-         updated_at = NOW()
-         RETURNING *`,
-        [
-          req.user!.id,
-          item.ingredient.toLowerCase().replace(/\s+/g, '_'),
-          item.ingredient,
-          parseFloat(item.quantity) || 1,
-          item.unit || 'piece',
-          expiration_date || null,
-          notes || null,
-          item.category || 'other',
-        ]
+      const existingInventory = await client.query(
+        'SELECT * FROM user_ingredients WHERE user_id = $1 AND ingredient_name = $2',
+        [req.user!.id, item.ingredient]
       );
+
+      let inventoryResult;
+      if (existingInventory.rows.length > 0) {
+        // Update existing inventory item
+        inventoryResult = await client.query(
+          'UPDATE user_ingredients SET quantity = COALESCE(quantity, 0) + $1, updated_at = NOW() WHERE user_id = $2 AND ingredient_name = $3 RETURNING *',
+          [parseFloat(item.quantity) || 1, req.user!.id, item.ingredient]
+        );
+      } else {
+        // Insert new inventory item
+        inventoryResult = await client.query(
+          `INSERT INTO user_ingredients 
+           (user_id, ingredient_id, ingredient_name, quantity, unit, expiration_date, notes, category, added_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+           RETURNING *`,
+          [
+            req.user!.id,
+            item.ingredient.toLowerCase().replace(/\s+/g, '_'),
+            item.ingredient,
+            parseFloat(item.quantity) || 1,
+            item.unit || 'piece',
+            expiration_date || null,
+            notes || null,
+            item.category || 'other',
+          ]
+        );
+      }
 
       // Award points for completing shopping
       await client.query(
@@ -255,22 +267,34 @@ router.patch('/:id/toggle', authenticateToken, async (req: AuthRequest, res, nex
 
       // If marking as completed, add to inventory
       if (newCompletedStatus) {
-        await client.query(
-          `INSERT INTO user_ingredients 
-           (user_id, ingredient_id, ingredient_name, quantity, unit, category, added_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW())
-           ON CONFLICT (user_id, ingredient_name) DO UPDATE SET
-           quantity = COALESCE(user_ingredients.quantity, 0) + COALESCE($4, 1),
-           updated_at = NOW()`,
-          [
-            req.user!.id,
-            item.ingredient.toLowerCase().replace(/\s+/g, '_'),
-            item.ingredient,
-            parseFloat(item.quantity) || 1,
-            item.unit || 'piece',
-            item.category || 'other',
-          ]
+        // Check if ingredient already exists in inventory
+        const existingInventory = await client.query(
+          'SELECT * FROM user_ingredients WHERE user_id = $1 AND ingredient_name = $2',
+          [req.user!.id, item.ingredient]
         );
+
+        if (existingInventory.rows.length > 0) {
+          // Update existing inventory item
+          await client.query(
+            'UPDATE user_ingredients SET quantity = COALESCE(quantity, 0) + $1, updated_at = NOW() WHERE user_id = $2 AND ingredient_name = $3',
+            [parseFloat(item.quantity) || 1, req.user!.id, item.ingredient]
+          );
+        } else {
+          // Insert new inventory item
+          await client.query(
+            `INSERT INTO user_ingredients 
+             (user_id, ingredient_id, ingredient_name, quantity, unit, category, added_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+            [
+              req.user!.id,
+              item.ingredient.toLowerCase().replace(/\s+/g, '_'),
+              item.ingredient,
+              parseFloat(item.quantity) || 1,
+              item.unit || 'piece',
+              item.category || 'other',
+            ]
+          );
+        }
 
         // Award points for completing shopping
         await client.query(
