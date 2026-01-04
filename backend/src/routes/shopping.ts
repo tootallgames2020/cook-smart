@@ -36,8 +36,22 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
 
       const result = await client.query(query, params);
 
+      // Map database fields to mobile app expected format
+      const mappedItems = result.rows.map((item: any) => ({
+        id: item.id.toString(),
+        userId: item.user_id,
+        ingredient: item.ingredient,
+        quantity: item.quantity,
+        unit: item.unit,
+        category: item.category,
+        isCompleted: item.is_completed,
+        recipeId: item.recipe_id,
+        dateCreated: item.date_added,
+        dateUpdated: item.date_updated,
+      }));
+
       // Group items by category for better organization
-      const itemsByCategory = result.rows.reduce((acc: any, item: any) => {
+      const itemsByCategory = mappedItems.reduce((acc: any, item: any) => {
         const category = item.category || 'other';
         if (!acc[category]) {
           acc[category] = [];
@@ -49,11 +63,11 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
       return res.json({
         success: true,
         shopping_list: {
-          items: result.rows,
+          items: mappedItems,
           itemsByCategory,
-          totalItems: result.rows.length,
-          completedItems: result.rows.filter((item: any) => item.is_completed).length,
-          pendingItems: result.rows.filter((item: any) => !item.is_completed).length,
+          totalItems: mappedItems.length,
+          completedItems: mappedItems.filter((item: any) => item.isCompleted).length,
+          pendingItems: mappedItems.filter((item: any) => !item.isCompleted).length,
         },
       });
     } finally {
