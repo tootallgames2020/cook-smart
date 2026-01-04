@@ -274,11 +274,23 @@ router.get('/seasonal-recipes', optionalAuth, async (req: AuthRequest, res) => {
       FatSecretAdapter, // Primary: FatSecret Premier (free, unlimited for our needs)
     ]);
 
-    const seasonalIngredients = getSeasonalIngredients(season);
-    const recipes = await recipeProviderService.searchByIngredients(
-      seasonalIngredients.slice(0, 3),
-      limit,
-    );
+    let recipes: any[] = [];
+    
+    // Check if FatSecret is configured
+    const isFatSecretConfigured = process.env.FATSECRET_CLIENT_ID && process.env.FATSECRET_CLIENT_SECRET;
+    
+    if (isFatSecretConfigured) {
+      const seasonalIngredients = getSeasonalIngredients(season);
+      recipes = await recipeProviderService.searchByIngredients(
+        seasonalIngredients.slice(0, 3),
+        limit,
+      );
+    } else {
+      console.log(`[Seasonal] FatSecret not configured, using mock seasonal recipes for ${season}`);
+      // Mock seasonal recipes based on current season
+      const seasonalMockRecipes = getSeasonalMockRecipes(season);
+      recipes = seasonalMockRecipes.slice(0, limit);
+    }
 
     console.log(
       `[Seasonal] RecipeProviderService returned ${recipes.length} recipes`,
@@ -396,11 +408,23 @@ router.get('/seasonal/current', optionalAuth, async (req: AuthRequest, res) => {
       FatSecretAdapter, // Primary: FatSecret Premier (free, unlimited for our needs)
     ]);
 
-    const seasonalIngredients = getSeasonalIngredients(season);
-    const recipes = await recipeProviderService.searchByIngredients(
-      seasonalIngredients.slice(0, 3),
-      limit,
-    );
+    let recipes: any[] = [];
+    
+    // Check if FatSecret is configured
+    const isFatSecretConfigured = process.env.FATSECRET_CLIENT_ID && process.env.FATSECRET_CLIENT_SECRET;
+    
+    if (isFatSecretConfigured) {
+      const seasonalIngredients = getSeasonalIngredients(season);
+      recipes = await recipeProviderService.searchByIngredients(
+        seasonalIngredients.slice(0, 3),
+        limit,
+      );
+    } else {
+      console.log(`[Seasonal Current] FatSecret not configured, using mock seasonal recipes for ${season}`);
+      // Mock seasonal recipes based on current season
+      const seasonalMockRecipes = getSeasonalMockRecipes(season);
+      recipes = seasonalMockRecipes.slice(0, limit);
+    }
 
     console.log(
       `[Seasonal Current] RecipeProviderService returned ${recipes.length} recipes`,
@@ -599,6 +623,141 @@ function getSeasonalIngredients(season: string): string[] {
     winter: ['kale', 'cabbage', 'citrus', 'root vegetables', 'pomegranate'],
   };
   return seasonalMap[season] || [];
+}
+
+function getSeasonalMockRecipes(season: string): any[] {
+  const seasonalRecipes: Record<string, any[]> = {
+    winter: [
+      {
+        id: 'winter_1',
+        title: 'Hearty Winter Stew',
+        image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400',
+        servings: 6,
+        readyInMinutes: 90,
+        sourceUrl: 'https://cooksmartapp.com',
+        summary: 'A warming winter stew with root vegetables and tender beef.',
+        ingredients: ['beef chuck', 'carrots', 'potatoes', 'onions', 'beef broth', 'thyme'],
+        instructions: '1. Brown the beef\n2. Add vegetables\n3. Pour in broth\n4. Simmer for 1.5 hours',
+        cuisines: ['American'],
+        dishTypes: ['main course'],
+        diets: [],
+        provider: 'mock-seasonal',
+        calories: 450,
+        protein: 35,
+        carbs: 30,
+        fat: 20,
+        likes: 0,
+      },
+      {
+        id: 'winter_2',
+        title: 'Roasted Winter Vegetables',
+        image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
+        servings: 4,
+        readyInMinutes: 45,
+        sourceUrl: 'https://cooksmartapp.com',
+        summary: 'Colorful roasted winter vegetables with herbs and olive oil.',
+        ingredients: ['butternut squash', 'brussels sprouts', 'sweet potatoes', 'olive oil', 'rosemary'],
+        instructions: '1. Chop vegetables\n2. Toss with oil and herbs\n3. Roast at 400°F for 45 minutes',
+        cuisines: ['Mediterranean'],
+        dishTypes: ['side dish'],
+        diets: ['vegetarian', 'vegan'],
+        provider: 'mock-seasonal',
+        calories: 180,
+        protein: 4,
+        carbs: 35,
+        fat: 6,
+        likes: 0,
+      },
+      {
+        id: 'winter_3',
+        title: 'Citrus Glazed Salmon',
+        image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400',
+        servings: 4,
+        readyInMinutes: 25,
+        sourceUrl: 'https://cooksmartapp.com',
+        summary: 'Fresh salmon with a bright citrus glaze, perfect for winter.',
+        ingredients: ['salmon fillets', 'orange juice', 'lemon juice', 'honey', 'ginger'],
+        instructions: '1. Make citrus glaze\n2. Season salmon\n3. Pan-sear salmon\n4. Brush with glaze',
+        cuisines: ['American'],
+        dishTypes: ['main course'],
+        diets: [],
+        provider: 'mock-seasonal',
+        calories: 320,
+        protein: 28,
+        carbs: 12,
+        fat: 18,
+        likes: 0,
+      },
+    ],
+    spring: [
+      {
+        id: 'spring_1',
+        title: 'Fresh Asparagus Risotto',
+        image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400',
+        servings: 4,
+        readyInMinutes: 35,
+        sourceUrl: 'https://cooksmartapp.com',
+        summary: 'Creamy risotto with fresh spring asparagus and peas.',
+        ingredients: ['arborio rice', 'asparagus', 'peas', 'vegetable broth', 'parmesan'],
+        instructions: '1. Sauté rice\n2. Add broth gradually\n3. Stir in vegetables\n4. Finish with cheese',
+        cuisines: ['Italian'],
+        dishTypes: ['main course'],
+        diets: ['vegetarian'],
+        provider: 'mock-seasonal',
+        calories: 380,
+        protein: 12,
+        carbs: 65,
+        fat: 8,
+        likes: 0,
+      },
+    ],
+    summer: [
+      {
+        id: 'summer_1',
+        title: 'Grilled Corn and Tomato Salad',
+        image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
+        servings: 6,
+        readyInMinutes: 20,
+        sourceUrl: 'https://cooksmartapp.com',
+        summary: 'Fresh summer salad with grilled corn and ripe tomatoes.',
+        ingredients: ['corn', 'tomatoes', 'basil', 'olive oil', 'lime juice'],
+        instructions: '1. Grill corn\n2. Cut kernels off cob\n3. Mix with tomatoes\n4. Dress with oil and lime',
+        cuisines: ['American'],
+        dishTypes: ['side dish'],
+        diets: ['vegetarian', 'vegan'],
+        provider: 'mock-seasonal',
+        calories: 120,
+        protein: 3,
+        carbs: 25,
+        fat: 4,
+        likes: 0,
+      },
+    ],
+    fall: [
+      {
+        id: 'fall_1',
+        title: 'Pumpkin Soup',
+        image: 'https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=400',
+        servings: 4,
+        readyInMinutes: 40,
+        sourceUrl: 'https://cooksmartapp.com',
+        summary: 'Creamy pumpkin soup with warm fall spices.',
+        ingredients: ['pumpkin', 'onion', 'vegetable broth', 'cream', 'nutmeg', 'cinnamon'],
+        instructions: '1. Roast pumpkin\n2. Sauté onion\n3. Blend with broth\n4. Add cream and spices',
+        cuisines: ['American'],
+        dishTypes: ['soup'],
+        diets: ['vegetarian'],
+        provider: 'mock-seasonal',
+        calories: 180,
+        protein: 4,
+        carbs: 20,
+        fat: 10,
+        likes: 0,
+      },
+    ],
+  };
+  
+  return seasonalRecipes[season] || seasonalRecipes.winter;
 }
 
 export default router;

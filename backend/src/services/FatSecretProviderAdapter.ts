@@ -304,24 +304,24 @@ class FatSecretProviderAdapter implements IRecipeProvider {
 
     return recipes.map(
       (recipe: any): Recipe => ({
-        id: recipe.recipe_id,
-        title: recipe.recipe_name,
-        image: this.getValidImageUrl(recipe.recipe_image),
-        servings: parseInt(recipe.number_of_servings) || 4,
-        readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
-        sourceUrl: `https://www.fatsecret.com/recipes/${recipe.recipe_id}`,
-        summary: recipe.recipe_description || '',
-        ingredients: this.extractIngredientsFromRecipe(recipe),
-        instructions: '',
-        cuisines: [],
-        dishTypes: [recipe.recipe_types || 'main course'],
-        diets: [],
+        id: recipe.id || recipe.recipe_id,
+        title: recipe.title || recipe.recipe_name || 'Unknown Recipe',
+        image: this.getValidImageUrl(recipe.image || recipe.recipe_image),
+        servings: parseInt(recipe.servings || recipe.number_of_servings) || 4,
+        readyInMinutes: parseInt(recipe.readyInMinutes || recipe.cooking_time_min) || 30,
+        sourceUrl: recipe.sourceUrl || `https://www.fatsecret.com/recipes/${recipe.id || recipe.recipe_id}`,
+        summary: recipe.summary || recipe.recipe_description || '',
+        ingredients: recipe.ingredients || this.extractIngredientsFromRecipe(recipe),
+        instructions: recipe.instructions || '',
+        cuisines: recipe.cuisines || [],
+        dishTypes: recipe.dishTypes || [recipe.recipe_types || 'main course'],
+        diets: recipe.diets || [],
         provider: 'fatsecret-v4-ingredients',
         // Add FatSecret nutrition data
         calories: recipe.calories ? parseInt(recipe.calories) : undefined,
         protein: recipe.protein ? parseFloat(recipe.protein) : undefined,
-        carbs: recipe.carbohydrate
-          ? parseFloat(recipe.carbohydrate)
+        carbs: recipe.carbs || recipe.carbohydrate
+          ? parseFloat(recipe.carbs || recipe.carbohydrate)
           : undefined,
         fat: recipe.fat ? parseFloat(recipe.fat) : undefined,
         likes: 0,
