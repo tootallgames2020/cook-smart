@@ -82,30 +82,58 @@ router.get('/:id/public', async (req, res, next) => {
       });
     }
 
-    // Return basic recipe details without user-specific features
+    // Parse ingredients into simple string array
+    let ingredientsList: string[] = [];
+    if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+      ingredientsList = recipe.ingredients.map((ing: any) => 
+        ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient'
+      );
+    } else if (recipe.ingredients?.ingredient) {
+      const ingredients = Array.isArray(recipe.ingredients.ingredient) 
+        ? recipe.ingredients.ingredient 
+        : [recipe.ingredients.ingredient];
+      ingredientsList = ingredients.map((ing: any) => 
+        ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient'
+      );
+    }
+
+    // Parse instructions into simple string
+    let instructionsText = '';
+    if (recipe.directions?.direction) {
+      const directions = Array.isArray(recipe.directions.direction) 
+        ? recipe.directions.direction 
+        : [recipe.directions.direction];
+      instructionsText = directions.map((dir: any, index: number) => 
+        `${index + 1}. ${dir.direction_description || dir}`
+      ).join('\n');
+    }
+
+    // Return mobile app compatible format
     return res.json({
       success: true,
       recipe: {
-        ...recipe,
-        // Ensure we have a proper image
-        image: recipe.recipe_image || recipe.image || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop',
-        // Clean up the response for mobile app
-        id: recipe.recipe_id || id,
+        id: parseInt(recipe.recipe_id) || parseInt(id),
         title: recipe.recipe_name || 'Unknown Recipe',
-        servings: recipe.number_of_servings || '4',
-        cookingTime: recipe.cooking_time_min || '30',
-        description: recipe.recipe_description || '',
-        ingredients: recipe.ingredients?.ingredient || [],
-        instructions: recipe.directions?.direction || [],
-        nutrition: {
-          calories: recipe.calories,
-          protein: recipe.protein,
-          carbs: recipe.carbohydrate,
-          fat: recipe.fat,
-          fiber: recipe.fiber,
-          sugar: recipe.sugar,
-          sodium: recipe.sodium,
-        },
+        image: recipe.recipe_image || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop',
+        servings: parseInt(recipe.number_of_servings) || 4,
+        readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
+        sourceUrl: recipe.recipe_url || '',
+        summary: recipe.recipe_description || '',
+        cuisines: recipe.recipe_types?.recipe_type || ['Unknown'],
+        dishTypes: ['main course'],
+        instructions: instructionsText,
+        ingredients: ingredientsList,
+        provider: 'FatSecret',
+        // Nutrition info
+        calories: parseFloat(recipe.calories) || 0,
+        protein: parseFloat(recipe.protein) || 0,
+        carbs: parseFloat(recipe.carbohydrate) || 0,
+        fat: parseFloat(recipe.fat) || 0,
+        fiber: parseFloat(recipe.fiber) || 0,
+        sugar: parseFloat(recipe.sugar) || 0,
+        sodium: parseFloat(recipe.sodium) || 0,
+        saturatedFat: parseFloat(recipe.saturated_fat) || 0,
+        cholesterol: parseFloat(recipe.cholesterol) || 0,
       },
       provider: 'FatSecret',
       isPublic: true,
@@ -134,9 +162,59 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
       });
     }
 
+    // Parse ingredients into simple string array
+    let ingredientsList: string[] = [];
+    if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+      ingredientsList = recipe.ingredients.map((ing: any) => 
+        ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient'
+      );
+    } else if (recipe.ingredients?.ingredient) {
+      const ingredients = Array.isArray(recipe.ingredients.ingredient) 
+        ? recipe.ingredients.ingredient 
+        : [recipe.ingredients.ingredient];
+      ingredientsList = ingredients.map((ing: any) => 
+        ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient'
+      );
+    }
+
+    // Parse instructions into simple string
+    let instructionsText = '';
+    if (recipe.directions?.direction) {
+      const directions = Array.isArray(recipe.directions.direction) 
+        ? recipe.directions.direction 
+        : [recipe.directions.direction];
+      instructionsText = directions.map((dir: any, index: number) => 
+        `${index + 1}. ${dir.direction_description || dir}`
+      ).join('\n');
+    }
+
+    // Return mobile app compatible format
     return res.json({
       success: true,
-      recipe,
+      recipe: {
+        id: parseInt(recipe.recipe_id) || parseInt(id),
+        title: recipe.recipe_name || 'Unknown Recipe',
+        image: recipe.recipe_image || 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop',
+        servings: parseInt(recipe.number_of_servings) || 4,
+        readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
+        sourceUrl: recipe.recipe_url || '',
+        summary: recipe.recipe_description || '',
+        cuisines: recipe.recipe_types?.recipe_type || ['Unknown'],
+        dishTypes: ['main course'],
+        instructions: instructionsText,
+        ingredients: ingredientsList,
+        provider: 'FatSecret',
+        // Nutrition info
+        calories: parseFloat(recipe.calories) || 0,
+        protein: parseFloat(recipe.protein) || 0,
+        carbs: parseFloat(recipe.carbohydrate) || 0,
+        fat: parseFloat(recipe.fat) || 0,
+        fiber: parseFloat(recipe.fiber) || 0,
+        sugar: parseFloat(recipe.sugar) || 0,
+        sodium: parseFloat(recipe.sodium) || 0,
+        saturatedFat: parseFloat(recipe.saturated_fat) || 0,
+        cholesterol: parseFloat(recipe.cholesterol) || 0,
+      },
       provider: 'FatSecret',
       timestamp: new Date().toISOString(),
     });
