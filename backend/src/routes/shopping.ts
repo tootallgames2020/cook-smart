@@ -360,7 +360,10 @@ router.post('/bulk', authenticateToken, async (req: AuthRequest, res, next) => {
       for (const item of items) {
         const { ingredient, quantity, unit, category, recipeId } = item;
 
+        logger.info(`Processing item: ${JSON.stringify(item)}`);
+
         if (!ingredient) {
+          logger.info(`Skipping item - missing ingredient name: ${JSON.stringify(item)}`);
           skippedItems.push({ item, reason: 'Missing ingredient name' });
           continue;
         }
@@ -372,9 +375,12 @@ router.post('/bulk', authenticateToken, async (req: AuthRequest, res, next) => {
         );
 
         if (existingItem.rows.length > 0) {
+          logger.info(`Skipping item - already exists: ${ingredient}`);
           skippedItems.push({ item: ingredient, reason: 'Already exists' });
           continue;
         }
+
+        logger.info(`Adding item to shopping list: ${ingredient}`);
 
         // Add new item
         const result = await client.query(
@@ -392,6 +398,7 @@ router.post('/bulk', authenticateToken, async (req: AuthRequest, res, next) => {
           ]
         );
 
+        logger.info(`Successfully added item: ${JSON.stringify(result.rows[0])}`);
         addedItems.push(result.rows[0]);
       }
 
