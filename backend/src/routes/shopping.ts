@@ -315,6 +315,32 @@ router.delete('/completed/clear', authenticateToken, async (req: AuthRequest, re
   }
 });
 
+// Delete all shopping list items
+router.delete('/all/items', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'DELETE FROM shopping_list_items WHERE user_id = $1',
+        [req.user!.id]
+      );
+
+      logger.info(`Deleted all ${result.rowCount} shopping list items for user ${req.user!.id}`);
+
+      return res.json({
+        success: true,
+        message: `Deleted all ${result.rowCount} items from shopping list`,
+        itemsDeleted: result.rowCount,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Delete all shopping list items error:', error);
+    return next(createError('Failed to delete all shopping list items', 500));
+  }
+});
+
 // Get shopping list statistics
 router.get('/stats', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
