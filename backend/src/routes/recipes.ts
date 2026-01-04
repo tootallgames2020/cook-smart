@@ -201,14 +201,14 @@ router.get('/:id/public', async (req, res, next) => {
     let ingredientsList: string[] = [];
     if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
       ingredientsList = recipe.ingredients.map((ing: any) => 
-        ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient'
+        ing.ingredient_description || ing.food_name || ing.name || ing
       );
     } else if (recipe.ingredients?.ingredient) {
       const ingredients = Array.isArray(recipe.ingredients.ingredient) 
         ? recipe.ingredients.ingredient 
         : [recipe.ingredients.ingredient];
       ingredientsList = ingredients.map((ing: any) => 
-        ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient'
+        ing.ingredient_description || ing.food_name || ing.name || ing
       );
     }
 
@@ -281,14 +281,14 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
     let ingredientsList: string[] = [];
     if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
       ingredientsList = recipe.ingredients.map((ing: any) => 
-        ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient'
+        ing.ingredient_description || ing.food_name || ing.name || ing
       );
     } else if (recipe.ingredients?.ingredient) {
       const ingredients = Array.isArray(recipe.ingredients.ingredient) 
         ? recipe.ingredients.ingredient 
         : [recipe.ingredients.ingredient];
       ingredientsList = ingredients.map((ing: any) => 
-        ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient'
+        ing.ingredient_description || ing.food_name || ing.name || ing
       );
     }
 
