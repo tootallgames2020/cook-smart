@@ -119,56 +119,29 @@ export class FatSecretService {
         ? data.recipes.recipe 
         : [data.recipes.recipe];
 
-      // Get detailed recipe information for each recipe (including ingredients)
-      const detailedRecipes: Recipe[] = [];
-      
-      for (const recipe of recipeArray.slice(0, Math.min(maxResults, 10))) { // Limit to avoid too many API calls
-        try {
-          const recipeDetails = await this.getRecipeDetails(recipe.recipe_id);
-          
-          if (recipeDetails) {
-            // Parse ingredients from detailed recipe
-            let ingredientsList: string[] = [];
-            if (recipeDetails.ingredients && recipeDetails.ingredients.ingredient) {
-              const ingredients = Array.isArray(recipeDetails.ingredients.ingredient) 
-                ? recipeDetails.ingredients.ingredient 
-                : [recipeDetails.ingredients.ingredient];
-              ingredientsList = ingredients.map((ing: any) => 
-                this.cleanIngredientName(ing.ingredient_description || ing.food_name || ing.name || ing)
-              ).filter((ing: string) => ing && ing.length > 0);
-            }
+      const recipes: Recipe[] = recipeArray.map((recipe: any) => ({
+        id: parseInt(recipe.recipe_id) || 0,
+        title: recipe.recipe_name || 'Unknown Recipe',
+        image: recipe.recipe_image || 'https://via.placeholder.com/300x200',
+        servings: parseInt(recipe.number_of_servings) || 4,
+        readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
+        sourceUrl: recipe.recipe_url || '',
+        summary: recipe.recipe_description || '',
+        cuisines: recipe.recipe_types ? [recipe.recipe_types] : ['Unknown'],
+        dishTypes: recipe.recipe_categories ? recipe.recipe_categories.split(',') : ['main course'],
+        instructions: this.parseInstructions(recipe.directions),
+        ingredients: this.parseIngredients(recipe.ingredients),
+        calories: parseFloat(recipe.calories) || undefined,
+        protein: parseFloat(recipe.protein) || undefined,
+        carbs: parseFloat(recipe.carbohydrate) || undefined,
+        fat: parseFloat(recipe.fat) || undefined,
+        fiber: parseFloat(recipe.fiber) || undefined,
+        sugar: parseFloat(recipe.sugar) || undefined,
+        sodium: parseFloat(recipe.sodium) || undefined,
+      }));
 
-            logger.info(`Recipe "${recipeDetails.recipe_name}" has ${ingredientsList.length} ingredients: ${ingredientsList.join(', ')}`);
-
-            detailedRecipes.push({
-              id: parseInt(recipeDetails.recipe_id) || 0,
-              title: recipeDetails.recipe_name || 'Unknown Recipe',
-              image: recipeDetails.recipe_image || 'https://via.placeholder.com/300x200',
-              servings: parseInt(recipeDetails.number_of_servings) || 4,
-              readyInMinutes: parseInt(recipeDetails.cooking_time_min) || 30,
-              sourceUrl: recipeDetails.recipe_url || '',
-              summary: recipeDetails.recipe_description || '',
-              cuisines: recipeDetails.recipe_types ? [recipeDetails.recipe_types] : ['Unknown'],
-              dishTypes: ['main course'],
-              instructions: this.parseInstructions(recipeDetails.directions),
-              ingredients: ingredientsList,
-              calories: parseFloat(recipeDetails.calories) || undefined,
-              protein: parseFloat(recipeDetails.protein) || undefined,
-              carbs: parseFloat(recipeDetails.carbohydrate) || undefined,
-              fat: parseFloat(recipeDetails.fat) || undefined,
-              fiber: parseFloat(recipeDetails.fiber) || undefined,
-              sugar: parseFloat(recipeDetails.sugar) || undefined,
-              sodium: parseFloat(recipeDetails.sodium) || undefined,
-            });
-          }
-        } catch (error) {
-          logger.warn(`Failed to get details for recipe ${recipe.recipe_id}:`, error);
-          // Continue with next recipe
-        }
-      }
-
-      logger.info(`FatSecret recipe search completed: ${detailedRecipes.length} detailed recipes found for ingredients: ${ingredients.join(', ')}`);
-      return detailedRecipes;
+      logger.info(`FatSecret recipe search completed: ${recipes.length} recipes found for ingredients: ${ingredients.join(', ')}`);
+      return recipes;
     } catch (error) {
       logger.error('Recipe search error:', error);
       
