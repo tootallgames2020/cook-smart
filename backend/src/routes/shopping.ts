@@ -222,6 +222,67 @@ router.post('/:id/mark-bought', authenticateToken, async (req: AuthRequest, res,
   }
 });
 
+// Toggle item completion status
+router.patch('/:id/toggle', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const client = await pool.connect();
+    try {
+      // Get current item
+      const currentItem = await client.query(
+        'SELECT * FROM shopping_list_items WHERE id = $1 AND user_id = $2',
+        [id, req.user!.id]
+      );
+
+      if (currentItem.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Shopping list item not found',
+        });
+      }
+
+      const item = currentItem.rows[0];
+      const newCompletedStatus = !item.is_completed;
+
+      // Update completion status
+      const result = await client.query(
+        'UPDATE shopping_list_items SET is_completed = $1, date_updated = NOW() WHERE id = $2 AND user_id = $3 RETURNING *',
+        [newCompletedStatus, id, req.user!.id]
+      );
+
+      const updatedItem = result.rows[0];
+
+      // Map to mobile app format
+      const mappedItem = {
+        id: updatedItem.id.toString(),
+        userId: updatedItem.user_id,
+        ingredient: updatedItem.ingredient,
+        quantity: updatedItem.quantity,
+        unit: updatedItem.unit,
+        category: updatedItem.category,
+        isCompleted: updatedItem.is_completed,
+        recipeId: updatedItem.recipe_id,
+        dateCreated: updatedItem.date_added,
+        dateUpdated: updatedItem.date_updated,
+      };
+
+      logger.info(`Toggled shopping list item ${id} to ${newCompletedStatus ? 'completed' : 'pending'} for user ${req.user!.id}`);
+
+      return res.json({
+        success: true,
+        message: `Item marked as ${newCompletedStatus ? 'completed' : 'pending'}`,
+        item: mappedItem,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Toggle shopping list item error:', error);
+    return next(createError('Failed to toggle item', 500));
+  }
+});
+
 // Update shopping list item
 router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
