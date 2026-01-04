@@ -363,7 +363,9 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
       logger.info(`Recipe ${id} image URL from FatSecret: "${recipe.recipe_image}"`);
 
       // Use fallback image if FatSecret doesn't provide a valid image URL
-      const imageUrl = recipe.recipe_image && recipe.recipe_image.startsWith('http') 
+      const imageUrl = recipe.recipe_image && 
+                      recipe.recipe_image.startsWith('http') && 
+                      !recipe.recipe_image.includes('placeholder') 
         ? recipe.recipe_image 
         : 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=400&h=300&fit=crop';
 
