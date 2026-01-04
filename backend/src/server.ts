@@ -2,252 +2,280 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-// Load secure environment configuration
-const {loadEnvironment} = require('../load-env');
-loadEnvironment();
-import {errorMiddleware, notFoundHandler} from './middleware/errorMiddleware';
-import {requestLogger} from './middleware/logger';
-import AutoRepairSystem from './services/AutoRepairSystem';
-import HealthMonitor from './services/HealthMonitor';
-import SystemGuardian from './services/SystemGuardian';
-import {SubscriptionMonitor} from './services/SubscriptionMonitor';
-import {DailyNotificationService} from './services/DailyNotificationService';
-import RecipeCacheService from './services/RecipeCacheService';
-import pool from './config/database';
-import healthRoutes from './routes/health';
+import dotenv from 'dotenv';
+import { Pool } from 'pg';
 
-// Environment is already loaded by load-env.js above
-console.log('✅ Environment loaded via load-env.js');
-console.log(
-  'DISCORD_ERROR_WEBHOOK_URL:',
-  process.env.DISCORD_ERROR_WEBHOOK_URL ? 'SET' : 'NOT SET',
-);
-
-const app = express();
-const PORT = parseInt(process.env.PORT || '3000', 10);
-
-// Trust proxy - required for rate limiting behind reverse proxy/load balancer
-app.set('trust proxy', 1);
-
-// Initialize auto-repair system with database pool
-if (pool) {
-  AutoRepairSystem.setDatabasePool(pool);
-}
-
-// Security middleware
-app.use(helmet());
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === 'production'
-        ? true // Allow all origins in production for mobile app
-        : true, // Allow all origins in development for React Native
-    credentials: true,
-  }),
-);
-
-// Rate limiting - General API
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Increased from 50 - limit each IP to 500 requests per 15min
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: req => {
-    return req.ip?.replace(/^::ffff:/, '') || 'unknown';
-  },
-});
-
-// Stricter rate limit for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Increased from 10 - allow 50 auth attempts per 15min
-  message: 'Too many authentication attempts, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful requests
-});
-
-app.use(limiter);
-
-// Serve static files (favicon, etc.)
-app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
-
-// Stripe webhook route (must be before body parser)
-import stripeWebhookRoutes from './routes/stripeWebhook';
-app.use('/api/webhooks/stripe', stripeWebhookRoutes);
-
-// Body parsing middleware
-app.use(express.json({limit: '10mb'}));
-app.use(express.urlencoded({extended: true}));
-
-// Logging
-app.use(morgan('combined'));
-app.use(requestLogger);
-
-// Routes
-app.use('/health', healthRoutes);
-
-// API routes
+// Import routes
 import authRoutes from './routes/auth';
 import passwordResetRoutes from './routes/passwordReset';
+import recipeRoutes from './routes/recipes';
+import recipeDetailsRoutes from './routes/recipeDetails';
+import customRecipesRoutes from './routes/customRecipes';
 import ingredientRoutes from './routes/ingredients';
 import barcodeRoutes from './routes/barcode';
-import recipeRoutes from './routes/recipes';
 import dietaryRoutes from './routes/dietary';
 import shoppingRoutes from './routes/shopping';
 import pointsRoutes from './routes/points';
 import referralRoutes from './routes/referrals';
+import subscriptionRoutes from './routes/subscriptions';
 import paymentRoutes from './routes/payments';
-import adminRoutes from './routes/admin';
-import adminAuthRoutes from './routes/adminAuth';
-import adminManagementRoutes from './routes/adminManagement';
-import adminUsersRoutes from './routes/adminUsers';
-import adminRecipesRoutes from './routes/adminRecipes';
-import adminSubscriptionsRoutes from './routes/adminSubscriptions';
-import adminAnalyticsRoutes from './routes/adminAnalytics';
-import adminFeedbackRoutes from './routes/adminFeedback';
-// import adminErrorsRoutes from './routes/adminErrors';
-import adminHealthRoutes from './routes/adminHealth';
-import adminCacheRoutes from './routes/adminCache';
-import adminCostsRoutes from './routes/adminCosts';
-import adminReferralsRoutes from './routes/adminReferrals';
-import adminDashboardRoutes from './routes/adminDashboard';
-import adminMigrationRoutes from './routes/adminMigration';
-import feedbackRoutes from './routes/feedback';
-import subscriptionPricingRoutes from './routes/subscriptionPricing';
-import subscriptionSyncRoutes from './routes/subscriptionSync';
-import systemGuardianRoutes from './routes/systemGuardian';
-import userRecipesRoutes from './routes/userRecipes';
-import userSettingsRoutes from './routes/userSettings';
+import settingsRoutes from './routes/settings';
 import notificationRoutes from './routes/notifications';
-import achievementRoutes from './routes/achievements';
-import photoRoutes from './routes/photos';
-import userRecipesApiRoutes from './routes/userRecipes';
-import recipeEnhancementsRoutes from './routes/recipeEnhancements';
 import socialRoutes from './routes/social';
-import advancedRecipesRoutes from './routes/advancedRecipes';
-import trendingRecipesRoutes from './routes/trendingRecipes';
+import adminRoutes from './routes/admin';
 import contactRoutes from './routes/contact';
-import recipeAnalysisRoutes from './routes/recipeAnalysis';
-import recipeModificationRoutes from './routes/recipeModification';
-import personalizedRecipesRoutes from './routes/personalizedRecipes';
-import substitutionFeedbackRoutes from './routes/substitutionFeedback';
-import safetyCheckRoutes from './routes/safetyCheck';
-import usersRoutes from './routes/users';
-import favoritesRoutes from './routes/favorites';
-import discordRoutes from './routes/discord';
+import feedbackRoutes from './routes/feedback';
+import welcomeContentRoutes from './routes/welcomeContent';
+import mealPlanningRoutes from './routes/mealPlanning';
 
-app.use('/api/v1/auth', authLimiter, authRoutes);
-app.use('/api/v1/password', authLimiter, passwordResetRoutes);
-app.use('/api/v1/settings', userSettingsRoutes);
-// Note: authenticateToken is already in the individual routes, so requireActiveSubscription expects req.user to exist
-// We need to remove requireActiveSubscription from here since routes handle their own auth
+// Import middleware
+import { errorHandler } from './middleware/errorHandler';
+import { logger } from './utils/logger';
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = parseInt(process.env.PORT || '3000', 10);
+
+// Database connection pool
+export const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+// Test database connection
+async function testDatabaseConnection(): Promise<boolean> {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW() as current_time, version() as db_version');
+    logger.info('✅ Database connected successfully');
+    logger.info(`📊 Database time: ${result.rows[0].current_time}`);
+    logger.info(`🗄️ Database version: ${result.rows[0].db_version.split(' ')[0]}`);
+    client.release();
+    return true;
+  } catch (error) {
+    logger.error('❌ Database connection failed:', error);
+    return false;
+  }
+}
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS configuration
+app.use(cors({
+  origin: [
+    'https://cooksmartapp.com',
+    'https://www.cooksmartapp.com',
+    'http://localhost:3000',
+    'http://localhost:8081',
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
+
+// Compression middleware
+if (process.env.ENABLE_COMPRESSION === 'true') {
+  app.use(compression());
+}
+
+// Rate limiting
+if (process.env.ENABLE_RATE_LIMITING === 'true') {
+  const limiter = rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+    message: {
+      error: 'Too many requests from this IP, please try again later.',
+      retryAfter: '15 minutes',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use(limiter);
+}
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Logging middleware
+app.use(morgan('combined', {
+  stream: {
+    write: (message: string) => logger.info(message.trim()),
+  },
+}));
+
+// Health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    const dbConnected = await testDatabaseConnection();
+    const uptime = process.uptime();
+    
+    res.json({
+      status: 'OK',
+      message: 'Cook Smart API is running',
+      timestamp: new Date().toISOString(),
+      uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
+      database: dbConnected ? 'connected' : 'disconnected',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      endpoints: {
+        auth: '/api/v1/auth/*',
+        recipes: '/api/v1/recipes/*',
+        recipeDetails: '/api/v1/recipe-details/*',
+        customRecipes: '/api/v1/custom-recipes/*',
+        ingredients: '/api/v1/ingredients/*',
+        barcode: '/api/v1/barcode/*',
+        dietary: '/api/v1/dietary/*',
+        shopping: '/api/v1/shopping-list/*',
+        points: '/api/v1/points/*',
+        referrals: '/api/v1/referrals/*',
+        subscriptions: '/api/v1/subscriptions/*',
+        payments: '/api/v1/payments/*',
+        settings: '/api/v1/settings/*',
+        notifications: '/api/v1/notifications/*',
+        social: '/api/v1/social/*',
+        admin: '/api/v1/admin/*',
+        contact: '/contact',
+        mealPlanning: '/api/v1/meal-planning/*',
+      },
+    });
+  } catch (error) {
+    logger.error('Health check error:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Health check failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// API Routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth', passwordResetRoutes);
+app.use('/api/v1/recipes', recipeRoutes);
+app.use('/api/v1/recipe-details', recipeDetailsRoutes);
+app.use('/api/v1/custom-recipes', customRecipesRoutes);
 app.use('/api/v1/ingredients', ingredientRoutes);
 app.use('/api/v1/barcode', barcodeRoutes);
-app.use('/api/v1/recipes', recipeRoutes);
-app.use('/api/v1/recipes/user', userRecipesRoutes);
 app.use('/api/v1/dietary', dietaryRoutes);
 app.use('/api/v1/shopping-list', shoppingRoutes);
 app.use('/api/v1/points', pointsRoutes);
 app.use('/api/v1/referrals', referralRoutes);
+app.use('/api/v1/subscriptions', subscriptionRoutes);
 app.use('/api/v1/payments', paymentRoutes);
-app.use('/api/v1/admin/auth', authLimiter, adminAuthRoutes);
-app.use('/api/v1/admin/management', adminManagementRoutes);
-app.use('/api/v1/admin/users', adminUsersRoutes);
-app.use('/api/v1/admin/recipes', adminRecipesRoutes);
-app.use('/api/v1/admin/subscriptions', adminSubscriptionsRoutes);
-app.use('/api/v1/admin/analytics', adminAnalyticsRoutes);
-app.use('/api/v1/admin/feedback', adminFeedbackRoutes);
-// app.use('/api/v1/admin/errors', adminErrorsRoutes);
-app.use('/api/v1/admin/health', adminHealthRoutes);
-app.use('/api/v1/admin/cache', adminCacheRoutes);
-app.use('/api/v1/admin/costs', adminCostsRoutes);
-app.use('/api/v1/admin/referrals', adminReferralsRoutes);
-app.use('/api/v1/admin/dashboard', adminDashboardRoutes);
-app.use('/api/v1/admin/migration', adminMigrationRoutes);
-app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1/feedback', feedbackRoutes);
-app.use('/api/v1/subscriptions', subscriptionPricingRoutes);
-app.use('/api/v1/subscriptions', subscriptionSyncRoutes);
-app.use('/api/v1/system-guardian', systemGuardianRoutes);
+app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
-app.use('/api/v1/achievements', achievementRoutes);
-app.use('/api/v1/photos', photoRoutes);
-app.use('/api/v1/user-recipes', userRecipesApiRoutes);
-app.use('/api/v1/recipe-enhancements', recipeEnhancementsRoutes);
 app.use('/api/v1/social', socialRoutes);
-app.use('/api/v1/advanced-recipes', advancedRecipesRoutes);
-app.use('/api/v1', trendingRecipesRoutes);
-app.use('/api/v1/recipe-analysis', recipeAnalysisRoutes);
-app.use('/api/v1/recipe-modification', recipeModificationRoutes);
-app.use('/api/v1/personalized', personalizedRecipesRoutes);
-app.use('/api/v1/substitutions', substitutionFeedbackRoutes);
-app.use('/api/v1/safety-check', safetyCheckRoutes);
-app.use('/api/v1/users', usersRoutes);
-app.use('/api/v1/favorites', favoritesRoutes);
-app.use('/api/discord', discordRoutes);
+app.use('/api/v1/admin', adminRoutes);
 app.use('/contact', contactRoutes);
+app.use('/api/v1/feedback', feedbackRoutes);
+app.use('/api/v1/welcome', welcomeContentRoutes);
+app.use('/api/v1/meal-planning', mealPlanningRoutes);
 
+// Test endpoint
 app.get('/api/v1/test', (req, res) => {
   res.json({
-    message: 'Cook Smart API Test Endpoint',
-    beta: true,
+    message: 'Cook Smart Production API Test Endpoint',
+    status: 'Backend fully operational',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
     features: [
-      'Recipe Generation',
+      'User Authentication & Registration',
+      'Recipe Search & Management',
       'Ingredient Management',
       'Barcode Scanning',
-      'Nutrition Tracking',
+      'Dietary Preferences',
+      'Shopping Lists',
+      'Points & Achievements',
+      'Referral System',
+      'Subscription Management',
+      'Payment Processing',
+      'User Settings',
+      'Push Notifications',
+      'Social Features',
+      'Admin Dashboard',
+      'Contact Form',
+      'Meal Planning',
     ],
   });
 });
 
-// Error handling - use new Discord notification middleware
-app.use(notFoundHandler);
-app.use(errorMiddleware);
-
-// Start server - listen on all interfaces for mobile device access
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Cook Smart API running on port ${PORT}`);
-  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 Network access: http://0.0.0.0:${PORT}/health`);
-  console.log(`🧪 Test endpoint: http://localhost:${PORT}/api/v1/test`);
-
-  // Start health monitoring
-  HealthMonitor.startDailyHealthSummary();
-
-  // Start subscription monitoring
-  SubscriptionMonitor.startDailyMonitoring();
-  console.log('📧 Subscription monitoring activated');
-
-  // Start daily notifications
-  DailyNotificationService.startDailyChecks();
-  console.log('🔔 Daily notifications activated');
-
-  // Start recipe cache maintenance (daily at 3 AM)
-  const runRecipeMaintenance = () => {
-    const now = new Date();
-    const hour = now.getHours();
-    if (hour === 3) {
-      RecipeCacheService.runDailyMaintenance().catch(err =>
-        console.error('Recipe cache maintenance error:', err),
-      );
-    }
-  };
-  setInterval(runRecipeMaintenance, 60 * 60 * 1000); // Check every hour
-  console.log('🍳 Recipe cache maintenance scheduled');
-
-  // Start System Guardian (automated monitoring and repair)
-  if (process.env.NODE_ENV === 'production') {
-    SystemGuardian.startMonitoring();
-    console.log('🛡️  System Guardian activated');
-  } else {
-    console.log('🛡️  System Guardian disabled in development mode');
-  }
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Endpoint not found',
+    path: req.originalUrl,
+    availableEndpoints: [
+      'GET /health',
+      'GET /api/v1/test',
+      'POST /api/v1/auth/login',
+      'POST /api/v1/auth/register',
+      'GET /api/v1/recipes/search',
+      'GET /api/v1/ingredients',
+      'POST /api/v1/barcode/scan',
+      'POST /contact',
+    ],
+  });
 });
 
+// Error handling middleware
+app.use(errorHandler);
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  await pool.end();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  await pool.end();
+  process.exit(0);
+});
+
+// Start server
+async function startServer(): Promise<void> {
+  try {
+    // Test database connection first
+    const dbConnected = await testDatabaseConnection();
+    if (!dbConnected) {
+      logger.error('❌ Cannot start server without database connection');
+      process.exit(1);
+    }
+    
+    app.listen(PORT, '0.0.0.0', () => {
+      logger.info('🚀 Cook Smart Production Backend started successfully!');
+      logger.info(`📡 Server running on http://0.0.0.0:${PORT}`);
+      logger.info(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+      logger.info(`🧪 Test endpoint: http://0.0.0.0:${PORT}/api/v1/test`);
+      logger.info(`🔐 Auth endpoints: http://0.0.0.0:${PORT}/api/v1/auth/*`);
+      logger.info(`🍳 Recipe endpoints: http://0.0.0.0:${PORT}/api/v1/recipes/*`);
+      logger.info('✅ Ready to accept connections');
+    });
+  } catch (error) {
+    logger.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Initialize server
+startServer();
+
 export default app;
-// Auto-deployment test - Recipe matching fix deployment

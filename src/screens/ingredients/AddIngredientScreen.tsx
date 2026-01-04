@@ -47,7 +47,7 @@ export const AddIngredientScreen: React.FC = () => {
       Alert.alert('Success', 'Custom ingredient added!', [
         {text: 'OK', onPress: () => navigation.goBack()},
       ]);
-    } catch (error) {
+    } catch (_error) {
       Alert.alert('Error', 'Failed to add custom ingredient');
     }
   };

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.8] - 2026-01-04
+
+### Added
+- **SSL/HTTPS Security**: Full SSL implementation with Let's Encrypt certificates
+  - All API traffic now encrypted with TLS 1.2/1.3
+  - Automatic HTTP to HTTPS redirects
+  - HSTS security headers for enhanced protection
+  - Auto-renewing SSL certificates (90-day cycle)
+- **Network Security Configuration**: Enhanced Android network security
+  - Enforced HTTPS for production API calls
+  - Optimized certificate validation
+  - Improved connection security
+
+### Changed
+- **API Endpoint**: Migrated from HTTP to HTTPS (https://api.cooksmartapp.com)
+- **Version Bump**: Updated to v1.1.8 (Build 48) for SSL deployment
+- **Security Headers**: Added Strict-Transport-Security and security headers
+
+### Security
+- **End-to-End Encryption**: All data transmission now encrypted
+- **Certificate Validation**: Proper SSL certificate chain validation
+- **Production Security**: Enterprise-grade security implementation
+
 ### Added
 - Enterprise-level security implementation
 - Professional documentation structure

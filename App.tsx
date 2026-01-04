@@ -5,10 +5,10 @@ import {AuthProvider, useAuth} from './src/contexts/AuthContext';
 import {IngredientProvider} from './src/contexts/IngredientContext';
 import {RecipeProvider} from './src/contexts/RecipeContext';
 import {SubscriptionProvider} from './src/contexts/SubscriptionContext';
+import {API_BASE_URL} from './src/config/api';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import CoFounderWelcomeScreen from './src/screens/CoFounderWelcomeScreen';
-import SpecialUserWelcomeScreen from './src/screens/SpecialUserWelcomeScreen';
 import {ForgotPasswordScreen} from './src/screens/ForgotPasswordScreen';
 import {ResetPasswordScreen} from './src/screens/ResetPasswordScreen';
 import {PrivacyPolicyScreen} from './src/screens/PrivacyPolicyScreen';
@@ -19,6 +19,7 @@ import CookieConsent from './src/components/CookieConsent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
 import {productLookupService} from './src/services/productLookupService';
+import authService from './src/services/authService';
 // Initialize Firebase
 import '@react-native-firebase/app';
 import messaging from '@react-native-firebase/messaging';
@@ -38,8 +39,7 @@ const AuthStack = () => (
 
 const AppContent = () => {
   const {isAuthenticated, isLoading, user} = useAuth();
-  const [showCoFounderWelcome, setShowCoFounderWelcome] = useState(false);
-  const [showSpecialUserWelcome, setShowSpecialUserWelcome] = useState(false);
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [checkingWelcome, setCheckingWelcome] = useState(true);
 
   // Cleanup expired barcode cache on app startup
@@ -78,23 +78,39 @@ const AppContent = () => {
   }, []);
 
   useEffect(() => {
-    const checkWelcomeScreens = async () => {
-      // Only show welcome screens for Creator (Briana) or Special User (Donna)
-      // Brad (developer) should NOT see any welcome screen
-      if (user?.is_creator) {
-        const hasShown = await AsyncStorage.getItem('creator_welcome_shown');
-        setShowCoFounderWelcome(!hasShown);
-      } else if (user?.is_special_user) {
-        const hasShown = await AsyncStorage.getItem(
-          'special_user_welcome_shown',
-        );
-        setShowSpecialUserWelcome(!hasShown);
+    const checkWelcomeScreen = async () => {
+      try {
+        const token = await authService.getStoredToken();
+        if (!token) return;
+
+        // Check if user has a welcome screen configured
+        const response = await fetch(`${API_BASE_URL}/api/v1/welcome/my-welcome`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+        
+        if (data.success && data.hasWelcomeScreen) {
+          // Check if we've already shown this user's welcome screen
+          const hasShown = await AsyncStorage.getItem(data.welcomeContent.storageKey);
+          setShowWelcomeScreen(!hasShown);
+        } else {
+          setShowWelcomeScreen(false);
+        }
+      } catch (error) {
+        console.error('Failed to check welcome screen:', error);
+        setShowWelcomeScreen(false);
+      } finally {
+        setCheckingWelcome(false);
       }
-      setCheckingWelcome(false);
     };
 
     if (!isLoading && isAuthenticated) {
-      checkWelcomeScreens();
+      checkWelcomeScreen();
     } else {
       setCheckingWelcome(false);
     }
@@ -115,27 +131,13 @@ const AppContent = () => {
         {isAuthenticated ? (
           <Stack.Navigator
             screenOptions={{headerShown: false}}
-            initialRouteName={
-              showCoFounderWelcome
-                ? 'CoFounderWelcome'
-                : showSpecialUserWelcome
-                  ? 'SpecialUserWelcome'
-                  : 'Main'
-            }>
+            initialRouteName={showWelcomeScreen ? 'CoFounderWelcome' : 'Main'}>
             <Stack.Screen name="Main" component={MainTabNavigator} />
-            {/* Welcome screens - only for Creator (Briana) and Special User (Donna) */}
-            {(user?.is_creator || user?.is_special_user) && (
-              <>
-                <Stack.Screen
-                  name="CoFounderWelcome"
-                  component={CoFounderWelcomeScreen}
-                />
-                <Stack.Screen
-                  name="SpecialUserWelcome"
-                  component={SpecialUserWelcomeScreen}
-                />
-              </>
-            )}
+            {/* Welcome screen - for any user with welcome content configured */}
+            <Stack.Screen
+              name="CoFounderWelcome"
+              component={CoFounderWelcomeScreen}
+            />
           </Stack.Navigator>
         ) : (
           <AuthStack />

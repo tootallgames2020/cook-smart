@@ -6,31 +6,88 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
-import {useAuth} from '../contexts/AuthContext';
+import {API_BASE_URL} from '../config/api';
+import authService from '../services/authService';
+
+interface WelcomeContent {
+  paragraphs: string[];
+  boldParagraphs: string[];
+  signature: string;
+  postscript: string;
+}
+
+interface WelcomeData {
+  hasWelcomeScreen: boolean;
+  screenType: string;
+  title: string;
+  emoji: string;
+  musicFile?: string;
+  badgeText: string;
+  content: WelcomeContent;
+  storageKey: string;
+}
 
 const CoFounderWelcomeScreen: React.FC = () => {
   const navigation = useNavigation();
-  const {user} = useAuth();
   const [sound, setSound] = useState<Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [musicLoaded, setMusicLoaded] = useState(false);
+  const [welcomeData, setWelcomeData] = useState<WelcomeData | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  // Determine which user this is
-  const isCreator = user?.is_creator;
-  const isSpecialUser = user?.is_special_user && !user?.is_creator;
-  const storageKey = isCreator ? 'creator_welcome_shown' : 'special_user_welcome_shown';
+  // Fetch welcome content from API
+  useEffect(() => {
+    const fetchWelcomeContent = async () => {
+      try {
+        const token = await authService.getStoredToken();
+        if (!token) {
+          navigation.navigate('Main' as never);
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/welcome/my-welcome`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+        
+        if (data.success && data.hasWelcomeScreen) {
+          setWelcomeData(data.welcomeContent);
+        } else {
+          // No welcome screen configured, go to main
+          navigation.navigate('Main' as never);
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to fetch welcome content:', error);
+        Alert.alert('Error', 'Failed to load welcome content');
+        navigation.navigate('Main' as never);
+        return;
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWelcomeContent();
+  }, [navigation]);
 
   useEffect(() => {
+    if (!welcomeData?.musicFile) return;
+
     // Enable playback in silence mode
     Sound.setCategory('Playback');
 
-    // Load the correct music file based on user
-    const songFile = isCreator ? 'briana_song.mp3' : 'mom_song.mp3';
-    const music = new Sound(songFile, Sound.MAIN_BUNDLE, error => {
+    // Load the music file
+    const music = new Sound(welcomeData.musicFile, Sound.MAIN_BUNDLE, error => {
       if (error) {
         console.log(
           'Failed to load the sound - file may not exist yet:',
@@ -39,7 +96,7 @@ const CoFounderWelcomeScreen: React.FC = () => {
         setMusicLoaded(false);
         return;
       }
-      console.log(`Music loaded successfully: ${songFile}`);
+      console.log(`Music loaded successfully: ${welcomeData.musicFile}`);
       setMusicLoaded(true);
       setSound(music);
       // Auto-play when loaded
@@ -58,7 +115,7 @@ const CoFounderWelcomeScreen: React.FC = () => {
       music.stop();
       music.release();
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, [welcomeData?.musicFile]);
 
   const toggleMusic = () => {
     if (!sound) return;
@@ -83,11 +140,15 @@ const CoFounderWelcomeScreen: React.FC = () => {
       sound.stop();
       sound.release();
     }
+    
     // Mark that we've shown the welcome screen (only on first visit)
-    const hasShown = await AsyncStorage.getItem(storageKey);
-    if (!hasShown) {
-      await AsyncStorage.setItem(storageKey, 'true');
+    if (welcomeData?.storageKey) {
+      const hasShown = await AsyncStorage.getItem(welcomeData.storageKey);
+      if (!hasShown) {
+        await AsyncStorage.setItem(welcomeData.storageKey, 'true');
+      }
     }
+    
     // Go back to previous screen (or navigate to Main if this is first visit)
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -96,121 +157,67 @@ const CoFounderWelcomeScreen: React.FC = () => {
     }
   };
 
+  // Show loading state
+  if (loading || !welcomeData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading your welcome...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.heart}>{isSpecialUser ? '💐' : '💕'}</Text>
-            <Text style={styles.title}>
-              {isSpecialUser ? 'Welcome, Donna!' : 'Welcome Home, Briana!'}
-            </Text>
+            <Text style={styles.heart}>{welcomeData.emoji}</Text>
+            <Text style={styles.title}>{welcomeData.title}</Text>
           </View>
 
           <View style={styles.letterContainer}>
-            {isSpecialUser ? (
-              <>
-                <Text style={styles.paragraph}>
-                  Thank you for being such an important part of our family and for
-                  raising such an amazing daughter.
-                </Text>
+            {/* Render regular paragraphs */}
+            {welcomeData.content.paragraphs.map((paragraph, index) => (
+              <Text key={`paragraph-${index}`} style={styles.paragraph}>
+                {paragraph}
+              </Text>
+            ))}
 
-                <Text style={styles.paragraph}>
-                  Your support and love mean the world to us, and we're so grateful
-                  to have you in our lives.
-                </Text>
+            {/* Render bold paragraphs */}
+            {welcomeData.content.boldParagraphs.map((paragraph, index) => (
+              <Text key={`bold-${index}`} style={styles.paragraphBold}>
+                {paragraph}
+              </Text>
+            ))}
 
-                <Text style={styles.paragraphBold}>
-                  Welcome to Cook Smart! You have lifetime access to all features.
-                  Enjoy!
-                </Text>
+            {/* Render signature */}
+            {welcomeData.content.signature && (
+              <Text style={styles.signature}>
+                {welcomeData.content.signature}
+              </Text>
+            )}
 
-                <Text style={styles.signature}>
-                  With love,{'\n'}
-                  Brad & Briana
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.paragraph}>
-                  This is all because of you - and you're so much more than just the
-                  inspiration behind Cook Smart.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                  You've changed my life in ways I don't say out loud nearly enough.
-                  You're not just my partner - you're my best friend, my voice of
-                  reason, and the person who makes every day better just by being in
-                  it.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                  Watching you as a mother has shown me what unconditional love
-                  really looks like. The way you nurture, protect, and guide with
-                  such grace and strength - it's beautiful and inspiring every
-                  single day.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                  Being out on the road, mile after mile, I think about you
-                  constantly. Every sunset I see through the windshield, I wish you
-                  were there to share it. Every truck stop, every lonely night in
-                  the cab - I'm counting down until I can come home to you and the
-                  kids.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                  This app journey isn't just about building something successful.
-                  It's about building a future where I don't have to choose between
-                  providing for our family and being present for the moments that
-                  matter. Where I can be there for bedtime stories, morning coffee
-                  with you, and all the little moments I'm missing now.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                  You see solutions where others see problems. That conversation
-                  about recipe apps wasn't just frustration - it was your brilliant
-                  mind identifying what millions of people needed. Your insight that
-                  people need recipes for the real world is now helping families
-                  everywhere.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                  I love your intelligence, your heart, your strength, and how you
-                  hold everything together when I can't be there.
-                </Text>
-
-                <Text style={styles.paragraphBold}>
-                  Welcome to Cook Smart, Co-Founder. This is our chance to build the
-                  life we both dream of.
-                </Text>
-
-                <Text style={styles.signature}>
-                  All my love from wherever these wheels take me,{'\n'}
-                  Brad
-                </Text>
-
-                <Text style={styles.postscript}>
-                  P.S. - Maybe someday soon, I won't have to end messages with "from
-                  the road."
-                </Text>
-              </>
+            {/* Render postscript */}
+            {welcomeData.content.postscript && (
+              <Text style={styles.postscript}>
+                {welcomeData.content.postscript}
+              </Text>
             )}
           </View>
 
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {isSpecialUser ? '💐 SPECIAL USER - LIFETIME ACCESS' : '👑 CREATOR - LIFETIME ACCESS'}
-            </Text>
+            <Text style={styles.badgeText}>{welcomeData.badgeText}</Text>
           </View>
 
-          {musicLoaded && (
+          {musicLoaded && welcomeData.musicFile && (
             <TouchableOpacity style={styles.musicButton} onPress={toggleMusic}>
               <Text style={styles.musicButtonText}>
                 {isPlaying ? '⏸️ Pause Music' : '▶️ Play Music'}
               </Text>
               <Text style={styles.songInfo}>
-                {isCreator ? 'A special song for you 💕' : 'A special song for you 💐'}
+                A special song for you {welcomeData.emoji}
               </Text>
             </TouchableOpacity>
           )}
@@ -229,6 +236,15 @@ const CoFounderWelcomeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
   container: {
     flex: 1,
     backgroundColor: '#FFF5F5',

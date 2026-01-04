@@ -1,524 +1,455 @@
-import {Router, Request, Response} from 'express';
-import {body, validationResult} from 'express-validator';
-import {IngredientModel} from '../models/Ingredient';
-import {authenticateToken, AuthRequest} from '../middleware/auth';
-import {UserPointsModel} from '../models/UserPoints';
-import {AchievementService} from '../services/AchievementService';
-import mockIngredientsDB from '../config/mockIngredients';
-import {ExpirationCalculator} from '../utils/expirationCalculator';
+import express from 'express';
+import { pool } from '../server';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { logger } from '../utils/logger';
+import { createError } from '../middleware/errorHandler';
 
-const router = Router();
+const router = express.Router();
 
-// Get user's pantry ingredients
-router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+// Get user's ingredients (pantry)
+router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    if (!req.user?.id) {
-      res.status(401).json({error: 'User not authenticated'});
-      return;
-    }
+    const { category, search } = req.query;
 
-    const ingredients = await IngredientModel.getUserIngredients(req.user.id);
-    res.json({ingredients});
-  } catch (error) {
-    console.error('Get user ingredients error:', error);
-    res.status(500).json({
-      error: 'Failed to fetch ingredients',
-      message: 'Unable to retrieve your ingredients',
-    });
-  }
-});
-
-// Search ingredients
-router.get('/search', async (req: Request, res: Response) => {
-  try {
-    const {q} = req.query;
-    if (!q || typeof q !== 'string') {
-      res.json({ingredients: []});
-      return;
-    }
-    const ingredients = await mockIngredientsDB.searchIngredients(q, 20);
-    res.json({ingredients});
-  } catch (error) {
-    console.error('Search ingredients error:', error);
-    res.status(500).json({
-      error: 'Failed to search ingredients',
-      message: 'Unable to search ingredients',
-    });
-  }
-});
-
-// Get ingredient categories
-router.get('/categories', async (req: Request, res: Response) => {
-  try {
-    const categories = await mockIngredientsDB.getCategories();
-    res.json({categories});
-  } catch (error) {
-    console.error('Get categories error:', error);
-    res.status(500).json({
-      error: 'Failed to fetch categories',
-      message: 'Unable to retrieve ingredient categories',
-    });
-  }
-});
-
-// Get default expiration days for a category
-router.get(
-  '/expiration-defaults/:category',
-  async (req: Request, res: Response) => {
+    const client = await pool.connect();
     try {
-      const {category} = req.params;
-      const days = ExpirationCalculator.getDefaultDays(category);
-      const expirationDate =
-        ExpirationCalculator.calculateExpirationDate(category);
-      res.json({
-        category,
-        defaultDays: days,
-        suggestedExpirationDate: expirationDate.toISOString().split('T')[0],
-      });
-    } catch (error) {
-      console.error('Get expiration defaults error:', error);
-      res.status(500).json({
-        error: 'Failed to fetch expiration defaults',
-        message: 'Unable to retrieve expiration information',
-      });
-    }
-  },
-);
+      let query = `
+        SELECT ui.id, ui.ingredient_id, ui.ingredient_name, ui.quantity, 
+               ui.unit, ui.expiration_date, ui.notes, ui.category, ui.added_at
+        FROM user_ingredients ui
+        WHERE ui.user_id = $1
+      `;
+      const params: any[] = [req.user!.id];
 
-// Get ingredient by ID
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    const ingredient = await IngredientModel.getById(req.params.id || '');
-    if (!ingredient) {
-      res.status(404).json({
-        error: 'Ingredient not found',
-        message: 'The requested ingredient does not exist',
+      if (category) {
+        query += ' AND ui.category = $2';
+        params.push(category);
+      }
+
+      if (search) {
+        const searchIndex = params.length + 1;
+        query += ` AND ui.ingredient_name ILIKE $${searchIndex}`;
+        params.push(`%${search}%`);
+      }
+
+      query += ' ORDER BY ui.added_at DESC';
+
+      const result = await client.query(query, params);
+
+      return res.json({
+        success: true,
+        ingredients: result.rows,
+        count: result.rows.length,
       });
-      return;
+    } finally {
+      client.release();
     }
-    res.json({ingredient});
   } catch (error) {
-    console.error('Get ingredient error:', error);
-    res.status(500).json({
-      error: 'Failed to fetch ingredient',
-      message: 'Unable to retrieve ingredient details',
-    });
+    logger.error('Get ingredients error:', error);
+    return next(createError('Failed to get ingredients', 500));
   }
 });
 
-// Add ingredient (simple POST) - with authentication
-router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+// Add ingredient to pantry
+router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    if (!req.user?.id) {
-      res.status(401).json({error: 'User not authenticated'});
-      return;
-    }
+    const { ingredient_name, quantity, unit, expiration_date, notes, category } = req.body;
 
-    const {ingredientId, customName, category, quantity, unit, expirationDate} =
-      req.body;
-
-    console.log('📝 Adding ingredient:', {
-      userId: req.user.id,
-      ingredientId,
-      customName,
-      category,
-    });
-
-    // If custom ingredient, create it first
-    let finalIngredientId = ingredientId;
-    if (customName && !ingredientId) {
-      const customIngredient = await IngredientModel.addCustomIngredient({
-        name: customName,
-        category: category || 'other',
-        default_unit: unit || 'piece',
+    if (!ingredient_name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ingredient name is required',
       });
-      finalIngredientId = customIngredient.id;
     }
 
-    // Add to user's pantry
-    const ingredientData: any = {
-      ingredient_id: finalIngredientId,
-      quantity: quantity || 1,
-      unit: unit || 'piece',
-    };
-
-    // Set expiration date: use provided date or calculate default based on category
-    if (expirationDate) {
-      ingredientData.expiration_date = new Date(expirationDate);
-    } else if (category) {
-      ingredientData.expiration_date =
-        ExpirationCalculator.calculateExpirationDate(category);
-      console.log(
-        `📅 Auto-calculated expiration for ${category}: ${ingredientData.expiration_date.toISOString().split('T')[0]}`,
-      );
-    }
-
-    await IngredientModel.addUserIngredient(req.user.id, ingredientData);
-
-    // Fetch the full ingredient data with name and category
-    const userIngredients = await IngredientModel.getUserIngredients(
-      req.user.id,
-    );
-    const addedIngredient = userIngredients.find(
-      ing => ing.ingredient_id?.toString() === finalIngredientId?.toString(),
-    );
-
-    // Award points for adding ingredient
+    const client = await pool.connect();
     try {
-      await UserPointsModel.addPoints(
-        req.user.id,
-        2,
-        'ingredient_add',
-        'Added ingredient to pantry',
+      const result = await client.query(
+        `INSERT INTO user_ingredients 
+         (user_id, ingredient_id, ingredient_name, quantity, unit, expiration_date, notes, category, added_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         RETURNING *`,
+        [
+          req.user!.id,
+          ingredient_name.toLowerCase().replace(/\s+/g, '_'), // Generate simple ID
+          ingredient_name,
+          quantity || null,
+          unit || 'piece',
+          expiration_date || null,
+          notes || null,
+          category || 'other',
+        ]
       );
-    } catch (pointsError) {
-      console.warn('Failed to award points:', pointsError);
-    }
 
-    // Check for ingredient achievements
-    try {
-      await AchievementService.checkIngredientAchievements(
-        parseInt(req.user.id),
+      // Award points for adding ingredient
+      await client.query(
+        'UPDATE users SET points = points + 2 WHERE id = $1',
+        [req.user!.id]
       );
-    } catch (achievementError) {
-      console.warn('Failed to check achievements:', achievementError);
+
+      logger.info(`Ingredient added by user ${req.user!.id}: ${ingredient_name}`);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Ingredient added successfully',
+        ingredient: result.rows[0],
+        points_awarded: 2,
+      });
+    } finally {
+      client.release();
     }
-
-    console.log('✅ Ingredient added:', addedIngredient);
-
-    res.status(201).json({
-      message: 'Ingredient added successfully',
-      ingredient: addedIngredient,
-    });
   } catch (error) {
-    console.error('❌ Add ingredient error:', error);
-    res.status(500).json({
-      error: 'Failed to add ingredient',
-      message: 'Unable to add ingredient',
-    });
+    logger.error('Add ingredient error:', error);
+    return next(createError('Failed to add ingredient', 500));
   }
 });
 
 // Update ingredient
-router.put(
-  '/:id',
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
+router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { id } = req.params;
+    const { quantity, unit, expiration_date, notes } = req.body;
+
+    const client = await pool.connect();
     try {
-      const {id} = req.params;
-      const {quantity, unit} = req.body;
-
-      console.log('📝 Updating ingredient:', {
-        userId: req.user?.id,
-        ingredientId: id,
-        quantity,
-        unit,
-      });
-
-      if (!req.user?.id) {
-        res.status(401).json({error: 'User not authenticated'});
-        return;
-      }
-
-      if (!id) {
-        res.status(400).json({
-          error: 'Invalid ingredient ID',
-          message: 'Ingredient ID is required',
-        });
-        return;
-      }
-
-      // Update the ingredient in the database
-      const updateData: any = {};
-      if (quantity !== undefined) updateData.quantity = parseFloat(quantity);
-      if (unit !== undefined) updateData.unit = unit;
-
-      // First, get the ingredient to find its ingredient_id
-      const userIngredients = await IngredientModel.getUserIngredients(
-        req.user.id,
-      );
-      const ingredient = userIngredients.find(
-        (ing: any) => ing.id.toString() === id,
+      const result = await client.query(
+        `UPDATE user_ingredients 
+         SET quantity = $1, unit = $2, expiration_date = $3, notes = $4
+         WHERE id = $5 AND user_id = $6
+         RETURNING *`,
+        [quantity, unit, expiration_date, notes, id, req.user!.id]
       );
 
-      if (!ingredient) {
-        res.status(404).json({
-          error: 'Ingredient not found',
-          message: 'Ingredient not found in your inventory',
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Ingredient not found or not owned by user',
         });
-        return;
       }
 
-      // Update using the ingredient_id
-      const updatedIngredient = await IngredientModel.updateUserIngredient(
-        req.user.id,
-        ingredient.ingredient_id,
-        updateData,
-      );
-
-      if (!updatedIngredient) {
-        res.status(404).json({
-          error: 'Update failed',
-          message: 'Unable to update ingredient',
-        });
-        return;
-      }
-
-      console.log('✅ Ingredient updated successfully:', updatedIngredient);
-
-      res.json({
+      return res.json({
+        success: true,
         message: 'Ingredient updated successfully',
-        ingredient: updatedIngredient,
+        ingredient: result.rows[0],
       });
-    } catch (error) {
-      console.error('❌ Update ingredient error:', error);
-      res.status(500).json({
-        error: 'Failed to update ingredient',
-        message: 'Unable to update ingredient',
-      });
+    } finally {
+      client.release();
     }
-  },
-);
+  } catch (error) {
+    logger.error('Update ingredient error:', error);
+    return next(createError('Failed to update ingredient', 500));
+  }
+});
 
 // Delete ingredient
-router.delete(
-  '/:id',
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const client = await pool.connect();
     try {
-      const {id} = req.params;
+      const result = await client.query(
+        'DELETE FROM user_ingredients WHERE id = $1 AND user_id = $2',
+        [id, req.user!.id]
+      );
 
-      console.log('🗑️ DELETE request received:', {
-        userId: req.user?.id,
-        ingredientId: id,
-        idType: typeof id,
-      });
-
-      if (!req.user?.id) {
-        console.log('❌ No user ID in request');
-        res.status(401).json({error: 'User not authenticated'});
-        return;
-      }
-
-      if (!id) {
-        console.log('❌ No ingredient ID provided');
-        res.status(400).json({
-          error: 'Invalid ingredient ID',
-          message: 'Ingredient ID is required',
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Ingredient not found or not owned by user',
         });
-        return;
       }
 
-      console.log('🔄 Attempting to delete ingredient...');
-      // Delete from user's pantry
-      await IngredientModel.removeUserIngredient(req.user.id, id);
-
-      console.log('✅ Ingredient deleted successfully');
-      res.json({
+      return res.json({
+        success: true,
         message: 'Ingredient deleted successfully',
       });
-    } catch (error) {
-      console.error('❌ Delete ingredient error:', error);
-      res.status(500).json({
-        error: 'Failed to delete ingredient',
-        message: 'Unable to delete ingredient',
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Delete ingredient error:', error);
+    return next(createError('Failed to delete ingredient', 500));
+  }
+});
+
+// Search ingredients (for adding new ones)
+router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { q, limit = 20 } = req.query;
+
+    if (!q) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query is required',
       });
     }
-  },
-);
 
-// Add custom ingredient
-router.post(
-  '/custom',
-  [
-    body('name').trim().isLength({min: 1, max: 100}),
-    body('category').isIn([
-      'proteins',
-      'vegetables',
-      'fruits',
-      'grains',
-      'dairy',
-      'spices',
-      'condiments',
-    ]),
-    body('description').optional().trim().isLength({max: 500}),
-    body('default_unit').optional().isString(),
-  ],
-  async (req: AuthRequest, res: Response) => {
+    // Mock ingredient search - in production, this would query a comprehensive ingredient database
+    const mockIngredients = [
+      { id: 'chicken_breast', name: 'Chicken Breast', category: 'meat' },
+      { id: 'rice', name: 'Rice', category: 'grains' },
+      { id: 'broccoli', name: 'Broccoli', category: 'vegetables' },
+      { id: 'tomato', name: 'Tomato', category: 'vegetables' },
+      { id: 'onion', name: 'Onion', category: 'vegetables' },
+      { id: 'garlic', name: 'Garlic', category: 'vegetables' },
+      { id: 'olive_oil', name: 'Olive Oil', category: 'oils' },
+      { id: 'salt', name: 'Salt', category: 'seasonings' },
+      { id: 'pepper', name: 'Black Pepper', category: 'seasonings' },
+      { id: 'pasta', name: 'Pasta', category: 'grains' },
+    ].filter(ingredient => 
+      ingredient.name.toLowerCase().includes((q as string).toLowerCase())
+    ).slice(0, parseInt(limit as string));
+
+    return res.json({
+      success: true,
+      ingredients: mockIngredients,
+      count: mockIngredients.length,
+    });
+  } catch (error) {
+    logger.error('Search ingredients error:', error);
+    return next(createError('Failed to search ingredients', 500));
+  }
+});
+
+// Get ingredient categories
+router.get('/categories', authenticateToken, async (req: AuthRequest, res) => {
+  const categories = [
+    { id: 'vegetables', name: 'Vegetables', icon: '🥬' },
+    { id: 'fruits', name: 'Fruits', icon: '🍎' },
+    { id: 'meat', name: 'Meat & Poultry', icon: '🥩' },
+    { id: 'seafood', name: 'Seafood', icon: '🐟' },
+    { id: 'dairy', name: 'Dairy', icon: '🥛' },
+    { id: 'grains', name: 'Grains & Cereals', icon: '🌾' },
+    { id: 'legumes', name: 'Legumes', icon: '🫘' },
+    { id: 'nuts', name: 'Nuts & Seeds', icon: '🥜' },
+    { id: 'oils', name: 'Oils & Fats', icon: '🫒' },
+    { id: 'seasonings', name: 'Herbs & Spices', icon: '🌿' },
+    { id: 'condiments', name: 'Condiments', icon: '🍯' },
+    { id: 'beverages', name: 'Beverages', icon: '🥤' },
+    { id: 'other', name: 'Other', icon: '📦' },
+  ];
+
+  return res.json({
+    success: true,
+    categories,
+  });
+});
+
+// Add ingredient from shopping list (when marked as bought)
+router.post('/from-shopping/:shopping_id', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { shopping_id } = req.params;
+    const { expiration_date, notes } = req.body;
+
+    const client = await pool.connect();
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          error: 'Validation failed',
-          details: errors.array(),
-        });
-        return;
-      }
-
-      // Use mock database in development
-      const ingredient = await mockIngredientsDB.create({
-        name: req.body.name,
-        category: req.body.category,
-        common_unit: req.body.default_unit || 'piece',
-      });
-      res.status(201).json({
-        message: 'Custom ingredient added successfully',
-        ingredient,
-      });
-    } catch (error) {
-      console.error('Add custom ingredient error:', error);
-      res.status(500).json({
-        error: 'Failed to add ingredient',
-        message: 'Unable to add custom ingredient',
-      });
-    }
-  },
-);
-
-// Get user's pantry ingredients
-router.get(
-  '/pantry/my',
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      if (!req.user?.id) {
-        res.status(401).json({error: 'User not authenticated'});
-        return;
-      }
-      const ingredients = await IngredientModel.getUserIngredients(req.user.id);
-      res.json({ingredients});
-    } catch (error) {
-      console.error('Get user ingredients error:', error);
-      res.status(500).json({
-        error: 'Failed to fetch pantry',
-        message: 'Unable to retrieve your ingredients',
-      });
-    }
-  },
-);
-
-// Add ingredient to user's pantry
-router.post(
-  '/pantry',
-  authenticateToken,
-  [
-    body('ingredient_id').isUUID(),
-    body('quantity').optional().isFloat({min: 0}),
-    body('unit').optional().isString(),
-    body('expiration_date').optional().isISO8601(),
-    body('notes').optional().trim().isLength({max: 500}),
-  ],
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          error: 'Validation failed',
-          details: errors.array(),
-        });
-        return;
-      }
-
-      if (!req.user?.id) {
-        res.status(401).json({error: 'User not authenticated'});
-        return;
-      }
-      const userIngredient = await IngredientModel.addUserIngredient(
-        req.user.id,
-        req.body,
-      );
-      res.status(201).json({
-        message: 'Ingredient added to pantry',
-        ingredient: userIngredient,
-      });
-    } catch (error) {
-      console.error('Add user ingredient error:', error);
-      res.status(500).json({
-        error: 'Failed to add to pantry',
-        message: 'Unable to add ingredient to your pantry',
-      });
-    }
-  },
-);
-
-// Update ingredient in user's pantry
-router.put(
-  '/pantry/:ingredientId',
-  authenticateToken,
-  [
-    body('quantity').optional().isFloat({min: 0}),
-    body('unit').optional().isString(),
-    body('expiration_date').optional().isISO8601(),
-    body('notes').optional().trim().isLength({max: 500}),
-  ],
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          error: 'Validation failed',
-          details: errors.array(),
-        });
-        return;
-      }
-
-      if (!req.user?.id) {
-        res.status(401).json({error: 'User not authenticated'});
-        return;
-      }
-      const userIngredient = await IngredientModel.updateUserIngredient(
-        req.user.id,
-        req.params.ingredientId || '',
-        req.body,
+      // Get shopping list item
+      const shoppingResult = await client.query(
+        'SELECT * FROM shopping_list_items WHERE id = $1 AND user_id = $2',
+        [shopping_id, req.user!.id]
       );
 
-      if (!userIngredient) {
-        res.status(404).json({
-          error: 'Ingredient not found',
-          message: 'Ingredient not found in your pantry',
+      if (shoppingResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Shopping list item not found',
         });
-        return;
       }
 
-      res.json({
-        message: 'Pantry ingredient updated',
-        ingredient: userIngredient,
-      });
-    } catch (error) {
-      console.error('Update user ingredient error:', error);
-      res.status(500).json({
-        error: 'Failed to update pantry',
-        message: 'Unable to update ingredient in your pantry',
-      });
-    }
-  },
-);
+      const shoppingItem = shoppingResult.rows[0];
 
-// Remove ingredient from user's pantry
-router.delete(
-  '/pantry/:ingredientId',
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      if (!req.user?.id) {
-        res.status(401).json({error: 'User not authenticated'});
-        return;
-      }
-      await IngredientModel.removeUserIngredient(
-        req.user.id,
-        req.params.ingredientId || '',
+      // Add to inventory
+      const result = await client.query(
+        `INSERT INTO user_ingredients 
+         (user_id, ingredient_id, ingredient_name, quantity, unit, expiration_date, notes, category, added_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         ON CONFLICT (user_id, ingredient_name) DO UPDATE SET
+         quantity = COALESCE(user_ingredients.quantity, 0) + COALESCE($4, 1),
+         updated_at = NOW()
+         RETURNING *`,
+        [
+          req.user!.id,
+          shoppingItem.item_name.toLowerCase().replace(/\s+/g, '_'),
+          shoppingItem.item_name,
+          shoppingItem.quantity || 1,
+          shoppingItem.unit || 'piece',
+          expiration_date || null,
+          notes || shoppingItem.notes,
+          shoppingItem.category || 'other',
+        ]
       );
-      res.json({
-        message: 'Ingredient removed from pantry',
+
+      // Mark shopping item as completed
+      await client.query(
+        'UPDATE shopping_list_items SET completed = true, completed_at = NOW() WHERE id = $1',
+        [shopping_id]
+      );
+
+      // Award points
+      await client.query(
+        'UPDATE users SET points = points + 3 WHERE id = $1',
+        [req.user!.id]
+      );
+
+      logger.info(`Ingredient moved from shopping to inventory: ${shoppingItem.item_name}`);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Ingredient moved from shopping list to inventory',
+        ingredient: result.rows[0],
+        points_awarded: 3,
       });
-    } catch (error) {
-      console.error('Remove user ingredient error:', error);
-      res.status(500).json({
-        error: 'Failed to remove from pantry',
-        message: 'Unable to remove ingredient from your pantry',
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Move from shopping to inventory error:', error);
+    return next(createError('Failed to move ingredient from shopping list', 500));
+  }
+});
+
+// Use ingredient for cooking (reduces quantity)
+router.post('/:id/use', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { id } = req.params;
+    const { quantity_used, recipe_id } = req.body;
+
+    if (!quantity_used || quantity_used <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid quantity_used is required',
       });
     }
-  },
-);
+
+    const client = await pool.connect();
+    try {
+      // Get current ingredient
+      const ingredientResult = await client.query(
+        'SELECT * FROM user_ingredients WHERE id = $1 AND user_id = $2',
+        [id, req.user!.id]
+      );
+
+      if (ingredientResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Ingredient not found',
+        });
+      }
+
+      const ingredient = ingredientResult.rows[0];
+      const currentQuantity = ingredient.quantity || 0;
+      const newQuantity = Math.max(0, currentQuantity - quantity_used);
+
+      // Update ingredient quantity
+      const result = await client.query(
+        `UPDATE user_ingredients 
+         SET quantity = $1, updated_at = NOW()
+         WHERE id = $2 AND user_id = $3
+         RETURNING *`,
+        [newQuantity, id, req.user!.id]
+      );
+
+      // Log ingredient usage
+      await client.query(
+        `INSERT INTO ingredient_usage_log 
+         (user_id, ingredient_id, ingredient_name, quantity_used, recipe_id, used_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [req.user!.id, ingredient.ingredient_id, ingredient.ingredient_name, quantity_used, recipe_id]
+      );
+
+      // Award points for using ingredients
+      await client.query(
+        'UPDATE users SET points = points + 1 WHERE id = $1',
+        [req.user!.id]
+      );
+
+      // If ingredient is completely used up, optionally remove it
+      let message = 'Ingredient quantity updated';
+      if (newQuantity === 0) {
+        message = 'Ingredient used up completely';
+      }
+
+      return res.json({
+        success: true,
+        message,
+        ingredient: result.rows[0],
+        quantityUsed: quantity_used,
+        remainingQuantity: newQuantity,
+        points_awarded: 1,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Use ingredient error:', error);
+    return next(createError('Failed to use ingredient', 500));
+  }
+});
+
+// Check recipe availability based on current inventory
+router.post('/check-recipe-availability', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { recipe_ingredients } = req.body;
+
+    if (!recipe_ingredients || !Array.isArray(recipe_ingredients)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Recipe ingredients array is required',
+      });
+    }
+
+    const client = await pool.connect();
+    try {
+      // Get user's current inventory
+      const inventoryResult = await client.query(
+        'SELECT ingredient_name, quantity, unit FROM user_ingredients WHERE user_id = $1',
+        [req.user!.id]
+      );
+
+      const userInventory = inventoryResult.rows.map(row => ({
+        name: row.ingredient_name.toLowerCase(),
+        quantity: row.quantity,
+        unit: row.unit,
+      }));
+
+      // Check availability for each recipe ingredient
+      const availabilityCheck = recipe_ingredients.map((ingredient: string) => {
+        const ingredientName = ingredient.toLowerCase();
+        const inventoryMatch = userInventory.find(inv => 
+          inv.name.includes(ingredientName) || ingredientName.includes(inv.name)
+        );
+
+        return {
+          ingredient,
+          available: !!inventoryMatch,
+          inventoryQuantity: inventoryMatch?.quantity,
+          inventoryUnit: inventoryMatch?.unit,
+        };
+      });
+
+      const availableCount = availabilityCheck.filter(item => item.available).length;
+      const totalCount = recipe_ingredients.length;
+      const availabilityPercentage = Math.round((availableCount / totalCount) * 100);
+
+      return res.json({
+        success: true,
+        availability: {
+          ingredients: availabilityCheck,
+          available: availableCount,
+          total: totalCount,
+          percentage: availabilityPercentage,
+          canMake: availabilityPercentage >= 70,
+          missing: availabilityCheck.filter(item => !item.available),
+        },
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Check recipe availability error:', error);
+    return next(createError('Failed to check recipe availability', 500));
+  }
+});
 
 export default router;

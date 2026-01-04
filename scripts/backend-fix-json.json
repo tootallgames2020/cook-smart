@@ -1,0 +1,22 @@
+{
+  "InstanceIds": ["i-0e2c8623378f172c8"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "cd /home/ubuntu/cook-smart/backend/backend",
+      "pm2 delete all",
+      "cp .env.example .env",
+      "sed -i 's/localhost/cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com/g' .env",
+      "sed -i 's/cook-smart/cooksmartadmin/g' .env",
+      "sed -i 's/CookSmart2024!/CookSmart2024!/g' .env",
+      "git pull origin fresh-project-migration",
+      "npm install",
+      "npm run build",
+      "pm2 start dist/server.js --name cook-smart-backend",
+      "pm2 save",
+      "sleep 10",
+      "pm2 status",
+      "curl -s http://localhost:3000/health"
+    ]
+  }
+}

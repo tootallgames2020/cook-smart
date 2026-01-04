@@ -1,0 +1,24 @@
+{
+  "InstanceIds": ["i-0e2c8623378f172c8"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -",
+      "yum install -y nodejs",
+      "npm install -g pm2",
+      "cd /home/ec2-user/cook-smart/backend",
+      "ls -la",
+      "cp .env.example .env",
+      "sed -i 's/localhost/cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com/g' .env",
+      "sed -i 's/cook-smart/cooksmartadmin/g' .env",
+      "npm install",
+      "npm run build",
+      "pm2 start dist/server.js --name cook-smart-backend",
+      "pm2 save",
+      "pm2 startup",
+      "sleep 5",
+      "pm2 status",
+      "curl -s http://localhost:3000/health"
+    ]
+  }
+}

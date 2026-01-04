@@ -84,9 +84,9 @@ export interface IRecipeProvider {
   /**
    * Get detailed information about a specific recipe
    * @param recipeId - Unique identifier for the recipe
-   * @returns Promise resolving to detailed recipe information
+   * @returns Promise resolving to detailed recipe information or null if not found
    */
-  getRecipeDetails(recipeId: string): Promise<RecipeDetails>;
+  getRecipeDetails(recipeId: string): Promise<RecipeDetails | null>;
 
   /**
    * Check if the provider is currently available (within rate limits)

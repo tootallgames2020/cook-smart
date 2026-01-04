@@ -1,173 +1,68 @@
 import express from 'express';
-import {UserPointsModel} from '../models/UserPoints';
-import {authenticateToken} from '../middleware/auth';
+import { pool } from '../server';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { logger } from '../utils/logger';
+import { createError } from '../middleware/errorHandler';
 
 const router = express.Router();
 
-// Get current user's points
-router.get('/', authenticateToken, async (req, res) => {
+// Get user's points
+router.get('/my-points', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
-    }
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT points FROM users WHERE id = $1',
+        [req.user!.id]
+      );
 
-    const userPoints: any = await UserPointsModel.getUserPoints(userId);
-
-    if (!userPoints) {
-      return res.json({
-        userId,
-        totalPoints: 0,
-        level: 0,
-        lastUpdated: new Date(),
+      res.json({
+        success: true,
+        points: result.rows[0]?.points || 0,
       });
+    } finally {
+      client.release();
     }
-
-    // Transform snake_case to camelCase for frontend
-    return res.json({
-      userId: userPoints.user_id || userId,
-      totalPoints: userPoints.total_points || 0,
-      level: userPoints.level || 0,
-      lastUpdated: userPoints.last_updated || new Date(),
-    });
-  } catch (_error) {
-    return res.status(500).json({error: 'Failed to get user points'});
-  }
-});
-
-// Get user points by ID (for admin or public leaderboard)
-router.get('/user/:userId', async (req, res) => {
-  try {
-    const {userId} = req.params;
-    const userPoints = await UserPointsModel.getUserPoints(userId);
-
-    if (!userPoints) {
-      return res.json({totalPoints: 0, level: 0});
-    }
-
-    return res.json(userPoints);
-  } catch (_error) {
-    return res.status(500).json({error: 'Failed to get user points'});
-  }
-});
-
-// Add points to user
-router.post('/user/:userId/add', async (req, res) => {
-  try {
-    const {userId} = req.params;
-    const {action, description} = req.body;
-
-    const points = UserPointsModel.getPointsForAction(action);
-    if (points === 0) {
-      return res.status(400).json({error: 'Invalid action'});
-    }
-
-    await UserPointsModel.addPoints(userId, points, action, description);
-    return res.json({success: true, pointsAdded: points});
-  } catch (_error) {
-    return res.status(500).json({error: 'Failed to add points'});
-  }
-});
-
-// Get current user's points history
-router.get('/history', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
-    }
-
-    const {limit = '20', offset = '0'} = req.query;
-
-    const transactions = await UserPointsModel.getUserTransactions(
-      userId,
-      parseInt(limit as string),
-      parseInt(offset as string),
-    );
-
-    return res.json(transactions);
-  } catch (_error) {
-    return res.status(500).json({error: 'Failed to get points history'});
-  }
-});
-
-// Get user's points history by ID (for admin)
-router.get('/user/:userId/history', async (req, res) => {
-  try {
-    const {userId} = req.params;
-    const {limit = '20', offset = '0'} = req.query;
-
-    const transactions = await UserPointsModel.getUserTransactions(
-      userId,
-      parseInt(limit as string),
-      parseInt(offset as string),
-    );
-
-    res.json(transactions);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to get points history'});
+  } catch (error) {
+    logger.error('Get points error:', error);
+    next(createError('Failed to get points', 500));
   }
 });
 
 // Get leaderboard
-router.get('/leaderboard', async (req, res) => {
+router.get('/leaderboard', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const {limit = '10'} = req.query;
+    const { limit = 10 } = req.query;
 
-    const leaderboard = await UserPointsModel.getLeaderboard(
-      parseInt(limit as string),
-    );
-    res.json(leaderboard);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to get leaderboard'});
-  }
-});
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT id, first_name, last_name, points,
+                ROW_NUMBER() OVER (ORDER BY points DESC) as rank
+         FROM users 
+         WHERE points > 0
+         ORDER BY points DESC 
+         LIMIT $1`,
+        [parseInt(limit as string)]
+      );
 
-// Get level information
-router.get('/levels/:level', async (req, res) => {
-  try {
-    const {level} = req.params;
-    const levelInfo = UserPointsModel.getLevelInfo(parseInt(level));
-    res.json(levelInfo);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to get level info'});
-  }
-});
+      const leaderboard = result.rows.map(row => ({
+        userId: row.id,
+        username: row.first_name ? `${row.first_name} ${row.last_name || ''}`.trim() : 'Anonymous',
+        totalPoints: row.points,
+        rank: parseInt(row.rank),
+      }));
 
-// Get available actions and their point values
-router.get('/actions', async (req, res) => {
-  try {
-    const actions = [
-      {action: 'recipe_view', points: 1, description: 'View a recipe'},
-      {action: 'recipe_favorite', points: 5, description: 'Favorite a recipe'},
-      {action: 'recipe_rating', points: 10, description: 'Rate a recipe'},
-      {
-        action: 'recipe_review',
-        points: 15,
-        description: 'Write a recipe review',
-      },
-      {action: 'recipe_share', points: 8, description: 'Share a recipe'},
-      {
-        action: 'shopping_list_complete',
-        points: 3,
-        description: 'Complete shopping list item',
-      },
-      {action: 'daily_login', points: 2, description: 'Daily login bonus'},
-      {
-        action: 'profile_complete',
-        points: 25,
-        description: 'Complete profile setup',
-      },
-      {
-        action: 'referral_signup',
-        points: 50,
-        description: 'Successful referral signup',
-      },
-    ];
-
-    res.json(actions);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to get actions'});
+      res.json({
+        success: true,
+        leaderboard,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get leaderboard error:', error);
+    next(createError('Failed to get leaderboard', 500));
   }
 });
 

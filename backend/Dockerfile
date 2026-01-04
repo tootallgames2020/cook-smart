@@ -1,5 +1,8 @@
-# Use Node.js 18 LTS Alpine for smaller image size
-FROM node:18-alpine
+# Cook Smart Backend Dockerfile
+# Multi-stage build for production optimization
+
+# Stage 1: Build stage
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -7,32 +10,51 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (production only)
+# Install dependencies
 RUN npm ci --only=production
 
-# Copy TypeScript config
-COPY tsconfig.json ./
-
 # Copy source code
-COPY src ./src
-COPY migrations ./migrations
-COPY run-migrations.js ./
-
-# Install TypeScript for build
-RUN npm install -D typescript @types/node
+COPY . .
 
 # Build TypeScript
 RUN npm run build
 
-# Remove dev dependencies after build
-RUN npm prune --production
+# Stage 2: Production stage
+FROM node:18-alpine AS production
+
+# Install PM2 globally
+RUN npm install -g pm2
+
+# Create app user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S cooksmartapp -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy built application from builder stage
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/migrations ./migrations
+
+# Copy PM2 ecosystem file
+COPY ecosystem.config.js ./
+
+# Change ownership to app user
+RUN chown -R cooksmartapp:nodejs /app
+USER cooksmartapp
 
 # Expose port
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Start app
-CMD ["node", "dist/server.js"]
+# Start application with PM2
+CMD ["pm2-runtime", "start", "ecosystem.config.js"]

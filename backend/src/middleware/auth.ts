@@ -1,87 +1,86 @@
-import {Request, Response, NextFunction} from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import {UserModel} from '../models/User';
+import { pool } from '../server';
+import { logger } from '../utils/logger';
 
 export interface AuthRequest extends Request {
-  user?: any;
+  user?: {
+    id: string;
+    email: string;
+    is_admin?: boolean;
+    is_co_founder?: boolean;
+    is_special_user?: boolean;
+    subscription_status?: string;
+  };
 }
-
-export const generateToken = (userId: string): string => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT_SECRET is not defined');
-  }
-  // 90 days for mobile app - users expect to stay logged in
-  return jwt.sign({userId}, secret, {expiresIn: '90d'});
-};
 
 export const authenticateToken = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
 
-    console.log('🔐 Auth check:', {
-      path: req.path,
-      hasAuthHeader: !!authHeader,
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
-    });
-
     if (!token) {
-      console.log('❌ No token provided');
       res.status(401).json({
-        error: 'Access token required',
-        message: 'Please provide a valid authentication token',
+        success: false,
+        message: 'Access token required',
       });
       return;
     }
 
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      console.log('❌ JWT_SECRET not configured');
-      res.status(500).json({error: 'Server configuration error'});
-      return;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+    
+    // Get user from database
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT id, email, is_admin, is_co_founder, is_special_user, subscription_status FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(401).json({
+          success: false,
+          message: 'Invalid token - user not found',
+        });
+        return;
+      }
+
+      req.user = result.rows[0];
+      next();
+    } finally {
+      client.release();
     }
-
-    const decoded = jwt.verify(token, secret) as {userId: string};
-    console.log('✅ Token decoded, userId:', decoded.userId);
-
-    const user = await UserModel.findById(decoded.userId);
-
-    if (!user) {
-      console.log('❌ User not found for userId:', decoded.userId);
-      res.status(401).json({
-        error: 'Invalid token',
-        message: 'User not found',
-      });
-      return;
-    }
-
-    console.log('✅ User authenticated:', user.email);
-    req.user = user;
-    next();
   } catch (error) {
-    console.log('❌ Token verification error:', error);
-    res.status(403).json({
-      error: 'Invalid token',
-      message: 'Token verification failed',
+    logger.error('Authentication error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Invalid or expired token',
     });
   }
 };
 
-export const requireAgeVerification = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-): void => {
-  if (!req.user?.age_verified) {
+export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  if (!req.user?.is_admin) {
     res.status(403).json({
-      error: 'Age verification required',
-      message: 'You must verify you are 13 years or older to use this service',
+      success: false,
+      message: 'Admin access required',
+    });
+    return;
+  }
+  next();
+};
+
+export const requireSubscription = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const validStatuses = ['active', 'trialing', 'lifetime'];
+  if (!req.user?.subscription_status || !validStatuses.includes(req.user.subscription_status)) {
+    res.status(403).json({
+      success: false,
+      message: 'Active subscription required',
+      subscriptionRequired: true,
     });
     return;
   }

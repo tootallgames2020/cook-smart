@@ -7,6 +7,7 @@ import {RecipeScalingService} from '../services/RecipeScalingService';
 import FatSecretService from '../services/FatSecretService';
 
 const router = express.Router();
+const fatSecretService = new FatSecretService();
 
 interface ModifiedIngredient {
   original: {
@@ -217,7 +218,7 @@ router.get('/:id/scale/:servings', async (req, res): Promise<void> => {
       if (!recipe) {
         // Fallback: try to get from FatSecret directly
         const fatSecretRecipe =
-          await FatSecretService.getRecipeDetails(recipeId);
+          await fatSecretService.getRecipeDetails(recipeId);
         if (fatSecretRecipe) {
           recipe = {
             id: parseInt(recipeId),
@@ -225,8 +226,8 @@ router.get('/:id/scale/:servings', async (req, res): Promise<void> => {
             title: fatSecretRecipe.recipe_name,
             servings: parseInt(fatSecretRecipe.number_of_servings) || 4,
             ready_in_minutes: parseInt(fatSecretRecipe.cooking_time_min) || 30,
-            ingredients: fatSecretRecipe.ingredients || {},
-            instructions: fatSecretRecipe.directions || {},
+            ingredients: fatSecretRecipe.ingredients?.ingredient || [],
+            instructions: fatSecretRecipe.directions?.direction?.join('\n') || '',
             // Add other required fields with defaults
             source: 'fatsecret',
             description: fatSecretRecipe.recipe_description || '',
@@ -331,7 +332,7 @@ router.get('/:id/serving-options', async (req, res): Promise<void> => {
       if (!recipe) {
         // Fallback: try to get from FatSecret directly
         const fatSecretRecipe =
-          await FatSecretService.getRecipeDetails(recipeId);
+          await fatSecretService.getRecipeDetails(recipeId);
         if (fatSecretRecipe) {
           recipe = {
             servings: parseInt(fatSecretRecipe.number_of_servings) || 4,

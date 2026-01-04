@@ -1,201 +1,83 @@
 import express from 'express';
-import {DietaryRestrictionModel} from '../models/DietaryRestriction';
-import {AllergyModel} from '../models/Allergy';
+import { pool } from '../server';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { logger } from '../utils/logger';
+import { createError } from '../middleware/errorHandler';
 
 const router = express.Router();
 
-// Default endpoint for /api/v1/dietary
-router.get('/', async (req, res) => {
-  try {
-    const [restrictions, allergies] = await Promise.all([
-      DietaryRestrictionModel.getAll(),
-      AllergyModel.getAll(),
-    ]);
-    res.json({
-      restrictions,
-      allergies,
-      message: 'Dietary preferences and allergies retrieved successfully',
-    });
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to fetch dietary information'});
-  }
-});
-
-// Get all dietary restrictions
-router.get('/restrictions', async (req, res) => {
-  try {
-    const restrictions = await DietaryRestrictionModel.getAll();
-    res.json(restrictions);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to fetch dietary restrictions'});
-  }
-});
-
 // Get user's dietary restrictions
-router.get('/restrictions/user/:userId', async (req, res) => {
+router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const {userId} = req.params;
-    const restrictions =
-      await DietaryRestrictionModel.getUserRestrictions(userId);
-    res.json(restrictions);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to fetch user restrictions'});
-  }
-});
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT dietary_restrictions, allergies FROM users WHERE id = $1',
+        [req.user!.id]
+      );
 
-// Add user dietary restriction
-router.post('/restrictions/user/:userId', async (req, res) => {
-  try {
-    const {userId} = req.params;
-    const {restrictionId, notes} = req.body;
-    console.log('Adding restriction:', {userId, restrictionId, notes});
-    await DietaryRestrictionModel.addUserRestriction(
-      userId,
-      restrictionId,
-      notes,
-    );
-    res.json({success: true});
+      res.json({
+        success: true,
+        dietary_restrictions: result.rows[0]?.dietary_restrictions || [],
+        allergies: result.rows[0]?.allergies || [],
+      });
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('Add restriction error:', error);
-    res.status(500).json({error: 'Failed to add restriction'});
+    logger.error('Get dietary preferences error:', error);
+    next(createError('Failed to get dietary preferences', 500));
   }
 });
 
-// Add custom dietary restriction
-router.post('/restrictions/custom/:userId', async (req, res) => {
+// Update dietary restrictions
+router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const {userId} = req.params;
-    const {name, description, excludedIngredients} = req.body;
-    await DietaryRestrictionModel.addCustomRestriction(
-      userId,
-      name,
-      description,
-      excludedIngredients,
-    );
-    res.json({success: true});
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to add custom restriction'});
-  }
-});
+    const { dietary_restrictions } = req.body;
 
-// Get all allergies
-router.get('/allergies', async (req, res) => {
-  try {
-    const allergies = await AllergyModel.getAll();
-    res.json(allergies);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to fetch allergies'});
-  }
-});
+    const client = await pool.connect();
+    try {
+      await client.query(
+        'UPDATE users SET dietary_restrictions = $1 WHERE id = $2',
+        [JSON.stringify(dietary_restrictions || []), req.user!.id]
+      );
 
-// Get user's allergies
-router.get('/allergies/user/:userId', async (req, res) => {
-  try {
-    const {userId} = req.params;
-    const allergies = await AllergyModel.getUserAllergies(userId);
-    res.json(allergies);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to fetch user allergies'});
-  }
-});
-
-// Add user allergy
-router.post('/allergies/user/:userId', async (req, res) => {
-  try {
-    const {userId} = req.params;
-    const {allergyId, severityOverride, notes} = req.body;
-    console.log('Adding allergy:', {
-      userId,
-      allergyId,
-      severityOverride,
-      notes,
-    });
-    await AllergyModel.addUserAllergy(
-      userId,
-      allergyId,
-      severityOverride,
-      notes,
-    );
-    res.json({success: true});
+      res.json({
+        success: true,
+        message: 'Dietary restrictions updated successfully',
+      });
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('Add allergy error:', error);
-    res.status(500).json({error: 'Failed to add allergy'});
+    logger.error('Update dietary restrictions error:', error);
+    next(createError('Failed to update dietary restrictions', 500));
   }
 });
 
-// Add custom allergy
-router.post('/allergies/custom/:userId', async (req, res) => {
+// Update allergies
+router.post('/allergies', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const {userId} = req.params;
-    const {name, severity, description, triggerIngredients} = req.body;
-    await AllergyModel.addCustomAllergy(
-      userId,
-      name,
-      severity,
-      description,
-      triggerIngredients,
-    );
-    res.json({success: true});
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to add custom allergy'});
-  }
-});
+    const { allergies } = req.body;
 
-// Remove user dietary restriction
-router.delete('/restrictions/user/:userId/:restrictionId', async (req, res) => {
-  try {
-    const {userId, restrictionId} = req.params;
-    await DietaryRestrictionModel.removeUserRestriction(
-      userId,
-      parseInt(restrictionId),
-    );
-    res.json({success: true});
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to remove restriction'});
-  }
-});
+    const client = await pool.connect();
+    try {
+      await client.query(
+        'UPDATE users SET allergies = $1 WHERE id = $2',
+        [JSON.stringify(allergies || []), req.user!.id]
+      );
 
-// Remove user allergy
-router.delete('/allergies/user/:userId/:allergyId', async (req, res) => {
-  try {
-    const {userId, allergyId} = req.params;
-    await AllergyModel.removeUserAllergy(userId, parseInt(allergyId));
-    res.json({success: true});
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to remove allergy'});
+      res.json({
+        success: true,
+        message: 'Allergies updated successfully',
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Update allergies error:', error);
+    next(createError('Failed to update allergies', 500));
   }
 });
 
 export default router;
-// Get user dietary preferences
-router.get('/user/preferences', async (req, res) => {
-  try {
-    // For now, return empty preferences - this can be enhanced later
-    res.json({
-      restrictions: [],
-      allergies: [],
-      message: 'User dietary preferences retrieved successfully',
-    });
-  } catch (error) {
-    console.error('Error getting user dietary preferences:', error);
-    res.status(500).json({error: 'Failed to get user dietary preferences'});
-  }
-});
-
-// Set user dietary preferences
-router.post('/user/preferences', async (req, res) => {
-  try {
-    const {restrictions, allergies} = req.body;
-
-    // For now, just acknowledge the request - this can be enhanced later
-    res.json({
-      success: true,
-      message: 'User dietary preferences updated successfully',
-      restrictions: restrictions || [],
-      allergies: allergies || [],
-    });
-  } catch (error) {
-    console.error('Error setting user dietary preferences:', error);
-    res.status(500).json({error: 'Failed to set user dietary preferences'});
-  }
-});

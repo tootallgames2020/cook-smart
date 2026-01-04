@@ -1,0 +1,20 @@
+{
+  "InstanceIds": ["i-0e2c8623378f172c8"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "pwd",
+      "whoami",
+      "ls -la /home/",
+      "ls -la /home/ubuntu/",
+      "find /home -name 'cook-smart' -type d 2>/dev/null",
+      "find /home -name 'server.js' -type f 2>/dev/null",
+      "find /home -name 'package.json' -type f 2>/dev/null | grep cook",
+      "which node",
+      "which npm",
+      "which pm2",
+      "node --version",
+      "npm --version"
+    ]
+  }
+}

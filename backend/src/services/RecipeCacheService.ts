@@ -1,6 +1,8 @@
 import pool from '../config/database';
 import FatSecretService from './FatSecretService';
 
+const fatSecretService = new FatSecretService();
+
 interface CachedRecipe {
   id: number;
   recipe_id: string;
@@ -40,16 +42,15 @@ class RecipeCacheService {
       const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
 
       for (const mealType of mealTypes) {
-        const recipes = await FatSecretService.searchRecipesAdvanced({
-          recipeTypes: mealType,
-          mustIncludeIngredients: seasonalIngredients.slice(0, 3).join(','),
-          maxResults: Math.ceil(count / mealTypes.length),
-        });
+        const recipes = await fatSecretService.searchRecipesByIngredients(
+          seasonalIngredients.slice(0, 3),
+          Math.ceil(count / mealTypes.length)
+        );
 
         for (const recipe of recipes) {
           // Fetch full recipe details including ingredients and instructions
-          const fullRecipe = await FatSecretService.getRecipeDetails(
-            recipe.recipe_id,
+          const fullRecipe = await fatSecretService.getRecipeDetails(
+            recipe.id.toString()
           );
           if (fullRecipe) {
             await this.cacheRecipe(fullRecipe, 'fatsecret', season, true);
@@ -203,15 +204,15 @@ class RecipeCacheService {
       const categories = ['dinner', 'dessert', 'breakfast', 'lunch'];
 
       for (const category of categories) {
-        const recipes = await FatSecretService.searchRecipesAdvanced({
-          recipeTypes: category,
-          maxResults: 10,
-        });
+        const recipes = await fatSecretService.searchRecipesByIngredients(
+          [category], // Use category as ingredient search
+          10
+        );
 
         for (const recipe of recipes) {
           // Fetch full recipe details including ingredients and instructions
-          const fullRecipe = await FatSecretService.getRecipeDetails(
-            recipe.recipe_id,
+          const fullRecipe = await fatSecretService.getRecipeDetails(
+            recipe.id.toString()
           );
           if (fullRecipe) {
             await this.cacheRecipe(fullRecipe, 'fatsecret', 'all', false);

@@ -1,0 +1,356 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cook Smart - Production Infrastructure Template'
+
+Parameters:
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of existing EC2 KeyPair for SSH access
+    
+  YourPublicIP:
+    Type: String
+    Description: "Your public IP address for SSH access (format: x.x.x.x/32)"
+    AllowedPattern: "^(\\d{1,3}\\.){3}\\d{1,3}/32$"
+    ConstraintDescription: "Must be a valid IP address in CIDR format (x.x.x.x/32)"
+    
+  DomainName:
+    Type: String
+    Default: cooksmartapp.com
+    Description: Domain name for the application
+    
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Environment name
+
+Resources:
+  # VPC and Networking (using default VPC for cost optimization)
+  
+  # Security Group for Cook Smart Application
+  CookSmartSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-cook-smart-sg'
+      GroupDescription: Security group for Cook Smart application
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref YourPublicIP
+          Description: SSH access from your IP
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP access
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS access
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+          Description: Node.js application port
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-cook-smart-sg'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: cook-smart
+
+  # IAM Role for EC2 Instance
+  CookSmartInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${Environment}-cook-smart-instance-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: CookSmartInstancePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: cook-smart
+
+  # Instance Profile
+  CookSmartInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub '${Environment}-cook-smart-instance-profile'
+      Roles:
+        - !Ref CookSmartInstanceRole
+
+  # EC2 Instance
+  CookSmartInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c02fb55956c7d316  # Ubuntu 22.04 LTS (update for your region)
+      InstanceType: t3.small
+      KeyName: !Ref KeyPairName
+      SecurityGroupIds:
+        - !Ref CookSmartSecurityGroup
+      IamInstanceProfile: !Ref CookSmartInstanceProfile
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: 30
+            DeleteOnTermination: true
+            Encrypted: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          
+          # Update system
+          apt-get update -y
+          apt-get upgrade -y
+          
+          # Install CloudWatch agent
+          wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+          dpkg -i amazon-cloudwatch-agent.deb
+          
+          # Create CloudWatch config
+          cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'EOF'
+          {
+            "metrics": {
+              "namespace": "CookSmart/${Environment}",
+              "metrics_collected": {
+                "cpu": {
+                  "measurement": ["cpu_usage_idle", "cpu_usage_iowait", "cpu_usage_user", "cpu_usage_system"],
+                  "metrics_collection_interval": 300
+                },
+                "disk": {
+                  "measurement": ["used_percent"],
+                  "metrics_collection_interval": 300,
+                  "resources": ["*"]
+                },
+                "diskio": {
+                  "measurement": ["io_time"],
+                  "metrics_collection_interval": 300,
+                  "resources": ["*"]
+                },
+                "mem": {
+                  "measurement": ["mem_used_percent"],
+                  "metrics_collection_interval": 300
+                }
+              }
+            },
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
+                    {
+                      "file_path": "/var/log/nginx/access.log",
+                      "log_group_name": "/cook-smart/${Environment}/nginx/access",
+                      "log_stream_name": "{instance_id}"
+                    },
+                    {
+                      "file_path": "/var/log/nginx/error.log",
+                      "log_group_name": "/cook-smart/${Environment}/nginx/error",
+                      "log_stream_name": "{instance_id}"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          EOF
+          
+          # Start CloudWatch agent
+          /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+          
+          # Install basic tools
+          apt-get install -y curl wget git htop
+          
+          # Create deployment ready marker
+          touch /home/ubuntu/cloudformation-complete
+          chown ubuntu:ubuntu /home/ubuntu/cloudformation-complete
+          
+          # Signal completion
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource CookSmartInstance --region ${AWS::Region}
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-cook-smart-backend'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: cook-smart
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT10M
+
+  # Elastic IP
+  CookSmartElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref CookSmartInstance
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-cook-smart-eip'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: cook-smart
+
+  # Route 53 DNS Record (if hosted zone exists)
+  CookSmartDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNSRecord
+    Properties:
+      HostedZoneName: !Sub '${DomainName}.'
+      Name: !Sub 'api.${DomainName}'
+      Type: A
+      TTL: 300
+      ResourceRecords:
+        - !Ref CookSmartElasticIP
+
+  # CloudWatch Log Groups
+  NginxAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/cook-smart/${Environment}/nginx/access'
+      RetentionInDays: 30
+
+  NginxErrorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/cook-smart/${Environment}/nginx/error'
+      RetentionInDays: 30
+
+  ApplicationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/cook-smart/${Environment}/application'
+      RetentionInDays: 30
+
+  # CloudWatch Alarms
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-cook-smart-high-cpu'
+      AlarmDescription: 'Cook Smart instance high CPU usage'
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref CookSmartInstance
+      TreatMissingData: notBreaching
+
+  HighMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-cook-smart-high-memory'
+      AlarmDescription: 'Cook Smart instance high memory usage'
+      MetricName: mem_used_percent
+      Namespace: !Sub 'CookSmart/${Environment}'
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref CookSmartInstance
+      TreatMissingData: notBreaching
+
+  DiskSpaceAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-cook-smart-low-disk-space'
+      AlarmDescription: 'Cook Smart instance low disk space'
+      MetricName: used_percent
+      Namespace: !Sub 'CookSmart/${Environment}'
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref CookSmartInstance
+        - Name: device
+          Value: /dev/root
+        - Name: fstype
+          Value: ext4
+        - Name: path
+          Value: /
+      TreatMissingData: notBreaching
+
+Conditions:
+  CreateDNSRecord: !Not [!Equals [!Ref DomainName, '']]
+
+Outputs:
+  InstanceId:
+    Description: 'EC2 Instance ID'
+    Value: !Ref CookSmartInstance
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceId'
+
+  PublicIP:
+    Description: 'Public IP Address (Elastic IP)'
+    Value: !Ref CookSmartElasticIP
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicIP'
+
+  SecurityGroupId:
+    Description: 'Security Group ID'
+    Value: !Ref CookSmartSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SecurityGroupId'
+
+  SSHCommand:
+    Description: 'SSH command to connect to the instance'
+    Value: !Sub 'ssh -i ~/.ssh/${KeyPairName}.pem ubuntu@${CookSmartElasticIP}'
+
+  APIEndpoint:
+    Description: 'API endpoint URL'
+    Value: !Sub 'https://api.${DomainName}'
+    Condition: CreateDNSRecord
+
+  NextSteps:
+    Description: 'Next steps for deployment'
+    Value: !Sub |
+      1. SSH to instance: ssh -i ~/.ssh/${KeyPairName}.pem ubuntu@${CookSmartElasticIP}
+      2. Clone repository: git clone https://github.com/your-username/cook-smart.git
+      3. Run deployment: cd cook-smart && ./scripts/deploy-cook-smart-fresh.sh
+      4. Configure SSL: ./scripts/setup-ssl-and-dns.sh
+      5. Verify deployment: ./scripts/verify-deployment.sh
+
+  MonitoringDashboard:
+    Description: 'CloudWatch Dashboard URL'
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${Environment}-cook-smart'

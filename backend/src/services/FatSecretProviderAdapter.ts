@@ -14,7 +14,7 @@ import FatSecretService from './FatSecretService';
 import {RecipeMatchingService} from './RecipeMatchingService';
 
 class FatSecretProviderAdapter implements IRecipeProvider {
-  private service = FatSecretService;
+  private service = new FatSecretService();
 
   private getValidImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl || imageUrl.trim() === '') {
@@ -215,7 +215,7 @@ class FatSecretProviderAdapter implements IRecipeProvider {
           searchOptions.maxCalories = options.maxCalories;
         }
 
-        const recipes = await this.service.searchRecipesAdvanced(searchOptions);
+        const recipes = await this.service.searchRecipesByIngredients([searchKeyword], limit);
         return this.formatRecipes(recipes.slice(0, limit));
       }
 
@@ -235,7 +235,10 @@ class FatSecretProviderAdapter implements IRecipeProvider {
         searchIngredients,
       );
 
-      const recipes = await this.service.searchRecipesAdvanced(searchOptions);
+      const recipes = await this.service.searchRecipesByIngredients(
+        ingredients.slice(0, 6),
+        limit
+      );
       console.log(
         `[FatSecretAdapter] FatSecret returned ${recipes.length} recipes`,
       );
@@ -250,8 +253,10 @@ class FatSecretProviderAdapter implements IRecipeProvider {
           fallbackOptions.maxCalories = options.maxCalories;
         }
 
-        const fallbackRecipes =
-          await this.service.searchRecipesAdvanced(fallbackOptions);
+        const fallbackRecipes = await this.service.searchRecipesByIngredients(
+          ingredients.slice(0, 3),
+          limit
+        );
         console.log(
           `[FatSecretAdapter] Fallback search returned ${fallbackRecipes.length} recipes`,
         );
@@ -435,7 +440,7 @@ class FatSecretProviderAdapter implements IRecipeProvider {
 
   async isAvailable(): Promise<boolean> {
     try {
-      const recipes = await this.service.searchRecipes('chicken', 1);
+      const recipes = await this.service.searchRecipesByIngredients(['chicken'], 1);
       return recipes.length > 0;
     } catch (error) {
       console.error('[FatSecretAdapter] Availability check failed:', error);

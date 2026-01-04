@@ -1,6 +1,8 @@
 import axios from 'axios';
 import FatSecretService from './FatSecretService';
 
+const fatSecretService = new FatSecretService();
+
 interface BarcodeResult {
   found: boolean;
   product?: {
@@ -70,13 +72,13 @@ class BarcodeService {
       }
 
       // Step 5: Try FatSecret (may be blocked by IP restrictions)
-      if (FatSecretService.isConfigured()) {
-        const fatSecretResult = await this.tryFatSecret(barcode);
-        if (fatSecretResult.found) {
-          console.log('[Barcode] Found via FatSecret');
-          return fatSecretResult;
-        }
-      }
+      // if (FatSecretService.isConfigured()) {
+      //   const fatSecretResult = await this.tryFatSecret(barcode);
+      //   if (fatSecretResult.found) {
+      //     console.log('[Barcode] Found via FatSecret');
+      //     return fatSecretResult;
+      //   }
+      // }
 
       // Step 6: Enhance Open Food Facts result with USDA data if available
       if (openFoodResult.product?.name) {
@@ -109,7 +111,7 @@ class BarcodeService {
   private async tryFatSecret(barcode: string): Promise<BarcodeResult> {
     try {
       console.log(`[FatSecret] Attempting barcode lookup: ${barcode}`);
-      const food = await FatSecretService.searchByBarcode(barcode);
+      const food = await fatSecretService.searchFoodByBarcode(barcode);
 
       if (food && food.servings && food.servings.serving) {
         console.log(`[FatSecret] Found food: ${food.food_name}`);
@@ -117,7 +119,12 @@ class BarcodeService {
           ? food.servings.serving[0]
           : food.servings.serving;
 
-        const nutrition = FatSecretService.formatNutritionPer100g(serving);
+        const nutrition = {
+          calories: parseFloat(serving.calories) || 0,
+          protein: parseFloat(serving.protein) || 0,
+          carbs: parseFloat(serving.carbohydrate) || 0,
+          fat: parseFloat(serving.fat) || 0,
+        };
         const category = this.mapToCategory(
           food.food_type || food.food_name || '',
         );

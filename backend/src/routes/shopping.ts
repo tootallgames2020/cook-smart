@@ -1,382 +1,410 @@
 import express from 'express';
-import {ShoppingListModel} from '../models/ShoppingList';
-import {IngredientModel} from '../models/Ingredient';
-import {authenticateToken} from '../middleware/auth';
-import pool from '../config/database';
+import { pool } from '../server';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { logger } from '../utils/logger';
+import { createError } from '../middleware/errorHandler';
 
 const router = express.Router();
 
-// Get current user's shopping list
-router.get('/', authenticateToken, async (req, res) => {
+// Get user's shopping list
+router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
-    }
+    const { category, completed } = req.query;
 
-    const items = await ShoppingListModel.getUserItems(userId);
-    return res.json({items});
-  } catch (_error) {
-    return res.status(500).json({error: 'Failed to get shopping list'});
+    const client = await pool.connect();
+    try {
+      let query = `
+        SELECT sli.id, sli.item_name, sli.quantity, sli.unit, sli.category,
+               sli.notes, sli.needed_for_recipe, sli.recipe_id, sli.completed,
+               sli.completed_at, sli.added_at, sli.updated_at
+        FROM shopping_list_items sli
+        WHERE sli.user_id = $1
+      `;
+      const params: any[] = [req.user!.id];
+
+      if (category) {
+        query += ' AND sli.category = $2';
+        params.push(category);
+      }
+
+      if (completed !== undefined) {
+        const completedIndex = params.length + 1;
+        query += ` AND sli.completed = $${completedIndex}`;
+        params.push(completed === 'true');
+      }
+
+      query += ' ORDER BY sli.completed ASC, sli.added_at DESC';
+
+      const result = await client.query(query, params);
+
+      // Group items by category for better organization
+      const itemsByCategory = result.rows.reduce((acc: any, item: any) => {
+        const category = item.category || 'other';
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(item);
+        return acc;
+      }, {});
+
+      return res.json({
+        success: true,
+        shopping_list: {
+          items: result.rows,
+          itemsByCategory,
+          totalItems: result.rows.length,
+          completedItems: result.rows.filter((item: any) => item.completed).length,
+          pendingItems: result.rows.filter((item: any) => !item.completed).length,
+        },
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get shopping list error:', error);
+    return next(createError('Failed to get shopping list', 500));
   }
 });
 
-// Get user's shopping list (legacy - with userId in URL)
-router.get('/user/:userId', async (req, res) => {
+// Add item to shopping list
+router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const {userId} = req.params;
-    const items = await ShoppingListModel.getUserItems(userId);
-    res.json(items);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to get shopping list'});
-  }
-});
+    const { item_name, quantity, unit, category, notes, needed_for_recipe, recipe_id } = req.body;
 
-// Get shopping list by category
-router.get('/user/:userId/categorized', async (req, res) => {
-  try {
-    const {userId} = req.params;
-    const categorizedItems = await ShoppingListModel.getItemsByCategory(userId);
-    res.json(categorizedItems);
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to get categorized shopping list'});
-  }
-});
-
-// Add item to shopping list (authenticated)
-router.post('/', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
+    if (!item_name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Item name is required',
+      });
     }
 
-    const {ingredient, quantity, unit, category, recipeId} = req.body;
-
-    const item = await ShoppingListModel.addItem(
-      userId,
-      ingredient,
-      quantity,
-      unit,
-      category,
-      recipeId,
-    );
-    return res.json({
-      success: true,
-      message: 'Item added to shopping list',
-      item,
-    });
-  } catch (_error) {
-    return res.status(500).json({error: 'Failed to add item'});
-  }
-});
-
-// Add multiple items to shopping list (bulk - authenticated)
-router.post('/bulk', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
-    }
-
-    const {items} = req.body;
-
-    if (!Array.isArray(items)) {
-      return res.status(400).json({error: 'Items must be an array'});
-    }
-
-    const addedItems = [];
-    for (const item of items) {
-      const {ingredient, quantity, unit, category, recipeId} = item;
-      const result = await ShoppingListModel.addItem(
-        userId,
-        ingredient,
-        quantity,
-        unit,
-        category || 'other',
-        recipeId,
+    const client = await pool.connect();
+    try {
+      // Check if item already exists in shopping list
+      const existingItem = await client.query(
+        'SELECT id FROM shopping_list_items WHERE user_id = $1 AND item_name = $2 AND completed = false',
+        [req.user!.id, item_name]
       );
-      addedItems.push(result);
+
+      if (existingItem.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: 'Item already exists in shopping list',
+          existingItemId: existingItem.rows[0].id,
+        });
+      }
+
+      const result = await client.query(
+        `INSERT INTO shopping_list_items 
+         (user_id, item_name, quantity, unit, category, notes, needed_for_recipe, recipe_id, added_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         RETURNING *`,
+        [
+          req.user!.id,
+          item_name,
+          quantity || null,
+          unit || 'piece',
+          category || 'other',
+          notes || null,
+          needed_for_recipe || false,
+          recipe_id || null,
+        ]
+      );
+
+      // Award points for adding to shopping list
+      await client.query(
+        'UPDATE users SET points = points + 1 WHERE id = $1',
+        [req.user!.id]
+      );
+
+      logger.info(`Shopping list item added by user ${req.user!.id}: ${item_name}`);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Item added to shopping list',
+        item: result.rows[0],
+        points_awarded: 1,
+      });
+    } finally {
+      client.release();
     }
-
-    return res.json({
-      success: true,
-      message: `${addedItems.length} items added to shopping list`,
-      items: addedItems,
-    });
-  } catch (_error) {
-    console.error('Bulk add error:', _error);
-    return res.status(500).json({error: 'Failed to add items'});
-  }
-});
-
-// Add item to shopping list (legacy - with userId in URL)
-router.post('/user/:userId/items', async (req, res) => {
-  try {
-    const {userId} = req.params;
-    const {ingredient, quantity, unit, category, recipeId} = req.body;
-
-    await ShoppingListModel.addItem(
-      userId,
-      ingredient,
-      quantity,
-      unit,
-      category,
-      recipeId,
-    );
-    res.json({success: true, message: 'Item added to shopping list'});
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to add item'});
-  }
-});
-
-// Clear completed items (authenticated) - MUST come before /:itemId routes
-router.delete('/clear-completed', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
-    }
-
-    await ShoppingListModel.clearCompleted(userId);
-    return res.json({success: true, message: 'Completed items cleared'});
   } catch (error) {
-    console.error('Clear completed error:', error);
-    return res.status(500).json({error: 'Failed to clear completed items'});
+    logger.error('Add shopping list item error:', error);
+    return next(createError('Failed to add item to shopping list', 500));
   }
 });
 
-// Delete all shopping list items (authenticated) - MUST come before /:itemId routes
-router.delete('/all/items', authenticateToken, async (req, res) => {
+// Mark item as bought (moves to inventory)
+router.post('/:id/mark-bought', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
-    }
+    const { id } = req.params;
+    const { expiration_date, notes } = req.body;
 
-    // Delete all items for this user
-    await pool.query('DELETE FROM shopping_list_items WHERE user_id = $1', [
-      userId,
-    ]);
-    return res.json({success: true, message: 'All items removed'});
+    const client = await pool.connect();
+    try {
+      // Get the shopping list item
+      const shoppingItem = await client.query(
+        'SELECT * FROM shopping_list_items WHERE id = $1 AND user_id = $2',
+        [id, req.user!.id]
+      );
+
+      if (shoppingItem.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Shopping list item not found',
+        });
+      }
+
+      const item = shoppingItem.rows[0];
+
+      // Mark shopping list item as completed
+      await client.query(
+        'UPDATE shopping_list_items SET completed = true, completed_at = NOW() WHERE id = $1',
+        [id]
+      );
+
+      // Add item to user's inventory
+      const inventoryResult = await client.query(
+        `INSERT INTO user_ingredients 
+         (user_id, ingredient_id, ingredient_name, quantity, unit, expiration_date, notes, category, added_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         ON CONFLICT (user_id, ingredient_name) DO UPDATE SET
+         quantity = COALESCE(user_ingredients.quantity, 0) + COALESCE($4, 1),
+         updated_at = NOW()
+         RETURNING *`,
+        [
+          req.user!.id,
+          item.item_name.toLowerCase().replace(/\s+/g, '_'),
+          item.item_name,
+          item.quantity || 1,
+          item.unit || 'piece',
+          expiration_date || null,
+          notes || item.notes,
+          item.category || 'other',
+        ]
+      );
+
+      // Award points for completing shopping
+      await client.query(
+        'UPDATE users SET points = points + 2 WHERE id = $1',
+        [req.user!.id]
+      );
+
+      logger.info(`Shopping item marked as bought and moved to inventory: ${item.item_name}`);
+
+      return res.json({
+        success: true,
+        message: 'Item marked as bought and added to inventory',
+        shoppingItem: { ...item, completed: true, completed_at: new Date() },
+        inventoryItem: inventoryResult.rows[0],
+        points_awarded: 2,
+      });
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('Delete all error:', error);
-    return res.status(500).json({error: 'Failed to remove all items'});
+    logger.error('Mark item as bought error:', error);
+    return next(createError('Failed to mark item as bought', 500));
   }
 });
 
-// Update shopping list item (authenticated)
-router.put('/:itemId', authenticateToken, async (req, res) => {
+// Update shopping list item
+router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
+    const { id } = req.params;
+    const { quantity, unit, notes, category } = req.body;
+
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `UPDATE shopping_list_items 
+         SET quantity = $1, unit = $2, notes = $3, category = $4, updated_at = NOW()
+         WHERE id = $5 AND user_id = $6
+         RETURNING *`,
+        [quantity, unit, notes, category, id, req.user!.id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Shopping list item not found or not owned by user',
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Shopping list item updated',
+        item: result.rows[0],
+      });
+    } finally {
+      client.release();
     }
-
-    const {itemId} = req.params;
-    if (!itemId) {
-      return res.status(400).json({error: 'Item ID is required'});
-    }
-
-    const {ingredient, quantity, unit, category} = req.body;
-
-    await ShoppingListModel.updateItem(
-      userId,
-      itemId,
-      ingredient,
-      quantity,
-      unit,
-      category,
-    );
-
-    // Get the updated item to return
-    const items = await ShoppingListModel.getUserItems(userId);
-    const updatedItem = items.find(item => item.id === itemId);
-
-    if (!updatedItem) {
-      return res.status(404).json({error: 'Item not found'});
-    }
-
-    return res.json({
-      success: true,
-      message: 'Item updated',
-      item: updatedItem,
-    });
   } catch (error) {
-    console.error('Update item error:', error);
-    return res.status(500).json({error: 'Failed to update item'});
+    logger.error('Update shopping list item error:', error);
+    return next(createError('Failed to update shopping list item', 500));
   }
 });
 
-// Toggle item completion (authenticated)
-router.patch('/:itemId/toggle', authenticateToken, async (req, res) => {
+// Delete shopping list item
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
+    const { id } = req.params;
+
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'DELETE FROM shopping_list_items WHERE id = $1 AND user_id = $2',
+        [id, req.user!.id]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Shopping list item not found or not owned by user',
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Shopping list item deleted',
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Delete shopping list item error:', error);
+    return next(createError('Failed to delete shopping list item', 500));
+  }
+});
+
+// Clear completed items from shopping list
+router.delete('/completed/clear', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'DELETE FROM shopping_list_items WHERE user_id = $1 AND completed = true',
+        [req.user!.id]
+      );
+
+      return res.json({
+        success: true,
+        message: `Cleared ${result.rowCount} completed items from shopping list`,
+        itemsCleared: result.rowCount,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Clear completed items error:', error);
+    return next(createError('Failed to clear completed items', 500));
+  }
+});
+
+// Get shopping list statistics
+router.get('/stats', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const stats = await client.query(`
+        SELECT 
+          COUNT(*) as total_items,
+          COUNT(*) FILTER (WHERE completed = true) as completed_items,
+          COUNT(*) FILTER (WHERE completed = false) as pending_items,
+          COUNT(*) FILTER (WHERE needed_for_recipe = true) as recipe_items,
+          COUNT(DISTINCT category) as categories_count
+        FROM shopping_list_items 
+        WHERE user_id = $1
+      `, [req.user!.id]);
+
+      const categoryBreakdown = await client.query(`
+        SELECT category, COUNT(*) as count
+        FROM shopping_list_items 
+        WHERE user_id = $1 AND completed = false
+        GROUP BY category
+        ORDER BY count DESC
+      `, [req.user!.id]);
+
+      return res.json({
+        success: true,
+        stats: {
+          ...stats.rows[0],
+          categoryBreakdown: categoryBreakdown.rows,
+        },
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get shopping list stats error:', error);
+    return next(createError('Failed to get shopping list statistics', 500));
+  }
+});
+
+// Add multiple items from recipe
+router.post('/add-from-recipe', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { recipe_id, ingredients } = req.body;
+
+    if (!recipe_id || !ingredients || !Array.isArray(ingredients)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Recipe ID and ingredients array are required',
+      });
     }
 
-    const {itemId} = req.params;
-    if (!itemId) {
-      return res.status(400).json({error: 'Item ID is required'});
-    }
+    const client = await pool.connect();
+    try {
+      const addedItems = [];
+      const skippedItems = [];
 
-    // Get the item before toggling to check its current state
-    const items = await ShoppingListModel.getUserItems(userId);
-    const itemBeforeToggle = items.find(item => item.id === itemId);
+      for (const ingredient of ingredients) {
+        // Check if item already exists
+        const existingItem = await client.query(
+          'SELECT id FROM shopping_list_items WHERE user_id = $1 AND item_name = $2 AND completed = false',
+          [req.user!.id, ingredient]
+        );
 
-    if (!itemBeforeToggle) {
-      return res.status(404).json({error: 'Item not found'});
-    }
-
-    // Toggle the item
-    await ShoppingListModel.toggleItemCompleted(userId, itemId);
-
-    // Get the updated item
-    const updatedItems = await ShoppingListModel.getUserItems(userId);
-    const updatedItem = updatedItems.find(item => item.id === itemId);
-
-    if (!updatedItem) {
-      return res.status(404).json({error: 'Item not found after toggle'});
-    }
-
-    // If item was just marked as completed (bought), add to pantry
-    if (!itemBeforeToggle.isCompleted && updatedItem.isCompleted) {
-      try {
-        // Find or create ingredient
-        const ingredientName = updatedItem.ingredient.trim().toLowerCase();
-        let ingredient = await IngredientModel.findByName(ingredientName);
-
-        // If ingredient doesn't exist, create it as custom
-        if (!ingredient) {
-          ingredient = await IngredientModel.create({
-            name: updatedItem.ingredient,
-            category: updatedItem.category || 'other',
-            isCustom: true,
-          });
+        if (existingItem.rows.length > 0) {
+          skippedItems.push(ingredient);
+          continue;
         }
 
-        // Add to user's pantry
-        await IngredientModel.addUserIngredient(userId, {
-          ingredient_id: ingredient.id,
-          quantity: parseFloat(updatedItem.quantity) || 1,
-          unit: updatedItem.unit || 'piece',
-          notes: 'Added from shopping list',
-        });
-
-        console.log(
-          `✅ Added "${updatedItem.ingredient}" to pantry for user ${userId}`,
+        // Add new item
+        const result = await client.query(
+          `INSERT INTO shopping_list_items 
+           (user_id, item_name, category, needed_for_recipe, recipe_id, added_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           RETURNING *`,
+          [req.user!.id, ingredient, 'ingredients', true, recipe_id]
         );
-      } catch (pantryError) {
-        // Don't fail the toggle if pantry add fails
-        console.error('Failed to add to pantry:', pantryError);
+
+        addedItems.push(result.rows[0]);
       }
-    }
 
-    return res.json({
-      success: true,
-      message: updatedItem.isCompleted
-        ? 'Item marked as purchased and added to pantry'
-        : 'Item unmarked',
-      item: updatedItem,
-      addedToPantry: !itemBeforeToggle.isCompleted && updatedItem.isCompleted,
-    });
+      // Award points for adding recipe ingredients
+      if (addedItems.length > 0) {
+        await client.query(
+          'UPDATE users SET points = points + $1 WHERE id = $2',
+          [addedItems.length, req.user!.id]
+        );
+      }
+
+      logger.info(`Added ${addedItems.length} recipe ingredients to shopping list for user ${req.user!.id}`);
+
+      return res.json({
+        success: true,
+        message: `Added ${addedItems.length} ingredients to shopping list`,
+        addedItems,
+        skippedItems,
+        points_awarded: addedItems.length,
+      });
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('Toggle item error:', error);
-    return res.status(500).json({error: 'Failed to toggle item'});
-  }
-});
-
-// Delete shopping list item (authenticated)
-router.delete('/:itemId', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user?.id?.toString();
-    if (!userId) {
-      return res.status(401).json({error: 'Unauthorized'});
-    }
-
-    const {itemId} = req.params;
-    if (!itemId) {
-      return res.status(400).json({error: 'Item ID is required'});
-    }
-
-    await ShoppingListModel.removeItem(userId, itemId);
-    return res.json({success: true, message: 'Item removed'});
-  } catch (_error) {
-    return res.status(500).json({error: 'Failed to remove item'});
-  }
-});
-
-// Update shopping list item (legacy)
-router.put('/user/:userId/items/:itemId', async (req, res) => {
-  try {
-    const {userId, itemId} = req.params;
-    const {ingredient, quantity, unit, category} = req.body;
-
-    await ShoppingListModel.updateItem(
-      userId,
-      itemId,
-      ingredient,
-      quantity,
-      unit,
-      category,
-    );
-    res.json({success: true, message: 'Item updated'});
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to update item'});
-  }
-});
-
-// Toggle item completion (legacy)
-router.patch('/user/:userId/items/:itemId/toggle', async (req, res) => {
-  try {
-    const {userId, itemId} = req.params;
-
-    await ShoppingListModel.toggleItemCompleted(userId, itemId);
-    res.json({success: true, message: 'Item status updated'});
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to toggle item'});
-  }
-});
-
-// Delete shopping list item (legacy)
-router.delete('/user/:userId/items/:itemId', async (req, res) => {
-  try {
-    const {userId, itemId} = req.params;
-
-    await ShoppingListModel.removeItem(userId, itemId);
-    res.json({success: true, message: 'Item removed'});
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to remove item'});
-  }
-});
-
-// Add recipe ingredients to shopping list
-router.post('/user/:userId/recipe/:recipeId', async (req, res) => {
-  try {
-    const {userId, recipeId} = req.params;
-    const {ingredients} = req.body;
-
-    await ShoppingListModel.addRecipeIngredients(userId, recipeId, ingredients);
-    res.json({
-      success: true,
-      message: 'Recipe ingredients added to shopping list',
-    });
-  } catch (_error) {
-    res.status(500).json({error: 'Failed to add recipe ingredients'});
-  }
-});
-
-// Clear completed items (legacy)
-router.delete('/user/:userId/completed', async (req, res) => {
-  try {
-    const {userId} = req.params;
-
-    await ShoppingListModel.clearCompleted(userId);
-    res.json({success: true, message: 'Completed items cleared'});
-  } catch (error) {
-    console.error('Clear completed (legacy) error:', error);
-    res.status(500).json({error: 'Failed to clear completed items'});
+    logger.error('Add recipe ingredients error:', error);
+    return next(createError('Failed to add recipe ingredients to shopping list', 500));
   }
 });
 

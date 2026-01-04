@@ -1,137 +1,96 @@
-import {Router, Request, Response} from 'express';
-import {body, validationResult} from 'express-validator';
-import {UserModel} from '../models/User';
-import {
-  generateToken,
-  authenticateToken,
-  AuthRequest,
-} from '../middleware/auth';
-// import axios from 'axios'; // Removed - using require() instead
-// import ActivityTracker from '../services/ActivityTracker';
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
+import { pool } from '../server';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { logger } from '../utils/logger';
+import { createError } from '../middleware/errorHandler';
 
-const router = Router();
+const router = express.Router();
 
 // Register endpoint
-router.post(
-  '/register',
-  [
-    body('email').isEmail().normalizeEmail(),
-    body('password')
-      .isLength({min: 8})
-      .withMessage('Password must be at least 8 characters'),
-    body('age_verified')
-      .isBoolean()
-      .custom((value: boolean) => {
-        if (!value) {
-          throw new Error('You must verify you are 13 years or older');
-        }
-        return true;
-      }),
-    body('first_name').optional().trim().isLength({min: 1, max: 50}),
-    body('last_name').optional().trim().isLength({min: 1, max: 50}),
-  ],
-  async (req: Request, res: Response): Promise<void> => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          error: 'Validation failed',
-          details: errors.array(),
-        });
-        return;
-      }
+router.post('/register', async (req, res, next) => {
+  try {
+    const { email, password, first_name, last_name, age_verified } = req.body;
 
-      const {email, password, first_name, last_name} = req.body;
-
-      // Check if user already exists
-      const existingUser = await UserModel.findByEmail(email);
-      if (existingUser) {
-        res.status(409).json({
-          error: 'User already exists',
-          message: 'An account with this email already exists',
-        });
-        return;
-      }
-
-      // Create user with UserModel (PostgreSQL)
-      const user = await UserModel.create({
-        email,
-        password,
-        first_name,
-        last_name,
-        age_verified: true,
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
       });
+    }
 
-      const token = generateToken(user.id);
+    if (!age_verified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Age verification is required',
+      });
+    }
 
-      // Send Discord notification for new user registration
-      try {
-        const webhookUrl =
-          process.env.DISCORD_ACTIVITY_WEBHOOK ||
-          process.env.DISCORD_WEBHOOK_URL;
-        if (webhookUrl) {
-          const axios = require('axios');
-          await axios.post(webhookUrl, {
-            embeds: [
-              {
-                title: '🎉 New User Registration',
-                color: 0x00ff00, // Green color
-                fields: [
-                  {
-                    name: 'User Details',
-                    value: `**Email:** ${email}\n**Name:** ${first_name || 'Not provided'} ${last_name || ''}\n**User ID:** ${user.id}`,
-                    inline: false,
-                  },
-                  {
-                    name: 'Account Type',
-                    value: user.is_creator
-                      ? '👑 Creator'
-                      : user.is_co_founder
-                        ? '🎉 Co-Founder'
-                        : user.is_special_user
-                          ? '💐 Special User'
-                          : '👤 Regular User',
-                    inline: true,
-                  },
-                  {
-                    name: 'Registration Time',
-                    value: new Date().toLocaleString(),
-                    inline: true,
-                  },
-                ],
-                footer: {
-                  text: 'Cook Smart - New User Alert',
-                },
-                timestamp: new Date().toISOString(),
-              },
-            ],
-          });
-          console.log('✅ Discord notification sent for new user registration');
-        }
-      } catch (discordError) {
-        console.error('Failed to send Discord notification:', discordError);
-        // Don't fail registration if Discord notification fails
+    const client = await pool.connect();
+    try {
+      // Check if user already exists
+      const existingUser = await client.query(
+        'SELECT id FROM users WHERE email = $1',
+        [email.toLowerCase()]
+      );
+
+      if (existingUser.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: 'User already exists with this email',
+        });
       }
 
-      let welcomeMessage = 'Account created successfully';
-      let specialMessage = undefined;
+      // Hash password
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      if (user.is_creator) {
-        welcomeMessage = 'Welcome back, Creator! 👑';
-        specialMessage =
-          'Thank you for building Cook Smart! You have lifetime access to all features and full admin control.';
-      } else if (user.is_co_founder) {
-        welcomeMessage = 'Welcome back, Co-Founder! 🎉';
-        specialMessage =
-          'Thank you for inspiring Cook Smart! You have lifetime access to all features.';
-      } else if (user.is_special_user) {
-        welcomeMessage = 'Welcome! 💐';
-        specialMessage =
-          'You have lifetime access to all features. Enjoy Cook Smart!';
-      }
+      // Create user
+      const userId = uuidv4();
+      const result = await client.query(
+        `INSERT INTO users (
+          id, email, password_hash, first_name, last_name, 
+          is_admin, is_co_founder, is_special_user, is_creator, is_developer,
+          has_lifetime_subscription, subscription_status, points,
+          age_verified, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+        RETURNING id, email, first_name, last_name, is_co_founder, is_special_user, 
+                  is_creator, is_developer, has_lifetime_subscription, subscription_status, points`,
+        [
+          userId,
+          email.toLowerCase(),
+          hashedPassword,
+          first_name || null,
+          last_name || null,
+          false, // is_admin
+          false, // is_co_founder
+          false, // is_special_user
+          false, // is_creator
+          false, // is_developer
+          false, // has_lifetime_subscription
+          'free', // subscription_status
+          0, // points
+          age_verified,
+        ]
+      );
 
-      res.status(201).json({
-        message: welcomeMessage,
+      const user = result.rows[0];
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '90d' }
+      );
+
+      logger.info(`New user registered: ${email}`);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Account created successfully',
         token,
         user: {
           id: user.id,
@@ -141,71 +100,80 @@ router.post(
           is_co_founder: user.is_co_founder,
           is_special_user: user.is_special_user,
           is_creator: user.is_creator,
+          is_developer: user.is_developer,
           has_lifetime_subscription: user.has_lifetime_subscription,
           subscription_status: user.subscription_status,
           points: user.points,
         },
-        ...(specialMessage && {
-          special_message: specialMessage,
-          lifetime_access: true,
-        }),
       });
-    } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({
-        error: 'Registration failed',
-        message: 'Unable to create account. Please try again.',
-      });
+    } finally {
+      client.release();
     }
-  },
-);
+  } catch (error) {
+    logger.error('Registration error:', error);
+    return next(createError('Registration failed', 500));
+  }
+});
 
 // Login endpoint
-router.post(
-  '/login',
-  [body('email').isEmail().normalizeEmail(), body('password').notEmpty()],
-  async (req: Request, res: Response): Promise<void> => {
+router.post('/login', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+      });
+    }
+
+    const client = await pool.connect();
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          error: 'Validation failed',
-          details: errors.array(),
+      // Get user from database
+      const result = await client.query(
+        `SELECT id, email, password_hash, first_name, last_name, 
+                is_admin, is_co_founder, is_special_user, is_creator, is_developer,
+                has_lifetime_subscription, subscription_status, points,
+                dietary_restrictions, allergies, show_nutrition, preferred_units
+         FROM users WHERE email = $1`,
+        [email.toLowerCase()]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password',
         });
-        return;
       }
 
-      const {email, password} = req.body;
-
-      // Find user in PostgreSQL database
-      const user = await UserModel.findByEmail(email);
-      if (!user) {
-        res.status(401).json({
-          error: 'Invalid credentials',
-          message: 'Email or password is incorrect',
-        });
-        return;
-      }
+      const user = result.rows[0];
 
       // Verify password
-      const isValidPassword = await UserModel.verifyPassword(
-        password,
-        user.password_hash,
-      );
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
       if (!isValidPassword) {
-        res.status(401).json({
-          error: 'Invalid credentials',
-          message: 'Email or password is incorrect',
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password',
         });
-        return;
       }
 
       // Update last login
-      await UserModel.updateLastLogin(user.id);
+      await client.query(
+        'UPDATE users SET last_login_at = NOW() WHERE id = $1',
+        [user.id]
+      );
 
-      const token = generateToken(user.id);
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '90d' }
+      );
 
-      res.json({
+      logger.info(`User logged in: ${email}`);
+
+      // Prepare response
+      const response: any = {
         success: true,
         message: 'Login successful',
         token,
@@ -214,110 +182,83 @@ router.post(
           email: user.email,
           first_name: user.first_name,
           last_name: user.last_name,
-          is_admin: user.is_admin,
           is_co_founder: user.is_co_founder,
           is_special_user: user.is_special_user,
           is_creator: user.is_creator,
+          is_developer: user.is_developer,
           has_lifetime_subscription: user.has_lifetime_subscription,
           subscription_status: user.subscription_status,
           points: user.points,
+          dietary_restrictions: user.dietary_restrictions,
+          allergies: user.allergies,
+          show_nutrition: user.show_nutrition,
+          preferred_units: user.preferred_units,
         },
-      });
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({
-        error: 'Login failed',
-        message: 'Unable to log in. Please try again.',
-      });
+      };
+
+      // Add special messages for special users
+      if (user.is_co_founder) {
+        response.special_message = 'Welcome back, Co-Founder! 🚀';
+      } else if (user.is_special_user) {
+        response.special_message = 'Welcome back, Special User! ⭐';
+      } else if (user.has_lifetime_subscription) {
+        response.lifetime_access = true;
+        response.special_message = 'Lifetime access active! 🎉';
+      }
+
+      return res.json(response);
+    } finally {
+      client.release();
     }
-  },
-);
+  } catch (error) {
+    logger.error('Login error:', error);
+    return next(createError('Login failed', 500));
+  }
+});
+
+// Get current user
+router.get('/me', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT id, email, first_name, last_name, 
+                is_admin, is_co_founder, is_special_user, is_creator, is_developer,
+                has_lifetime_subscription, subscription_status, points,
+                dietary_restrictions, allergies, show_nutrition, preferred_units,
+                created_at, last_login_at
+         FROM users WHERE id = $1`,
+        [req.user!.id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+      }
+
+      return res.json({
+        success: true,
+        user: result.rows[0],
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get user error:', error);
+    return next(createError('Failed to get user data', 500));
+  }
+});
 
 // Logout endpoint
-router.post(
-  '/logout',
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
-    // For JWT tokens, logout is handled client-side by removing the token
-    // We can optionally add token blacklisting here in the future
-    res.json({
-      success: true,
-      message: 'Logged out successfully',
-    });
-  },
-);
-
-// Get current user profile
-router.get(
-  '/me',
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
-    res.json({
-      user: {
-        id: req.user.id,
-        email: req.user.email,
-        first_name: req.user.first_name,
-        last_name: req.user.last_name,
-        is_admin: req.user.is_admin,
-        is_co_founder: req.user.is_co_founder,
-        is_special_user: req.user.is_special_user,
-        is_creator: req.user.is_creator,
-        has_lifetime_subscription: req.user.has_lifetime_subscription,
-        subscription_status: req.user.subscription_status,
-        points: req.user.points,
-        dietary_restrictions: req.user.dietary_restrictions,
-        allergies: req.user.allergies,
-        show_nutrition: req.user.show_nutrition,
-        preferred_units: req.user.preferred_units,
-      },
-    });
-  },
-);
-
-// GDPR Data Export
-router.get(
-  '/export-data',
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const userData = await UserModel.exportUserData(req.user.id);
-
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename="cook-smart-data-${req.user.id}.json"`,
-      );
-      res.json(userData);
-    } catch (error) {
-      console.error('Data export error:', error);
-      res.status(500).json({
-        error: 'Export failed',
-        message: 'Unable to export your data. Please try again.',
-      });
-    }
-  },
-);
-
-// GDPR Data Deletion
-router.delete(
-  '/delete-account',
-  authenticateToken,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      await UserModel.deleteUser(req.user.id);
-
-      res.json({
-        message: 'Account deleted successfully',
-        note: 'All your data has been permanently removed from our systems',
-      });
-    } catch (error) {
-      console.error('Account deletion error:', error);
-      res.status(500).json({
-        error: 'Deletion failed',
-        message: 'Unable to delete account. Please contact support.',
-      });
-    }
-  },
-);
+router.post('/logout', authenticateToken, (req: AuthRequest, res) => {
+  // In a stateless JWT system, logout is handled client-side
+  // by removing the token from storage
+  res.json({
+    success: true,
+    message: 'Logged out successfully',
+  });
+});
 
 export default router;

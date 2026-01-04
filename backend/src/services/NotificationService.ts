@@ -136,7 +136,7 @@ class NotificationService {
       // CRITICAL: Never throw errors from notification service to prevent cascades
       console.error(
         'Discord notification failed (non-critical):',
-        notificationError.message,
+        (notificationError as Error).message,
       );
       // Don't re-throw - this prevents cascade errors
     }
@@ -171,7 +171,7 @@ class NotificationService {
       // CRITICAL: Never throw errors from notification service to prevent cascades
       console.error(
         'Discord feedback notification failed (non-critical):',
-        notificationError.message,
+        (notificationError as Error).message,
       );
       // Don't re-throw - this prevents cascade errors
     }
@@ -198,7 +198,7 @@ class NotificationService {
       // CRITICAL: Never throw errors from notification service to prevent cascades
       console.error(
         'Discord activity notification failed (non-critical):',
-        notificationError.message,
+        (notificationError as Error).message,
       );
       // Don't re-throw - this prevents cascade errors
     }

@@ -104,9 +104,9 @@ const HomeScreen: React.FC = () => {
     },
   };
 
-  // Special button for Mom 💐
-  const momAction = {
-    id: 'mom-letter',
+  // Special button for Mom (Donna) 💐
+  const donnaAction = {
+    id: 'donna-letter',
     title: '💐 Thank You, Mom',
     subtitle: 'From Brad',
     icon: 'favorite',
@@ -115,7 +115,23 @@ const HomeScreen: React.FC = () => {
       // Navigate to root stack screen
       const parent = navigation.getParent();
       if (parent) {
-        parent.navigate('SpecialUserWelcome' as never);
+        parent.navigate('CoFounderWelcome' as never);
+      }
+    },
+  };
+
+  // Special button for Lori (Briana's Mom) 💕
+  const loriAction = {
+    id: 'lori-letter',
+    title: '💕 Message from Sweetpea',
+    subtitle: 'From your daughter',
+    icon: 'favorite',
+    color: '#EC4899',
+    onPress: () => {
+      // Navigate to root stack screen
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.navigate('CoFounderWelcome' as never);
       }
     },
   };
@@ -131,10 +147,12 @@ const HomeScreen: React.FC = () => {
             What would you like to cook today?
           </Text>
         </View>
-        {user?.is_co_founder && (
+        {(user?.is_co_founder || user?.is_developer) && (
           <View style={styles.coFounderBadge}>
             <Text style={styles.coFounderEmoji}>👑</Text>
-            <Text style={styles.coFounderText}>Co-Founder</Text>
+            <Text style={styles.coFounderText}>
+              {user?.is_developer ? 'Developer' : 'Co-Founder'}
+            </Text>
           </View>
         )}
       </View>
@@ -159,7 +177,7 @@ const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
           {/* Special button for Briana ❤️ */}
-          {user?.is_co_founder && (
+          {user?.is_creator && (
             <TouchableOpacity
               key={brianaAction.id}
               style={[styles.actionCard, styles.specialCard]}
@@ -179,21 +197,38 @@ const HomeScreen: React.FC = () => {
               <Text style={styles.actionSubtitle}>{brianaAction.subtitle}</Text>
             </TouchableOpacity>
           )}
-          {/* Special button for Mom 💐 */}
-          {user?.is_special_user && (
+          {/* Special button for Donna (Brad's Mom) 💐 */}
+          {user?.is_special_user && user?.email === 'dwoodswoods2@gmail.com' && (
             <TouchableOpacity
-              key={momAction.id}
+              key={donnaAction.id}
               style={[styles.actionCard, styles.specialCard]}
-              onPress={momAction.onPress}>
+              onPress={donnaAction.onPress}>
               <View
                 style={[
                   styles.iconContainer,
-                  {backgroundColor: `${momAction.color}15`},
+                  {backgroundColor: `${donnaAction.color}15`},
                 ]}>
-                <Icon name={momAction.icon} size={32} color={momAction.color} />
+                <Icon name={donnaAction.icon} size={32} color={donnaAction.color} />
               </View>
-              <Text style={styles.actionTitle}>{momAction.title}</Text>
-              <Text style={styles.actionSubtitle}>{momAction.subtitle}</Text>
+              <Text style={styles.actionTitle}>{donnaAction.title}</Text>
+              <Text style={styles.actionSubtitle}>{donnaAction.subtitle}</Text>
+            </TouchableOpacity>
+          )}
+          {/* Special button for Lori (Briana's Mom) 💕 */}
+          {user?.is_special_user && user?.email === 'boldtcu@gmail.com' && (
+            <TouchableOpacity
+              key={loriAction.id}
+              style={[styles.actionCard, styles.specialCard]}
+              onPress={loriAction.onPress}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  {backgroundColor: `${loriAction.color}15`},
+                ]}>
+                <Icon name={loriAction.icon} size={32} color={loriAction.color} />
+              </View>
+              <Text style={styles.actionTitle}>{loriAction.title}</Text>
+              <Text style={styles.actionSubtitle}>{loriAction.subtitle}</Text>
             </TouchableOpacity>
           )}
         </View>

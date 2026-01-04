@@ -153,9 +153,11 @@ const MainTabNavigator = () => {
             <View style={styles.betaBadge}>
               <Text style={styles.betaText}>BETA</Text>
             </View>
-            {user?.is_co_founder && (
+            {(user?.is_co_founder || user?.is_creator || user?.is_developer) && (
               <View style={styles.coFounderBadgeSmall}>
-                <Text style={styles.coFounderTextSmall}>👑</Text>
+                <Text style={styles.coFounderTextSmall}>
+                  {user?.is_developer ? '💻' : user?.is_creator ? '💕' : '👑'}
+                </Text>
               </View>
             )}
           </View>

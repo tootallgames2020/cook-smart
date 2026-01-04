@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Cook Smart Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cook-smart-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=${DB_HOST:-cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-cooksmartdb}
+      - DB_USER=${DB_USER:-cooksmartadmin}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - FATSECRET_CLIENT_ID=${FATSECRET_CLIENT_ID}
+      - FATSECRET_CLIENT_SECRET=${FATSECRET_CLIENT_SECRET}
+    volumes:
+      - ./backend/logs:/var/log/cook-smart
+    networks:
+      - cook-smart-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Reverse Proxy (for local SSL testing)
+  nginx:
+    image: nginx:alpine
+    container_name: cook-smart-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - cook-smart-network
+
+networks:
+  cook-smart-network:
+    driver: bridge
+
+volumes:
+  cook-smart-logs:
