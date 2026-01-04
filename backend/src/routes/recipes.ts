@@ -53,25 +53,54 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
         const matchedIngredients: string[] = [];
         const missingIngredients: string[] = [];
 
+        logger.info(`Checking recipe "${recipe.title}" with ingredients: ${recipeIngredients.join(', ')}`);
+
         recipeIngredients.forEach(recipeIng => {
+          // Clean recipe ingredient for better matching
+          const cleanRecipeIng = recipeIng
+            .replace(/^\d+\s*(cups?|tbsp|tsp|oz|lbs?|grams?|kg|ml|l|pieces?|slices?|cloves?|medium|large|small|whole|fresh|dried|chopped|diced|minced|ground|shredded|grated|cooked|raw|organic|extra|virgin|unsalted|salted|fat-free|low-fat|non-fat|reduced|light|heavy|thick|thin|fine|coarse)\s*/gi, '')
+            .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical content
+            .replace(/\s*,.*$/g, '') // Remove everything after first comma
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim();
+
           // Check for exact matches or partial matches
           const isMatch = userIngredients.some(userIng => {
-            // Exact match
-            if (userIng === recipeIng) return true;
+            // Clean user ingredient for better matching
+            const cleanUserIng = userIng
+              .replace(/^\d+\s*(cups?|tbsp|tsp|oz|lbs?|grams?|kg|ml|l|pieces?|slices?|cloves?|medium|large|small|whole|fresh|dried|chopped|diced|minced|ground|shredded|grated|cooked|raw|organic|extra|virgin|unsalted|salted|fat-free|low-fat|non-fat|reduced|light|heavy|thick|thin|fine|coarse)\s*/gi, '')
+              .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical content
+              .replace(/\s*,.*$/g, '') // Remove everything after first comma
+              .replace(/^or\s+\d+\s+/gi, '') // Remove "or 1 packet" type prefixes
+              .replace(/^yields\s+/gi, '') // Remove "yields" prefix
+              .replace(/^tbsps?\s+/gi, '') // Remove "tbsp" prefix
+              .replace(/\s+/g, ' ') // Normalize whitespace
+              .trim();
+
+            // Exact match after cleaning
+            if (cleanUserIng === cleanRecipeIng) return true;
             
-            // Partial match - check if user ingredient contains recipe ingredient or vice versa
-            if (userIng.includes(recipeIng) || recipeIng.includes(userIng)) return true;
+            // Partial match - check if cleaned ingredients contain each other
+            if (cleanUserIng.includes(cleanRecipeIng) || cleanRecipeIng.includes(cleanUserIng)) return true;
             
             // Word-based matching for compound ingredients
-            const userWords = userIng.split(' ');
-            const recipeWords = recipeIng.split(' ');
+            const userWords = cleanUserIng.split(' ').filter(w => w.length > 2);
+            const recipeWords = cleanRecipeIng.split(' ').filter(w => w.length > 2);
             
-            return userWords.some((userWord: string) => 
+            // Check if any significant words match
+            const hasWordMatch = userWords.some((userWord: string) => 
               recipeWords.some((recipeWord: string) => 
-                userWord.length > 2 && recipeWord.length > 2 && 
-                (userWord.includes(recipeWord) || recipeWord.includes(userWord))
+                userWord === recipeWord || 
+                userWord.includes(recipeWord) || 
+                recipeWord.includes(userWord)
               )
             );
+
+            if (hasWordMatch) {
+              logger.info(`Match found: "${cleanUserIng}" matches "${cleanRecipeIng}"`);
+            }
+
+            return hasWordMatch;
           });
 
           if (isMatch) {
@@ -85,6 +114,8 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
         const matchPercentage = recipeIngredients.length > 0 
           ? Math.round((matchCount / recipeIngredients.length) * 100)
           : 0;
+
+        logger.info(`Recipe "${recipe.title}": ${matchCount}/${recipeIngredients.length} ingredients matched (${matchPercentage}%)`);
 
         return {
           ...recipe,
