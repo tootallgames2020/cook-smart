@@ -291,6 +291,7 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         
         <IngredientsList
           ingredients={recipe.ingredients}
+          ingredientsWithStatus={getIngredientsWithStatus()}
           conflictingIngredients={[]} // TODO: Implement dietary conflict detection
           substitutions={[]} // TODO: Implement ingredient substitutions
           servings={servings}

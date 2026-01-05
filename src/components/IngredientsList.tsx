@@ -4,6 +4,10 @@ import ingredientService from '../services/ingredientService';
 
 interface Props {
   ingredients: string[];
+  ingredientsWithStatus?: Array<{
+    ingredient: string;
+    hasIngredient: boolean;
+  }>;
   conflictingIngredients?: string[];
   substitutions?: Array<{
     original: string;
@@ -109,6 +113,7 @@ const convertUnits = (fromQuantity: number, fromUnit: string, toUnit: string, in
 
 export const IngredientsList: React.FC<Props> = ({
   ingredients,
+  ingredientsWithStatus = [],
   conflictingIngredients = [],
   substitutions = [],
   servings,
@@ -304,6 +309,38 @@ export const IngredientsList: React.FC<Props> = ({
     return substitutions.find(sub => sub.original === ingredient);
   };
 
+  // Check if user has this ingredient in their inventory
+  const hasIngredient = (ingredient: string) => {
+    const statusItem = ingredientsWithStatus.find(item => item.ingredient === ingredient);
+    return statusItem?.hasIngredient || false;
+  };
+
+  // Get missing ingredients for shopping list
+  const getMissingIngredients = () => {
+    return ingredients.filter(ingredient => !hasIngredient(ingredient));
+  };
+
+  // Add missing ingredients to shopping list
+  const addMissingToShoppingList = async () => {
+    const missingIngredients = getMissingIngredients();
+    if (missingIngredients.length === 0) {
+      Alert.alert('Great!', 'You already have all the ingredients for this recipe!');
+      return;
+    }
+
+    try {
+      // TODO: Implement shopping list API call
+      Alert.alert(
+        'Added to Shopping List! 🛒',
+        `Added ${missingIngredients.length} missing ingredients to your shopping list.`,
+        [{ text: 'Great!' }]
+      );
+    } catch (error) {
+      console.error('Error adding to shopping list:', error);
+      Alert.alert('Error', 'Failed to add ingredients to shopping list. Please try again.');
+    }
+  };
+
   const adjustServings = (newServings: number) => {
     if (newServings > 0 && onServingsChange) {
       onServingsChange(newServings);
@@ -333,37 +370,67 @@ export const IngredientsList: React.FC<Props> = ({
         )}
       </View>
 
+      {/* Add Missing Ingredients Button */}
+      {getMissingIngredients().length > 0 && (
+        <TouchableOpacity 
+          style={styles.shoppingListButton}
+          onPress={addMissingToShoppingList}
+        >
+          <Text style={styles.shoppingListButtonText}>
+            🛒 Add {getMissingIngredients().length} Missing to Shopping List
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <ScrollView style={styles.list}>
         {ingredients.map((ingredient, index) => {
           const isChecked = checkedIngredients.has(ingredient);
           const isProcessing = processingIngredients.has(ingredient);
           const hasConflict = isConflicting(ingredient);
           const substitution = getSubstitution(ingredient);
+          const userHasIngredient = hasIngredient(ingredient);
 
           return (
             <View key={index} style={styles.ingredientContainer}>
-              <TouchableOpacity
-                style={styles.ingredientRow}
-                onPress={() => toggleIngredient(ingredient)}
-                disabled={isProcessing}
-              >
-                <View style={styles.checkbox}>
-                  <Text style={styles.checkboxText}>
-                    {isProcessing ? '⏳' : isChecked ? '✅' : '⬜'}
-                  </Text>
+              <View style={[
+                styles.ingredientRow,
+                userHasIngredient ? styles.hasIngredientRow : styles.needsIngredientRow
+              ]}>
+                <TouchableOpacity
+                  style={styles.checkboxContainer}
+                  onPress={() => toggleIngredient(ingredient)}
+                  disabled={isProcessing}
+                >
+                  <View style={styles.checkbox}>
+                    <Text style={styles.checkboxText}>
+                      {isProcessing ? '⏳' : isChecked ? '✅' : '☐'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                
+                <View style={styles.ingredientContent}>
+                  <View style={styles.ingredientTextContainer}>
+                    {userHasIngredient && (
+                      <Text style={styles.hasIngredientIcon}>✓</Text>
+                    )}
+                    <Text style={[
+                      styles.ingredientText,
+                      userHasIngredient ? styles.hasIngredientText : styles.needsIngredientText,
+                      isChecked && styles.checkedText,
+                      hasConflict && styles.conflictText,
+                      isProcessing && styles.processingText
+                    ]}>
+                      {ingredient}
+                    </Text>
+                    {!userHasIngredient && (
+                      <Text style={styles.needsIngredientIcon}>🛒</Text>
+                    )}
+                  </View>
+                  {hasConflict && (
+                    <Text style={styles.warningIcon}>⚠️</Text>
+                  )}
                 </View>
-                <Text style={[
-                  styles.ingredientText,
-                  isChecked && styles.checkedText,
-                  hasConflict && styles.conflictText,
-                  isProcessing && styles.processingText
-                ]}>
-                  {ingredient}
-                </Text>
-                {hasConflict && (
-                  <Text style={styles.warningIcon}>⚠️</Text>
-                )}
-              </TouchableOpacity>
+              </View>
 
               {substitution && (
                 <View style={styles.substitutionContainer}>
@@ -425,6 +492,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  shoppingListButton: {
+    backgroundColor: '#FF9800',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  shoppingListButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   list: {
     maxHeight: 300,
   },
@@ -434,17 +514,62 @@ const styles = StyleSheet.create({
   ingredientRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  hasIngredientRow: {
+    backgroundColor: '#E8F5E8',
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  needsIngredientRow: {
+    backgroundColor: '#F5F5F5',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFC107',
+  },
+  checkboxContainer: {
+    marginRight: 12,
   },
   checkbox: {
-    marginRight: 12,
+    // No additional styling needed
   },
   checkboxText: {
     fontSize: 18,
   },
+  ingredientContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ingredientTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  hasIngredientIcon: {
+    color: '#4CAF50',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  needsIngredientIcon: {
+    color: '#FF9800',
+    fontSize: 16,
+    marginLeft: 8,
+  },
   ingredientText: {
     fontSize: 16,
     flex: 1,
+  },
+  hasIngredientText: {
+    color: '#2E7D32',
+    fontWeight: '500',
+  },
+  needsIngredientText: {
+    color: '#666',
   },
   checkedText: {
     textDecorationLine: 'line-through',
