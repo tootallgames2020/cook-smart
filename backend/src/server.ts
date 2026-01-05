@@ -149,6 +149,7 @@ app.get('/health', async (req, res) => {
         dietary: '/api/v1/dietary/*',
         shopping: '/api/v1/shopping-list/*',
         points: '/api/v1/points/*',
+        achievements: '/api/v1/achievements/*',
         referrals: '/api/v1/referrals/*',
         subscriptions: '/api/v1/subscriptions/*',
         payments: '/api/v1/payments/*',
