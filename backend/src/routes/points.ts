@@ -9,6 +9,13 @@ const router = express.Router();
 // Get user's points summary (root endpoint)
 router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
+    // Prevent caching to ensure fresh points data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     const client = await pool.connect();
     try {
       const result = await client.query(
@@ -16,9 +23,12 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
         [req.user!.id]
       );
 
+      const points = result.rows[0]?.points || 0;
+      logger.info(`Points for user ${req.user!.id}: ${points}`);
+
       res.json({
         success: true,
-        points: result.rows[0]?.points || 0,
+        points: points,
       });
     } finally {
       client.release();
@@ -32,6 +42,13 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
 // Get user's points
 router.get('/my-points', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
+    // Prevent caching to ensure fresh points data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     const client = await pool.connect();
     try {
       const result = await client.query(
@@ -39,9 +56,12 @@ router.get('/my-points', authenticateToken, async (req: AuthRequest, res, next) 
         [req.user!.id]
       );
 
+      const points = result.rows[0]?.points || 0;
+      logger.info(`My-points for user ${req.user!.id}: ${points}`);
+
       res.json({
         success: true,
-        points: result.rows[0]?.points || 0,
+        points: points,
       });
     } finally {
       client.release();

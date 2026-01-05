@@ -278,6 +278,23 @@ router.post('/mark-cooked', authenticateToken, async (req: AuthRequest, res): Pr
       // Don't fail the main request if tracking fails
     }
 
+    // Award points for cooking the recipe
+    try {
+      const client = await pool.connect();
+      try {
+        await client.query(
+          'UPDATE users SET points = points + 10 WHERE id = $1',
+          [userId]
+        );
+        logger.info(`Awarded 10 points to user ${userId} for cooking recipe`);
+      } finally {
+        client.release();
+      }
+    } catch (pointsError) {
+      logger.error('Points awarding error:', pointsError);
+      // Don't fail the main request if points fail
+    }
+
     res.json({
       success: true,
       message: 'Recipe marked as cooked successfully!',
