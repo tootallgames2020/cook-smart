@@ -198,13 +198,14 @@ router.delete(
 );
 
 // MARK RECIPE AS COOKED (Frontend expects this endpoint)
-router.post('/mark-cooked', authenticateToken, async (req: AuthRequest, res) => {
+router.post('/mark-cooked', authenticateToken, async (req: AuthRequest, res): Promise<void> => {
   try {
     const userId = req.user!.id as string;
     const { recipeId, recipeType } = req.body;
 
     if (!recipeId) {
-      return res.status(400).json({ error: 'Recipe ID is required' });
+      res.status(400).json({ error: 'Recipe ID is required' });
+      return;
     }
 
     // Mark recipe as cooked in cooking history
@@ -212,8 +213,8 @@ router.post('/mark-cooked', authenticateToken, async (req: AuthRequest, res) => 
       userId,
       recipeId,
       recipeType || 'api',
-      null, // rating (optional)
-      null, // notes (optional)
+      undefined, // rating (optional)
+      undefined, // notes (optional)
     );
 
     // Track cooking for achievements
