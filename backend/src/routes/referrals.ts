@@ -7,7 +7,81 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
-// Generate referral code for user
+// Create/Get referral code for user (matches frontend expectation)
+router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Check if user already has an active referral code
+      const existingCode = await client.query(
+        'SELECT referral_code FROM referrals WHERE referrer_id = $1 AND status = $2 ORDER BY created_at DESC LIMIT 1',
+        [req.user!.id, 'active']
+      );
+
+      if (existingCode.rows.length > 0) {
+        return res.json({
+          success: true,
+          referralCode: existingCode.rows[0].referral_code,
+          message: 'Using existing referral code',
+        });
+      }
+
+      // Generate new referral code
+      const referralCode = `COOK${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // Insert new referral code
+      await client.query(`
+        INSERT INTO referrals (referrer_id, referral_code, status, created_at, expires_at)
+        VALUES ($1, $2, 'active', NOW(), NOW() + INTERVAL '1 year')
+      `, [req.user!.id, referralCode]);
+
+      return res.json({
+        success: true,
+        referralCode: referralCode,
+        message: 'New referral code generated',
+        shareUrl: `${process.env.APP_URL || 'https://cooksmartapp.com'}/signup?ref=${referralCode}`,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Generate referral code error:', error);
+    return next(createError('Failed to generate referral code', 500));
+  }
+});
+
+// Get user's referral access info (matches frontend expectation)
+router.get('/access-info', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Get referral statistics for access info
+      const stats = await client.query(`
+        SELECT 
+          COALESCE(SUM(CASE WHEN reward_granted = true THEN reward_months ELSE 0 END), 0) as total_months_earned,
+          COUNT(CASE WHEN status = 'completed' AND subscription_purchased = true THEN 1 END) as active_referrals
+        FROM referrals 
+        WHERE referrer_id = $1
+      `, [req.user!.id]);
+
+      const statsData = stats.rows[0];
+
+      return res.json({
+        success: true,
+        totalMonthsEarned: parseInt(statsData.total_months_earned) || 0,
+        accessExtendedUntil: null, // TODO: Calculate based on subscription + earned months
+        activeReferrals: parseInt(statsData.active_referrals) || 0,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get referral access info error:', error);
+    return next(createError('Failed to get referral access info', 500));
+  }
+});
+
+// Generate referral code for user (legacy endpoint)
 router.post('/generate-code', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
     const client = await pool.connect();
@@ -158,6 +232,7 @@ router.get('/validate/:code', async (req, res, next) => {
       if (referral.rows.length === 0) {
         return res.status(404).json({
           success: false,
+          valid: false,
           message: 'Invalid or expired referral code',
         });
       }
@@ -336,7 +411,7 @@ router.post('/complete', async (req, res, next) => {
   }
 });
 
-// Get all referrals for user (detailed view)
+// Get all referrals for user (detailed view) - moved to end to avoid conflicts
 router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
     const client = await pool.connect();
