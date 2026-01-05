@@ -272,4 +272,126 @@ router.get('/export-data', authenticateToken, async (req: AuthRequest, res, next
   }
 });
 
+// Get two-factor authentication status
+router.get('/two-factor', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT two_factor_enabled FROM users WHERE id = $1',
+        [req.user!.id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+      }
+
+      return res.json({
+        success: true,
+        enabled: result.rows[0].two_factor_enabled || false,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get two-factor status error:', error);
+    return next(createError('Failed to get two-factor status', 500));
+  }
+});
+
+// Enable two-factor authentication
+router.post('/two-factor/enable', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Check if user already has 2FA enabled
+      const checkResult = await client.query(
+        'SELECT two_factor_enabled FROM users WHERE id = $1',
+        [req.user!.id]
+      );
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+      }
+
+      if (checkResult.rows[0].two_factor_enabled) {
+        return res.status(400).json({
+          success: false,
+          message: 'Two-factor authentication is already enabled',
+        });
+      }
+
+      // Generate a secret for 2FA (in production, use speakeasy or similar)
+      const secret = Math.random().toString(36).substring(2, 15) + 
+                    Math.random().toString(36).substring(2, 15);
+
+      const result = await client.query(`
+        UPDATE users
+        SET two_factor_enabled = TRUE,
+            two_factor_secret = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING two_factor_enabled
+      `, [secret, req.user!.id]);
+
+      logger.info(`Two-factor authentication enabled for user ${req.user!.id}`);
+
+      return res.json({
+        success: true,
+        message: 'Two-factor authentication enabled successfully',
+        enabled: result.rows[0].two_factor_enabled,
+        secret: secret, // In production, this should be a QR code
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Enable two-factor error:', error);
+    return next(createError('Failed to enable two-factor authentication', 500));
+  }
+});
+
+// Disable two-factor authentication
+router.post('/two-factor/disable', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        UPDATE users
+        SET two_factor_enabled = FALSE,
+            two_factor_secret = NULL,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING two_factor_enabled
+      `, [req.user!.id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+      }
+
+      logger.info(`Two-factor authentication disabled for user ${req.user!.id}`);
+
+      return res.json({
+        success: true,
+        message: 'Two-factor authentication disabled successfully',
+        enabled: result.rows[0].two_factor_enabled,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Disable two-factor error:', error);
+    return next(createError('Failed to disable two-factor authentication', 500));
+  }
+});
+
 export default router;
