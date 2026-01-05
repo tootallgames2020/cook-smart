@@ -99,7 +99,7 @@ export class AchievementService {
   /**
    * Get user's achievements
    */
-  static async getUserAchievements(userId: number): Promise<Achievement[]> {
+  static async getUserAchievements(userId: string): Promise<Achievement[]> {
     try {
       const result = await pool.query(
         'SELECT * FROM user_achievements WHERE user_id = $1 ORDER BY earned_at DESC',
@@ -115,7 +115,7 @@ export class AchievementService {
   /**
    * Get all available achievements with earned status
    */
-  static async getAllAchievements(userId: number) {
+  static async getAllAchievements(userId: string) {
     try {
       const earned = await this.getUserAchievements(userId);
       const earnedTypes = new Set(earned.map(a => a.achievement_type));
