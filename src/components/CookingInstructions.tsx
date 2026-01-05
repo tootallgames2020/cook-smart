@@ -167,7 +167,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   instructionsList: {
-    maxHeight: 400,
     marginBottom: 16,
   },
   instructionItem: {

@@ -9,7 +9,7 @@ import HomeScreen from '../screens/HomeScreen';
 import {IngredientInventoryScreen} from '../screens/ingredients/IngredientInventoryScreen';
 import {AddIngredientScreen} from '../screens/ingredients/AddIngredientScreen';
 import {RecipeSearchScreen} from '../screens/recipes/RecipeSearchScreen';
-import {RecipeDetailScreen} from '../screens/recipes/RecipeDetailScreen';
+import {RecipeDetailScreen} from '../screens/RecipeDetailScreen';
 import {SavedRecipesScreen} from '../screens/recipes/SavedRecipesScreen';
 import SubscriptionPlansScreen from '../screens/SubscriptionPlansScreen';
 import SubscriptionDetailsScreen from '../screens/SubscriptionDetailsScreen';

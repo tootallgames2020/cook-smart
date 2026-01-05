@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import {useIngredients} from '../../contexts/IngredientContext';
 import {IngredientCard} from '../../components/common/IngredientCard';
 import {Ingredient} from '../../services/ingredientService';
+import ingredientService from '../../services/ingredientService';
 
 interface GroupedIngredients {
   title: string;
@@ -70,6 +71,17 @@ export const IngredientInventoryScreen: React.FC = () => {
         },
       ],
     );
+  };
+
+  const handleFixCategories = async () => {
+    try {
+      await ingredientService.fixUncategorizedIngredients();
+      Alert.alert('Success', 'Fixed uncategorized ingredients! Refreshing list...');
+      await fetchIngredients();
+    } catch (err) {
+      console.error('Error fixing categories:', err);
+      Alert.alert('Error', 'Failed to fix categories. Please try again.');
+    }
   };
 
   const handleDeleteAll = () => {
@@ -142,15 +154,25 @@ export const IngredientInventoryScreen: React.FC = () => {
     const grouped: {[key: string]: Ingredient[]} = {};
 
     allIngredients.forEach(ingredient => {
-      const category = ingredient.category || 'Other';
+      // Better category fallback - handle null, undefined, empty string, or whitespace
+      let category = ingredient.category;
+      if (!category || category.trim() === '' || category.toLowerCase() === 'null') {
+        category = 'Uncategorized';
+      }
+      
       if (!grouped[category]) {
         grouped[category] = [];
       }
       grouped[category].push(ingredient);
     });
 
+    // Sort categories with "Uncategorized" at the end
     return Object.keys(grouped)
-      .sort()
+      .sort((a, b) => {
+        if (a === 'Uncategorized') return 1;
+        if (b === 'Uncategorized') return -1;
+        return a.localeCompare(b);
+      })
       .map(category => ({
         title: category,
         data: grouped[category],
@@ -203,6 +225,11 @@ export const IngredientInventoryScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.deleteAllContainer}>
+        <TouchableOpacity
+          style={styles.fixCategoriesButton}
+          onPress={handleFixCategories}>
+          <Text style={styles.fixCategoriesText}>🏷️ Fix Uncategorized Items</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.deleteAllButton}
           onPress={handleDeleteAll}>
@@ -305,6 +332,19 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 8,
     backgroundColor: '#F9FAFB',
+    gap: 8,
+  },
+  fixCategoriesButton: {
+    padding: 12,
+    backgroundColor: '#e3f2fd',
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2196f3',
+  },
+  fixCategoriesText: {
+    color: '#1976d2',
+    fontWeight: '600',
   },
   deleteAllButton: {
     padding: 12,

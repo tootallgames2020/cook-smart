@@ -54,6 +54,13 @@ export interface RecipeDetails {
   dishTypes: string[];
   instructions: string;
   ingredients: string[]; // Array of ingredient strings
+  ingredientsWithStatus?: Array<{
+    name: string;
+    hasIngredient: boolean;
+  }>; // Backend-provided ingredient matching data
+  matchPercentage?: number;
+  matchedCount?: number;
+  totalIngredients?: number;
   provider?: string;
   // Comprehensive nutrition info
   calories?: number;
@@ -251,6 +258,16 @@ class RecipeService {
           data.recipe.imageUrl ||
           '',
       };
+
+      console.log('[RecipeService] Recipe details received:', {
+        id: recipe.id,
+        title: recipe.title,
+        hasIngredientsWithStatus: !!recipe.ingredientsWithStatus,
+        ingredientsWithStatusCount: recipe.ingredientsWithStatus?.length || 0,
+        matchPercentage: recipe.matchPercentage,
+        matchedCount: recipe.matchedCount,
+        totalIngredients: recipe.totalIngredients,
+      });
 
       return recipe;
     } catch (error) {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import ingredientService from '../services/ingredientService';
 
 interface Props {
   ingredients: string[];
@@ -14,25 +15,283 @@ interface Props {
   }>;
   servings: number;
   onServingsChange?: (servings: number) => void;
+  onIngredientUsed?: (ingredient: string, quantity: number, unit: string) => void;
 }
+
+interface ParsedIngredient {
+  original: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+// Unit conversion system
+const UNIT_CONVERSIONS: { [key: string]: { [key: string]: number } } = {
+  // Weight conversions (to grams as base)
+  'lb': { 'g': 453.592, 'kg': 0.453592, 'oz': 16 },
+  'lbs': { 'g': 453.592, 'kg': 0.453592, 'oz': 16 },
+  'pound': { 'g': 453.592, 'kg': 0.453592, 'oz': 16 },
+  'pounds': { 'g': 453.592, 'kg': 0.453592, 'oz': 16 },
+  'oz': { 'g': 28.3495, 'lb': 0.0625 },
+  'ounce': { 'g': 28.3495, 'lb': 0.0625 },
+  'ounces': { 'g': 28.3495, 'lb': 0.0625 },
+  'kg': { 'g': 1000, 'lb': 2.20462 },
+  'g': { 'kg': 0.001, 'lb': 0.00220462, 'oz': 0.035274 },
+  'gram': { 'kg': 0.001, 'lb': 0.00220462, 'oz': 0.035274 },
+  'grams': { 'kg': 0.001, 'lb': 0.00220462, 'oz': 0.035274 },
+  
+  // Volume conversions (to ml as base)
+  'cup': { 'ml': 236.588, 'l': 0.236588, 'tbsp': 16, 'tsp': 48, 'fl oz': 8 },
+  'cups': { 'ml': 236.588, 'l': 0.236588, 'tbsp': 16, 'tsp': 48, 'fl oz': 8 },
+  'tbsp': { 'ml': 14.7868, 'cup': 0.0625, 'tsp': 3, 'fl oz': 0.5 },
+  'tablespoon': { 'ml': 14.7868, 'cup': 0.0625, 'tsp': 3, 'fl oz': 0.5 },
+  'tablespoons': { 'ml': 14.7868, 'cup': 0.0625, 'tsp': 3, 'fl oz': 0.5 },
+  'tsp': { 'ml': 4.92892, 'cup': 0.0208333, 'tbsp': 0.333333, 'fl oz': 0.166667 },
+  'teaspoon': { 'ml': 4.92892, 'cup': 0.0208333, 'tbsp': 0.333333, 'fl oz': 0.166667 },
+  'teaspoons': { 'ml': 4.92892, 'cup': 0.0208333, 'tbsp': 0.333333, 'fl oz': 0.166667 },
+  'l': { 'ml': 1000, 'cup': 4.22675 },
+  'liter': { 'ml': 1000, 'cup': 4.22675 },
+  'liters': { 'ml': 1000, 'cup': 4.22675 },
+  'ml': { 'l': 0.001, 'cup': 0.00422675, 'tbsp': 0.067628, 'tsp': 0.202884 },
+  'fl oz': { 'ml': 29.5735, 'cup': 0.125, 'tbsp': 2, 'tsp': 6 },
+  
+  // Special conversions for common ingredients
+  'flour': {
+    // 1 cup all-purpose flour ≈ 120g ≈ 0.26 lbs
+    'cup_to_lb': 0.26, 'cup_to_g': 120, 'cup_to_oz': 4.2,
+    'lb_to_cup': 3.85, 'g_to_cup': 0.0083, 'oz_to_cup': 0.24
+  },
+  'sugar': {
+    // 1 cup granulated sugar ≈ 200g ≈ 0.44 lbs
+    'cup_to_lb': 0.44, 'cup_to_g': 200, 'cup_to_oz': 7.05,
+    'lb_to_cup': 2.27, 'g_to_cup': 0.005, 'oz_to_cup': 0.14
+  },
+  'butter': {
+    // 1 cup butter ≈ 227g ≈ 0.5 lbs
+    'cup_to_lb': 0.5, 'cup_to_g': 227, 'cup_to_oz': 8,
+    'lb_to_cup': 2, 'g_to_cup': 0.0044, 'oz_to_cup': 0.125
+  }
+};
+
+// Convert between units
+const convertUnits = (fromQuantity: number, fromUnit: string, toUnit: string, ingredientName?: string): number | null => {
+  if (fromUnit === toUnit) return fromQuantity;
+  
+  const normalizeUnit = (unit: string) => unit.toLowerCase().replace(/s$/, ''); // Remove plural 's'
+  const normalizedFrom = normalizeUnit(fromUnit);
+  const normalizedTo = normalizeUnit(toUnit);
+  
+  // Check for ingredient-specific conversions first
+  if (ingredientName) {
+    const ingredientKey = ingredientName.toLowerCase();
+    for (const [key, conversions] of Object.entries(UNIT_CONVERSIONS)) {
+      if (ingredientKey.includes(key)) {
+        const conversionKey = `${normalizedFrom}_to_${normalizedTo}`;
+        if (conversions[conversionKey]) {
+          return fromQuantity * conversions[conversionKey];
+        }
+      }
+    }
+  }
+  
+  // Standard unit conversions
+  if (UNIT_CONVERSIONS[normalizedFrom] && UNIT_CONVERSIONS[normalizedFrom][normalizedTo]) {
+    return fromQuantity * UNIT_CONVERSIONS[normalizedFrom][normalizedTo];
+  }
+  
+  // Try reverse conversion
+  if (UNIT_CONVERSIONS[normalizedTo] && UNIT_CONVERSIONS[normalizedTo][normalizedFrom]) {
+    return fromQuantity / UNIT_CONVERSIONS[normalizedTo][normalizedFrom];
+  }
+  
+  return null; // No conversion available
+};
 
 export const IngredientsList: React.FC<Props> = ({
   ingredients,
   conflictingIngredients = [],
   substitutions = [],
   servings,
-  onServingsChange
+  onServingsChange,
+  onIngredientUsed
 }) => {
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
+  const [processingIngredients, setProcessingIngredients] = useState<Set<string>>(new Set());
 
-  const toggleIngredient = (ingredient: string) => {
-    const newChecked = new Set(checkedIngredients);
-    if (newChecked.has(ingredient)) {
-      newChecked.delete(ingredient);
-    } else {
-      newChecked.add(ingredient);
+  // Parse ingredient text to extract quantity, unit, and name
+  const parseIngredient = (ingredientText: string): ParsedIngredient => {
+    const original = ingredientText.trim();
+    
+    // Common patterns: "2 cups flour", "1 tbsp olive oil", "3 large eggs"
+    const quantityMatch = original.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s*([a-zA-Z]*)\s+(.+)$/);
+    
+    if (quantityMatch) {
+      const [, quantityStr, unit, name] = quantityMatch;
+      let quantity = parseFloat(quantityStr);
+      
+      // Handle fractions like "1/2"
+      if (quantityStr.includes('/')) {
+        const [num, den] = quantityStr.split('/');
+        quantity = parseFloat(num) / parseFloat(den);
+      }
+      
+      return {
+        original,
+        name: name.trim(),
+        quantity,
+        unit: unit.trim() || 'unit'
+      };
     }
-    setCheckedIngredients(newChecked);
+    
+    // Fallback: treat as 1 unit of the whole ingredient
+    return {
+      original,
+      name: original,
+      quantity: 1,
+      unit: 'unit'
+    };
+  };
+
+  const toggleIngredient = async (ingredient: string) => {
+    const isCurrentlyChecked = checkedIngredients.has(ingredient);
+    
+    if (!isCurrentlyChecked) {
+      // Checking ingredient - deduct from inventory
+      setProcessingIngredients(prev => new Set(prev).add(ingredient));
+      
+      try {
+        const parsed = parseIngredient(ingredient);
+        
+        // Try to deduct from user's inventory
+        await deductFromInventory(parsed);
+        
+        // Update local state
+        const newChecked = new Set(checkedIngredients);
+        newChecked.add(ingredient);
+        setCheckedIngredients(newChecked);
+        
+        // Notify parent component
+        if (onIngredientUsed) {
+          onIngredientUsed(parsed.name, parsed.quantity, parsed.unit);
+        }
+        
+      } catch (error) {
+        console.error('Error deducting ingredient:', error);
+        Alert.alert(
+          'Inventory Update Failed', 
+          `Could not deduct ${ingredient} from your inventory. You can still check it off for tracking.`
+        );
+        
+        // Still allow checking for tracking purposes
+        const newChecked = new Set(checkedIngredients);
+        newChecked.add(ingredient);
+        setCheckedIngredients(newChecked);
+      } finally {
+        setProcessingIngredients(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(ingredient);
+          return newSet;
+        });
+      }
+    } else {
+      // Unchecking ingredient - just update UI (don't add back to inventory)
+      const newChecked = new Set(checkedIngredients);
+      newChecked.delete(ingredient);
+      setCheckedIngredients(newChecked);
+    }
+  };
+
+  const deductFromInventory = async (parsed: ParsedIngredient) => {
+    try {
+      // Get user's current ingredients
+      const response = await ingredientService.getUserIngredients();
+      const userIngredients = response.ingredients || [];
+      
+      // Find matching ingredient in user's inventory
+      const matchingIngredient = userIngredients.find(userIng => {
+        const userIngName = (userIng.ingredient_name || userIng.name || '').toLowerCase();
+        const parsedName = parsed.name.toLowerCase();
+        
+        // Try exact match first
+        if (userIngName === parsedName) return true;
+        
+        // Try partial matches
+        if (userIngName.includes(parsedName) || parsedName.includes(userIngName)) return true;
+        
+        // Try word-based matching
+        const userWords = userIngName.split(' ').filter(w => w.length > 2);
+        const parsedWords = parsedName.split(' ').filter(w => w.length > 2);
+        
+        return userWords.some(userWord => 
+          parsedWords.some(parsedWord => 
+            userWord === parsedWord || 
+            userWord.includes(parsedWord) || 
+            parsedWord.includes(userWord)
+          )
+        );
+      });
+      
+      if (matchingIngredient) {
+        const currentQuantity = matchingIngredient.quantity || 0;
+        const inventoryUnit = matchingIngredient.unit || 'unit';
+        const recipeUnit = parsed.unit;
+        
+        let quantityToDeduct = parsed.quantity;
+        
+        // Try to convert units if they're different
+        if (inventoryUnit !== recipeUnit) {
+          const convertedQuantity = convertUnits(
+            parsed.quantity, 
+            recipeUnit, 
+            inventoryUnit, 
+            parsed.name
+          );
+          
+          if (convertedQuantity !== null) {
+            quantityToDeduct = convertedQuantity;
+            console.log(`🔄 Converted ${parsed.quantity} ${recipeUnit} to ${convertedQuantity} ${inventoryUnit} for ${parsed.name}`);
+          } else {
+            // If conversion fails, show a helpful message but still allow the action
+            Alert.alert(
+              'Unit Conversion', 
+              `Cannot convert ${recipeUnit} to ${inventoryUnit} for ${parsed.name}. The ingredient will be marked as used but inventory won't be updated.`,
+              [{ text: 'OK' }]
+            );
+            console.log(`⚠️ Cannot convert ${recipeUnit} to ${inventoryUnit} for ${parsed.name}`);
+            return; // Don't update inventory but allow checking
+          }
+        }
+        
+        const newQuantity = Math.max(0, currentQuantity - quantityToDeduct);
+        
+        // Update the ingredient quantity
+        await ingredientService.updateIngredient(matchingIngredient.id, {
+          quantity: newQuantity,
+          unit: inventoryUnit // Keep original unit
+        });
+        
+        console.log(`✅ Deducted ${quantityToDeduct} ${inventoryUnit} of ${parsed.name} from inventory (${currentQuantity} → ${newQuantity})`);
+        
+        // Show success message with conversion info if applicable
+        if (inventoryUnit !== recipeUnit) {
+          Alert.alert(
+            'Inventory Updated! 🎉', 
+            `Used ${parsed.quantity} ${recipeUnit} (${quantityToDeduct.toFixed(2)} ${inventoryUnit}) of ${parsed.name}.\n\nRemaining: ${newQuantity.toFixed(2)} ${inventoryUnit}`,
+            [{ text: 'Great!' }]
+          );
+        }
+      } else {
+        console.log(`⚠️ Ingredient "${parsed.name}" not found in user's inventory`);
+        Alert.alert(
+          'Ingredient Not Found', 
+          `"${parsed.name}" is not in your inventory. The ingredient will be marked as used for tracking.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error deducting from inventory:', error);
+      throw error;
+    }
   };
 
   const isConflicting = (ingredient: string) => {
@@ -77,6 +336,7 @@ export const IngredientsList: React.FC<Props> = ({
       <ScrollView style={styles.list}>
         {ingredients.map((ingredient, index) => {
           const isChecked = checkedIngredients.has(ingredient);
+          const isProcessing = processingIngredients.has(ingredient);
           const hasConflict = isConflicting(ingredient);
           const substitution = getSubstitution(ingredient);
 
@@ -85,16 +345,18 @@ export const IngredientsList: React.FC<Props> = ({
               <TouchableOpacity
                 style={styles.ingredientRow}
                 onPress={() => toggleIngredient(ingredient)}
+                disabled={isProcessing}
               >
                 <View style={styles.checkbox}>
                   <Text style={styles.checkboxText}>
-                    {isChecked ? '✅' : '⬜'}
+                    {isProcessing ? '⏳' : isChecked ? '✅' : '⬜'}
                   </Text>
                 </View>
                 <Text style={[
                   styles.ingredientText,
                   isChecked && styles.checkedText,
-                  hasConflict && styles.conflictText
+                  hasConflict && styles.conflictText,
+                  isProcessing && styles.processingText
                 ]}>
                   {ingredient}
                 </Text>
@@ -187,6 +449,10 @@ const styles = StyleSheet.create({
   checkedText: {
     textDecorationLine: 'line-through',
     color: '#999',
+  },
+  processingText: {
+    color: '#666',
+    fontStyle: 'italic',
   },
   conflictText: {
     color: '#f44336',

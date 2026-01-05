@@ -187,6 +187,26 @@ class IngredientService {
 
     return data.ingredients || [];
   }
+
+  async fixUncategorizedIngredients(): Promise<void> {
+    const token = await this.getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/ingredients/fix-categories`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fix categories');
+    }
+
+    console.log('✅ Fixed categories:', data.message);
+  }
 }
 
 export default new IngredientService();

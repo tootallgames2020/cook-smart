@@ -8,6 +8,63 @@ import axios from 'axios';
 const router = express.Router();
 const fatSecretService = new FatSecretService();
 
+// Map API categories to our app categories
+function mapToAppCategory(apiCategory: string, productName: string): string {
+  if (!apiCategory && !productName) return 'Other';
+  
+  const category = (apiCategory || '').toLowerCase();
+  const name = (productName || '').toLowerCase();
+  
+  // Protein sources
+  if (category.includes('meat') || category.includes('poultry') || category.includes('fish') || 
+      category.includes('seafood') || category.includes('protein') || category.includes('egg') ||
+      name.includes('chicken') || name.includes('beef') || name.includes('pork') || 
+      name.includes('fish') || name.includes('salmon') || name.includes('tuna') || 
+      name.includes('egg') || name.includes('tofu') || name.includes('beans')) {
+    return 'Proteins';
+  }
+  
+  // Dairy products
+  if (category.includes('dairy') || category.includes('milk') || category.includes('cheese') ||
+      name.includes('milk') || name.includes('cheese') || name.includes('yogurt') || 
+      name.includes('butter') || name.includes('cream')) {
+    return 'Dairy';
+  }
+  
+  // Vegetables
+  if (category.includes('vegetable') || category.includes('veggie') ||
+      name.includes('tomato') || name.includes('onion') || name.includes('carrot') || 
+      name.includes('pepper') || name.includes('lettuce') || name.includes('spinach') ||
+      name.includes('broccoli') || name.includes('potato')) {
+    return 'Vegetables';
+  }
+  
+  // Fruits
+  if (category.includes('fruit') || 
+      name.includes('apple') || name.includes('banana') || name.includes('orange') || 
+      name.includes('berry') || name.includes('grape') || name.includes('lemon')) {
+    return 'Fruits';
+  }
+  
+  // Grains and starches
+  if (category.includes('grain') || category.includes('cereal') || category.includes('bread') ||
+      category.includes('pasta') || category.includes('rice') ||
+      name.includes('bread') || name.includes('rice') || name.includes('pasta') || 
+      name.includes('oat') || name.includes('wheat') || name.includes('flour')) {
+    return 'Grains';
+  }
+  
+  // Spices and seasonings
+  if (category.includes('spice') || category.includes('seasoning') || category.includes('herb') ||
+      name.includes('salt') || name.includes('pepper') || name.includes('garlic powder') || 
+      name.includes('oregano') || name.includes('basil') || name.includes('cinnamon')) {
+    return 'Spices';
+  }
+  
+  // Default to Other for everything else
+  return 'Other';
+}
+
 // Fallback to Open Food Facts API
 async function lookupWithOpenFoodFacts(barcode: string): Promise<any> {
   try {
@@ -59,13 +116,14 @@ router.post('/scan', authenticateToken, async (req: AuthRequest, res, next) => {
 
     if (product) {
       logger.info(`FatSecret found product for ${barcode}: ${product.food_name || 'Unknown'}`);
+      const mappedCategory = mapToAppCategory(product.food_type, product.food_name);
       return res.json({
         success: true,
         product: {
           barcode,
           name: product.food_name || 'Unknown Product',
           brand: product.brand_name || null,
-          category: product.food_type || 'food',
+          category: mappedCategory,
           nutrition: {
             calories: product.calories || null,
             protein: product.protein || null,
@@ -87,13 +145,14 @@ router.post('/scan', authenticateToken, async (req: AuthRequest, res, next) => {
 
     if (product) {
       logger.info(`Open Food Facts found product for ${barcode}: ${product.food_name || 'Unknown'}`);
+      const mappedCategory = mapToAppCategory(product.food_type, product.food_name);
       return res.json({
         success: true,
         product: {
           barcode,
           name: product.food_name || 'Unknown Product',
           brand: product.brand_name || null,
-          category: product.food_type || 'food',
+          category: mappedCategory,
           nutrition: {
             calories: product.calories || null,
             protein: product.protein || null,
@@ -117,7 +176,7 @@ router.post('/scan', authenticateToken, async (req: AuthRequest, res, next) => {
         barcode: barcode,
         name: 'Generic Product',
         brand: null,
-        category: 'food',
+        category: 'Other',
         nutrition: {
           calories: 100,
           protein: 5,
@@ -142,7 +201,7 @@ router.post('/scan', authenticateToken, async (req: AuthRequest, res, next) => {
         barcode: req.body.barcode,
         name: 'Generic Product',
         brand: null,
-        category: 'food',
+        category: 'Other',
         nutrition: {
           calories: 100,
           protein: 5,
@@ -173,13 +232,14 @@ router.get('/lookup/:barcode', authenticateToken, async (req: AuthRequest, res, 
 
     if (product) {
       logger.info(`FatSecret found product for ${barcode}: ${product.food_name || 'Unknown'}`);
+      const mappedCategory = mapToAppCategory(product.food_type, product.food_name);
       return res.json({
         success: true,
         product: {
           barcode,
           name: product.food_name || 'Unknown Product',
           brand: product.brand_name || null,
-          category: product.food_type || 'food',
+          category: mappedCategory,
           nutrition: {
             calories: product.calories || null,
             protein: product.protein || null,
@@ -201,13 +261,14 @@ router.get('/lookup/:barcode', authenticateToken, async (req: AuthRequest, res, 
 
     if (product) {
       logger.info(`Open Food Facts found product for ${barcode}: ${product.food_name || 'Unknown'}`);
+      const mappedCategory = mapToAppCategory(product.food_type, product.food_name);
       return res.json({
         success: true,
         product: {
           barcode,
           name: product.food_name || 'Unknown Product',
           brand: product.brand_name || null,
-          category: product.food_type || 'food',
+          category: mappedCategory,
           nutrition: {
             calories: product.calories || null,
             protein: product.protein || null,

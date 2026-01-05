@@ -199,23 +199,6 @@ export const RecipeSearchScreen: React.FC<RecipeSearchScreenProps> = ({
         )}
 
         <View style={styles.statsRow}>
-          {/* Match Percentage Badge */}
-          {item.matchPercentage !== undefined && (
-            <View
-              style={[
-                styles.matchBadge,
-                item.matchPercentage >= 80
-                  ? styles.matchBadgeHigh
-                  : item.matchPercentage >= 50
-                    ? styles.matchBadgeMedium
-                    : styles.matchBadgeLow,
-              ]}>
-              <Text style={styles.matchBadgeText}>
-                {item.matchPercentage}% match
-              </Text>
-            </View>
-          )}
-
           <View style={styles.stat}>
             <Icon name="check-circle" size={16} color="#10B981" />
             <Text style={styles.statText}>{item.usedIngredientCount} have</Text>
@@ -612,26 +595,6 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 14,
     color: '#6B7280',
-  },
-  matchBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  matchBadgeHigh: {
-    backgroundColor: '#10B981',
-  },
-  matchBadgeMedium: {
-    backgroundColor: '#F59E0B',
-  },
-  matchBadgeLow: {
-    backgroundColor: '#EF4444',
-  },
-  matchBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
   missingIngredientsContainer: {
     flexDirection: 'row',

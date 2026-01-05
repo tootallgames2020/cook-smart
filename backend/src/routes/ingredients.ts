@@ -456,4 +456,34 @@ router.post('/check-recipe-availability', authenticateToken, async (req: AuthReq
   }
 });
 
+// Fix uncategorized ingredients (admin/maintenance endpoint)
+router.post('/fix-categories', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Update ingredients with null or empty categories to 'Uncategorized'
+      const result = await client.query(`
+        UPDATE user_ingredients 
+        SET category = 'Uncategorized' 
+        WHERE (category IS NULL OR category = '' OR category = 'null' OR TRIM(category) = '')
+        AND user_id = $1
+        RETURNING id, ingredient_name, category
+      `, [req.user!.id]);
+
+      logger.info(`Fixed categories for ${result.rows.length} ingredients for user ${req.user!.id}`);
+
+      return res.json({
+        success: true,
+        message: `Updated ${result.rows.length} ingredients to 'Uncategorized'`,
+        updated: result.rows,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Fix categories error:', error);
+    return next(createError('Failed to fix categories', 500));
+  }
+});
+
 export default router;
