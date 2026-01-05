@@ -120,6 +120,57 @@ router.get('/progress', authenticateToken, async (req: AuthRequest, res) => {
       };
     }
 
+    // Cooking progress
+    try {
+      const cookingResult = await pool.query(
+        'SELECT COUNT(*) as count FROM recipe_cooking_history WHERE user_id = $1',
+        [userId]
+      );
+      const cookingCount = parseInt(cookingResult.rows[0]?.count || '0');
+      
+      progress.first_cook = {
+        name: 'First Cook',
+        description: 'Cook your first recipe',
+        current: Math.min(cookingCount, 1),
+        target: 1,
+      };
+      
+      progress.home_chef = {
+        name: 'Home Chef',
+        description: 'Cook 5 different recipes',
+        current: Math.min(cookingCount, 5),
+        target: 5,
+      };
+
+      progress.master_chef = {
+        name: 'Master Chef',
+        description: 'Cook 10 different recipes',
+        current: Math.min(cookingCount, 10),
+        target: 10,
+      };
+    } catch (error) {
+      progress.first_cook = {
+        name: 'First Cook',
+        description: 'Cook your first recipe',
+        current: 0,
+        target: 1,
+      };
+      
+      progress.home_chef = {
+        name: 'Home Chef',
+        description: 'Cook 5 different recipes',
+        current: 0,
+        target: 5,
+      };
+
+      progress.master_chef = {
+        name: 'Master Chef',
+        description: 'Cook 10 different recipes',
+        current: 0,
+        target: 10,
+      };
+    }
+
     // Waste reduction progress (placeholder)
     progress.waste_warrior = {
       name: 'Waste Warrior',

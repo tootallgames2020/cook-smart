@@ -250,6 +250,23 @@ router.get('/lookup/:barcode', authenticateToken, async (req: AuthRequest, res, 
 
     if (product) {
       logger.info(`FatSecret found product for ${barcode}: ${product.food_name || 'Unknown'}`);
+      
+      // Track barcode scan for achievements (lookup endpoint)
+      try {
+        const client = await pool.connect();
+        try {
+          await client.query(
+            'INSERT INTO barcode_scans (user_id, barcode, product_name, scanned_at) VALUES ($1, $2, $3, NOW())',
+            [req.user!.id, barcode, product.food_name || 'Unknown Product']
+          );
+          logger.info(`Barcode lookup tracked for user ${req.user!.id}: ${barcode}`);
+        } finally {
+          client.release();
+        }
+      } catch (trackingError) {
+        logger.error('Barcode lookup tracking error:', trackingError);
+      }
+      
       const mappedCategory = mapToAppCategory(product.food_type, product.food_name);
       return res.json({
         success: true,

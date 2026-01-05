@@ -20,22 +20,23 @@ This document contains vital infrastructure information. Always reference this b
 - **URL**: https://cooksmartapp.com
 
 ### Backend API (api.cooksmartapp.com)
-- **Hosting**: AWS EC2 (34.203.8.150) - Instance ID: i-05e0746da4f5f9da0
-- **Location**: `/home/ubuntu/cook-smart/backend/backend`
+- **Hosting**: AWS EC2 (3.238.250.151) - Instance ID: i-0ad64147425a307ac
+- **Location**: `/home/ubuntu/cook-smart/backend`
 - **Process Manager**: PM2
 - **Deployment**: SSH + manual deploy (VERIFIED WORKING)
 - **SSH Key**: `~/.ssh/cook-smart-key.pem`
 - **Restart Command**: `pm2 restart cook-smart-backend`
 - **URL**: https://api.cooksmartapp.com
-- **Status**: ✅ OPERATIONAL (as of Dec 23, 2025)
+- **Status**: ✅ OPERATIONAL (as of Jan 5, 2026)
 
 ### Database
 - **Type**: PostgreSQL 16
-- **Hosting**: AWS RDS
-- **Endpoint**: `cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com`
+- **Hosting**: Local on EC2 instance (NOT RDS)
+- **Host**: localhost (on EC2 instance)
 - **Port**: 5432
 - **Database Name**: `cooksmartdb`
-- **Access**: Via backend only (not publicly accessible)
+- **User**: `cookuser`
+- **Access**: Via backend only (local to EC2)
 
 ### Mobile App
 - **Framework**: React Native (NO Expo)
@@ -61,13 +62,13 @@ git push origin fresh-project-migration
 
 ### Backend Deployment
 ```bash
-# VERIFIED WORKING METHOD (Dec 23, 2025)
+# VERIFIED WORKING METHOD (Jan 5, 2026)
 
-# 1. SSH into server (IP confirmed: 34.203.8.150)
-ssh -i ~/.ssh/cook-smart-key.pem ubuntu@34.203.8.150
+# 1. SSH into server (IP confirmed: 3.238.250.151)
+ssh -i ~/.ssh/cook-smart-key.pem ubuntu@3.238.250.151
 
 # 2. Navigate to backend
-cd /home/ubuntu/cook-smart/backend/backend
+cd /home/ubuntu/cook-smart/backend
 
 # 3. Pull latest changes
 git pull origin fresh-project-migration
@@ -91,27 +92,28 @@ exit
 ### Alternative: AWS EC2 Restart (if SSH fails)
 ```bash
 # Stop instance
-aws ec2 stop-instances --instance-ids i-05e0746da4f5f9da0
+aws ec2 stop-instances --instance-ids i-0ad64147425a307ac
 
 # Wait for stop
-aws ec2 wait instance-stopped --instance-ids i-05e0746da4f5f9da0
+aws ec2 wait instance-stopped --instance-ids i-0ad64147425a307ac
 
 # Start instance
-aws ec2 start-instances --instance-ids i-05e0746da4f5f9da0
+aws ec2 start-instances --instance-ids i-0ad64147425a307ac
 
 # Wait for start
-aws ec2 wait instance-running --instance-ids i-05e0746da4f5f9da0
+aws ec2 wait instance-running --instance-ids i-0ad64147425a307ac
 ```
 
 ### Database Migrations
 ```bash
-# Run from local machine or SSH into backend server
+# Run from SSH into backend server
 # Migrations located in: backend/migrations/
 
-# Connect to database
-psql -h cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com \
-     -U cooksmartadmin \
-     -d cooksmartdb
+# SSH into server
+ssh -i ~/.ssh/cook-smart-key.pem ubuntu@3.238.250.151
+
+# Connect to local database
+PGPASSWORD='CookSmart2024!' psql -h localhost -U cookuser -d cooksmartdb
 
 # Run migration file
 \i backend/migrations/XXX_migration_name.sql
@@ -129,11 +131,11 @@ psql -h cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com \
 
 **Backend (.env)**
 ```env
-DB_HOST=cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com
+DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=cooksmartdb
-DB_USER=cooksmartadmin
-DB_PASSWORD=[stored securely]
+DB_USER=cookuser
+DB_PASSWORD=CookSmart2024!
 JWT_SECRET=[stored securely]
 FATSECRET_CLIENT_ID=[stored securely]
 FATSECRET_CLIENT_SECRET=[stored securely]
@@ -156,9 +158,7 @@ RESEND_API_KEY=[stored securely]
 - **Credentials**: Stored in backend .env
 
 ### AWS Services Used
-- **EC2**: Backend server hosting
-- **RDS**: PostgreSQL database
-- **S3**: File storage (planned)
+- **EC2**: Backend server hosting with local PostgreSQL
 - **Route 53**: DNS management
 - **Certificate Manager**: SSL certificates
 
@@ -210,7 +210,7 @@ cook-smart/
     └── steering/      # Project rules
 ```
 
-## VERIFIED AWS INFRASTRUCTURE (Dec 23, 2025)
+## VERIFIED AWS INFRASTRUCTURE (Jan 5, 2026)
 
 **Discovered via AWS CLI:**
 - **AWS Account**: 976289921508
@@ -218,15 +218,12 @@ cook-smart/
 - **Region**: us-east-1
 
 ### Active Resources
-- **Backend EC2**: i-05e0746da4f5f9da0 (34.203.8.150) - "cook-smart-backend" ✅
-- **Database RDS**: cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com ✅
+- **Backend EC2**: i-0ad64147425a307ac (3.238.250.151) - "cook-smart-backend" ✅
+- **Database**: Local PostgreSQL on EC2 instance ✅
 - **Route 53**: cooksmartapp.com hosted zone ✅
-- **CloudFormation**: cook-smart-infrastructure-beta stack ✅
 
-### Legacy Resources (Not Used)
-- **Old EC2**: i-0fb0d2533ab325c06 (54.158.22.192) - "StreamGuard-AI-Bot-Separate"
-- **Old Stack**: kitchen-helper-alb
-- **Old Security Groups**: kitchen-helper-* (can be cleaned up later)
+### Legacy Resources (Cleaned Up)
+- **Old EC2**: i-0e1b438399093659d - TERMINATED ✅
 
 ## Common Mistakes to Avoid
 
@@ -236,18 +233,18 @@ cook-smart/
 ❌ **Don't skip PM2 restart** - Backend won't update without it
 ❌ **Don't commit secrets** - Use .env files
 ❌ **Don't add paid services** - Check budget first
-❌ **Don't use wrong IP addresses** - Use 34.203.8.150, not 3.237.38.24
+❌ **Don't use wrong IP addresses** - Use 3.238.250.151, not old IPs
 
 ## Quick Reference Commands
 
 ### Check Backend Status (WORKING)
 ```bash
-ssh -i ~/.ssh/cook-smart-key.pem ubuntu@34.203.8.150 "pm2 status"
+ssh -i ~/.ssh/cook-smart-key.pem ubuntu@3.238.250.151 "pm2 status"
 ```
 
 ### View Backend Logs (WORKING)
 ```bash
-ssh -i ~/.ssh/cook-smart-key.pem ubuntu@34.203.8.150 "pm2 logs cook-smart-backend --lines 50"
+ssh -i ~/.ssh/cook-smart-key.pem ubuntu@3.238.250.151 "pm2 logs cook-smart-backend --lines 50"
 ```
 
 ### Test API Endpoint (WORKING)
@@ -277,8 +274,8 @@ node .kiro/verify-and-scan.js
 
 ## Emergency Contacts
 
-- **Backend Server**: 34.203.8.150
-- **Database**: cook-smart-db-beta.cgfwigy2i9lk.us-east-1.rds.amazonaws.com
+- **Backend Server**: 3.238.250.151
+- **Database**: Local PostgreSQL on EC2 instance
 - **Website**: https://cooksmartapp.com
 - **API**: https://api.cooksmartapp.com
 - **Support Email**: services.cooksmart@gmail.com
@@ -297,7 +294,7 @@ Before any deployment:
 
 ---
 
-**Last Updated**: December 6, 2025
+**Last Updated**: January 5, 2026
 **Maintained By**: Project team
 **Purpose**: Prevent deployment errors and infrastructure confusion
 
