@@ -368,19 +368,29 @@ router.post('/:id/use', authenticateToken, async (req: AuthRequest, res, next) =
         [req.user!.id]
       );
 
-      // If ingredient is completely used up, optionally remove it
+      // If ingredient is completely used up, remove it from inventory
       let message = 'Ingredient quantity updated';
+      let ingredientData = result.rows[0];
+      
       if (newQuantity === 0) {
-        message = 'Ingredient used up completely';
+        // Delete the ingredient from inventory when it hits 0
+        await client.query(
+          'DELETE FROM user_ingredients WHERE id = $1 AND user_id = $2',
+          [id, req.user!.id]
+        );
+        
+        message = 'Ingredient used up completely and removed from inventory';
+        ingredientData = null; // Indicate ingredient was removed
       }
 
       return res.json({
         success: true,
         message,
-        ingredient: result.rows[0],
+        ingredient: ingredientData,
         quantityUsed: quantity_used,
         remainingQuantity: newQuantity,
         points_awarded: 1,
+        removed: newQuantity === 0,
       });
     } finally {
       client.release();
