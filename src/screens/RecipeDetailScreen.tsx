@@ -93,8 +93,78 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleServingsChange = (newServings: number) => {
+    if (!recipe) return;
+    
+    const oldServings = servings;
+    const scaleFactor = newServings / oldServings;
+    
+    // Scale ingredient quantities
+    const scaledIngredients = recipe.ingredients.map(ingredient => {
+      return scaleIngredientQuantity(ingredient, scaleFactor);
+    });
+    
+    // Update recipe with scaled ingredients
+    setRecipe(prev => prev ? {
+      ...prev,
+      ingredients: scaledIngredients,
+      servings: newServings
+    } : null);
+    
     setServings(newServings);
-    // In a real app, you'd recalculate ingredient quantities here
+  };
+
+  // Helper function to scale ingredient quantities
+  const scaleIngredientQuantity = (ingredient: string, scaleFactor: number): string => {
+    // Common patterns: "2 cups flour", "1 tbsp olive oil", "3 large eggs"
+    const quantityMatch = ingredient.match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s+(.+)$/);
+    
+    if (quantityMatch) {
+      const [, quantityStr, rest] = quantityMatch;
+      let quantity = parseFloat(quantityStr);
+      
+      // Handle fractions like "1/2"
+      if (quantityStr.includes('/')) {
+        const [num, den] = quantityStr.split('/');
+        quantity = parseFloat(num) / parseFloat(den);
+      }
+      
+      const scaledQuantity = quantity * scaleFactor;
+      
+      // Format the scaled quantity nicely
+      let formattedQuantity: string;
+      if (scaledQuantity % 1 === 0) {
+        // Whole number
+        formattedQuantity = scaledQuantity.toString();
+      } else if (scaledQuantity < 1) {
+        // Convert to fraction for small amounts
+        const fraction = decimalToFraction(scaledQuantity);
+        formattedQuantity = fraction;
+      } else {
+        // Decimal with up to 2 decimal places
+        formattedQuantity = scaledQuantity.toFixed(2).replace(/\.?0+$/, '');
+      }
+      
+      return `${formattedQuantity} ${rest}`;
+    }
+    
+    // If no quantity found, return original ingredient
+    return ingredient;
+  };
+
+  // Helper function to convert decimal to fraction
+  const decimalToFraction = (decimal: number): string => {
+    const tolerance = 1.0E-6;
+    let h1 = 1, h2 = 0, k1 = 0, k2 = 1;
+    let b = decimal;
+    
+    do {
+      const a = Math.floor(b);
+      let aux = h1; h1 = a * h1 + h2; h2 = aux;
+      aux = k1; k1 = a * k1 + k2; k2 = aux;
+      b = 1 / (b - a);
+    } while (Math.abs(decimal - h1 / k1) > decimal * tolerance);
+    
+    return k1 === 1 ? h1.toString() : `${h1}/${k1}`;
   };
 
   const handleCookedThis = async () => {
