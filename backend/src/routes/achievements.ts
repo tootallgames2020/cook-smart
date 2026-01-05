@@ -2,6 +2,7 @@ import {Router} from 'express';
 import {AchievementService} from '../services/AchievementService';
 import {authenticateToken, AuthRequest} from '../middleware/auth';
 import { pool } from '../server';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -32,6 +33,13 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 router.get('/progress', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = parseInt(req.user!.id);
+    
+    // Prevent caching to ensure fresh progress data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
     
     // Get current progress for different achievement types
     const progress: any = {};
@@ -187,6 +195,7 @@ router.get('/progress', authenticateToken, async (req: AuthRequest, res) => {
       target: 7,
     };
 
+    logger.info(`Achievement progress for user ${userId}:`, progress);
     res.json(progress);
   } catch (error) {
     console.error('Error getting achievement progress:', error);
