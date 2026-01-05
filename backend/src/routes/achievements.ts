@@ -9,7 +9,7 @@ const router = Router();
 // Get user's earned achievements
 router.get('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const userId = parseInt(req.user!.id);
+    const userId = req.user!.id; // Keep as string, don't parse as int
     const achievements = await AchievementService.getUserAchievements(userId);
 
     // Transform to match frontend expectations
@@ -32,7 +32,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 // Get achievement progress (available achievements with progress)
 router.get('/progress', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const userId = parseInt(req.user!.id);
+    const userId = req.user!.id; // Keep as string, don't parse as int
     
     // Prevent caching to ensure fresh progress data
     res.set({
