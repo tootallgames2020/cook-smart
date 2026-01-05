@@ -216,4 +216,60 @@ router.patch('/privacy', authenticateToken, async (req: AuthRequest, res, next) 
   }
 });
 
+// Export user data (GDPR compliance)
+router.get('/export-data', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Get all user data for export
+      const userQuery = 'SELECT * FROM users WHERE id = $1';
+      const ingredientsQuery = 'SELECT * FROM user_ingredients WHERE user_id = $1';
+      const recipesQuery = 'SELECT * FROM user_recipes WHERE user_id = $1';
+      const shoppingQuery = 'SELECT * FROM shopping_lists WHERE user_id = $1';
+      const privacyQuery = 'SELECT * FROM privacy_settings WHERE user_id = $1';
+      const notificationQuery = 'SELECT * FROM notification_preferences WHERE user_id = $1';
+
+      const [user, ingredients, recipes, shopping, privacy, notifications] = await Promise.all([
+        client.query(userQuery, [req.user!.id]),
+        client.query(ingredientsQuery, [req.user!.id]),
+        client.query(recipesQuery, [req.user!.id]),
+        client.query(shoppingQuery, [req.user!.id]),
+        client.query(privacyQuery, [req.user!.id]),
+        client.query(notificationQuery, [req.user!.id]),
+      ]);
+
+      // Remove sensitive data
+      const userData = user.rows[0];
+      if (userData) {
+        delete userData.password_hash;
+        delete userData.two_factor_secret;
+      }
+
+      const exportData = {
+        user: userData,
+        ingredients: ingredients.rows,
+        recipes: recipes.rows,
+        shopping_lists: shopping.rows,
+        privacy_settings: privacy.rows[0] || null,
+        notification_preferences: notifications.rows[0] || null,
+        exported_at: new Date().toISOString(),
+        export_format: 'JSON',
+      };
+
+      logger.info(`Data export completed for user ${req.user!.id}`);
+
+      res.json({
+        success: true,
+        message: 'Data export completed successfully',
+        data: exportData,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Export user data error:', error);
+    next(createError('Failed to export user data', 500));
+  }
+});
+
 export default router;
