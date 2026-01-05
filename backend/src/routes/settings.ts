@@ -202,7 +202,7 @@ router.patch('/privacy', authenticateToken, async (req: AuthRequest, res, next) 
 
       logger.info(`Privacy settings updated for user ${req.user!.id}`);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Privacy settings updated successfully',
         settings: result.rows[0],
@@ -212,7 +212,7 @@ router.patch('/privacy', authenticateToken, async (req: AuthRequest, res, next) 
     }
   } catch (error) {
     logger.error('Update privacy settings error:', error);
-    next(createError('Failed to update privacy settings', 500));
+    return next(createError('Failed to update privacy settings', 500));
   }
 });
 
