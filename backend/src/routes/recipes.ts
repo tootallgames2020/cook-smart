@@ -288,6 +288,20 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
         });
       }
 
+      // Track recipe view for achievements
+      try {
+        await client.query(
+          `INSERT INTO recipe_views (user_id, recipe_id, recipe_type, viewed_at)
+           VALUES ($1, $2, 'api', NOW())
+           ON CONFLICT (user_id, recipe_id, recipe_type) DO UPDATE SET viewed_at = NOW()`,
+          [req.user!.id, id]
+        );
+        logger.info(`Recipe view tracked for user ${req.user!.id}: ${id}`);
+      } catch (trackingError) {
+        // Don't fail the request if tracking fails
+        logger.error('Recipe view tracking error:', trackingError);
+      }
+
       // Parse ingredients into simple string array
       let ingredientsList: string[] = [];
       if (recipe.ingredients && Array.isArray(recipe.ingredients)) {

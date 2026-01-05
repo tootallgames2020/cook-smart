@@ -75,6 +75,26 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
       return;
     }
 
+    // Track recipe view for achievements (user recipe)
+    try {
+      const { pool } = require('../server');
+      const client = await pool.connect();
+      try {
+        await client.query(
+          `INSERT INTO recipe_views (user_id, recipe_id, recipe_type, viewed_at)
+           VALUES ($1, $2, 'user', NOW())
+           ON CONFLICT (user_id, recipe_id, recipe_type) DO UPDATE SET viewed_at = NOW()`,
+          [req.user!.id, recipeId.toString()]
+        );
+        console.log(`User recipe view tracked for user ${req.user!.id}: ${recipeId}`);
+      } finally {
+        client.release();
+      }
+    } catch (trackingError) {
+      // Don't fail the request if tracking fails
+      console.error('User recipe view tracking error:', trackingError);
+    }
+
     res.json({success: true, recipe});
   } catch (error) {
     console.error('Error getting recipe:', error);
