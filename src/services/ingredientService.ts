@@ -27,6 +27,7 @@ export interface UpdateIngredientDto {
   quantity?: number;
   unit?: string;
   expirationDate?: string;
+  category?: string;
 }
 
 export interface GetIngredientsResponse {
@@ -207,6 +208,26 @@ class IngredientService {
 
     console.log('✅ Fixed categories:', data.message);
     return data;
+  }
+
+  async getCategories(): Promise<Array<{id: string; name: string; icon: string}>> {
+    const token = await this.getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/ingredients/categories`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch categories');
+    }
+
+    return data.categories || [];
   }
 }
 

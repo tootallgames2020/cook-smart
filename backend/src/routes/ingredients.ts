@@ -112,16 +112,16 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
 router.put('/:id', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
     const { id } = req.params;
-    const { quantity, unit, expiration_date, notes } = req.body;
+    const { quantity, unit, expiration_date, notes, category } = req.body;
 
     const client = await pool.connect();
     try {
       const result = await client.query(
         `UPDATE user_ingredients 
-         SET quantity = $1, unit = $2, expiration_date = $3, notes = $4
-         WHERE id = $5 AND user_id = $6
+         SET quantity = $1, unit = $2, expiration_date = $3, notes = $4, category = $5
+         WHERE id = $6 AND user_id = $7
          RETURNING *`,
-        [quantity, unit, expiration_date, notes, id, req.user!.id]
+        [quantity, unit, expiration_date, notes, category, id, req.user!.id]
       );
 
       if (result.rows.length === 0) {

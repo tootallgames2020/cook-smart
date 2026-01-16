@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -41,10 +42,23 @@ export const IngredientInventoryScreen: React.FC = () => {
   );
   const [editQuantity, setEditQuantity] = useState('');
   const [editUnit, setEditUnit] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [categories, setCategories] = useState<Array<{id: string; name: string; icon: string}>>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchIngredients();
+    fetchCategories();
   }, [fetchIngredients]);
+
+  const fetchCategories = async () => {
+    try {
+      const result = await ingredientService.getCategories();
+      setCategories(result);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -137,6 +151,7 @@ export const IngredientInventoryScreen: React.FC = () => {
     setEditingIngredient(ingredient);
     setEditQuantity(ingredient.quantity?.toString() || '1');
     setEditUnit(ingredient.unit || 'unit');
+    setEditCategory(ingredient.category || 'Other');
   };
 
   const handleSaveEdit = async () => {
@@ -146,6 +161,7 @@ export const IngredientInventoryScreen: React.FC = () => {
       await updateIngredient(editingIngredient.id, {
         quantity: parseFloat(editQuantity) || 1,
         unit: editUnit.trim() || 'unit',
+        category: editCategory,
       });
 
       Alert.alert('Success', 'Ingredient updated successfully!');
@@ -299,34 +315,67 @@ export const IngredientInventoryScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.ingredientName}>
-              {editingIngredient?.ingredient_name || editingIngredient?.name}
-            </Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.ingredientName}>
+                {editingIngredient?.ingredient_name || editingIngredient?.name}
+              </Text>
 
-            <View style={styles.row}>
-              <View style={[styles.formGroup, styles.flex1]}>
-                <Text style={styles.label}>Quantity</Text>
-                <TextInput
-                  style={styles.input}
-                  value={editQuantity}
-                  onChangeText={setEditQuantity}
-                  keyboardType="numeric"
-                  placeholder="1"
-                  placeholderTextColor="#9CA3AF"
-                />
+              <View style={styles.row}>
+                <View style={[styles.formGroup, styles.flex1]}>
+                  <Text style={styles.label}>Quantity</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editQuantity}
+                    onChangeText={setEditQuantity}
+                    keyboardType="numeric"
+                    placeholder="1"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                <View style={[styles.formGroup, styles.flex1, styles.marginLeft]}>
+                  <Text style={styles.label}>Unit</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editUnit}
+                    onChangeText={setEditUnit}
+                    placeholder="unit"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
               </View>
 
-              <View style={[styles.formGroup, styles.flex1, styles.marginLeft]}>
-                <Text style={styles.label}>Unit</Text>
-                <TextInput
-                  style={styles.input}
-                  value={editUnit}
-                  onChangeText={setEditUnit}
-                  placeholder="unit"
-                  placeholderTextColor="#9CA3AF"
-                />
+              {/* Category Picker */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Category</Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.categoryScroll}
+                >
+                  {categories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryChip,
+                        editCategory === cat.name && styles.categoryChipSelected,
+                      ]}
+                      onPress={() => setEditCategory(cat.name)}
+                    >
+                      <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          editCategory === cat.name && styles.categoryChipTextSelected,
+                        ]}
+                      >
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
-            </View>
+            </ScrollView>
 
             <TouchableOpacity
               style={styles.saveButton}
@@ -524,6 +573,37 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  categoryScroll: {
+    marginTop: 8,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  categoryChipSelected: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#10B981',
+  },
+  categoryIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  categoryChipText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  categoryChipTextSelected: {
+    color: '#10B981',
     fontWeight: '600',
   },
 });
