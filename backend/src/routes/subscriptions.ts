@@ -8,7 +8,116 @@ import Stripe from 'stripe';
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
-// Get pricing plans (public endpoint)
+// Get pricing plans - /plans endpoint (what the mobile app calls)
+router.get('/plans', async (req, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Check if we're in beta phase
+      const isBeta = true; // During beta phase
+      
+      const result = await client.query(`
+        SELECT sp.*, 
+               CASE 
+                 WHEN sp.promotional_price_id IS NOT NULL AND $1 = true 
+                 THEN sp.promotional_price_id 
+                 ELSE sp.standard_price_id 
+               END as current_price_id
+        FROM subscription_plans sp
+        WHERE sp.available_in_beta = true OR $1 = false
+        ORDER BY 
+          CASE sp.billing_interval
+            WHEN 'year' THEN 1
+            WHEN 'month' THEN 2
+            WHEN 'week' THEN 3
+          END
+      `, [isBeta]);
+
+      // Get Stripe price details for each plan
+      const plansWithPricing = await Promise.all(
+        result.rows.map(async (plan) => {
+          try {
+            const price = await stripe.prices.retrieve(plan.current_price_id);
+            const product = await stripe.products.retrieve(plan.stripe_product_id);
+            
+            // Calculate savings for yearly plan
+            let savings = null;
+            if (plan.billing_interval === 'year' && plan.promotional_price_id) {
+              const standardPrice = await stripe.prices.retrieve(plan.standard_price_id);
+              const monthlyEquivalent = (standardPrice.unit_amount || 0) / 12;
+              const yearlyMonthly = (price.unit_amount || 0) / 12;
+              savings = Math.round(((monthlyEquivalent - yearlyMonthly) / monthlyEquivalent) * 100);
+            }
+            
+            return {
+              id: plan.plan_name,
+              name: product.name || `${plan.plan_name.charAt(0).toUpperCase() + plan.plan_name.slice(1)} Plan`,
+              description: product.description || `Cook Smart ${plan.plan_name} subscription`,
+              price: price.unit_amount ? price.unit_amount / 100 : 0,
+              currency: price.currency.toUpperCase(),
+              interval: plan.billing_interval,
+              trialDays: plan.trial_days,
+              features: product.metadata?.features ? JSON.parse(product.metadata.features) : [
+                'Unlimited recipe access',
+                'Custom recipe creation & sharing',
+                'Advanced meal planning',
+                'Smart shopping lists',
+                'Dietary restriction support',
+                'Ingredient inventory tracking',
+                'Recipe scaling & unit conversion',
+                'Priority customer support'
+              ],
+              isPopular: plan.plan_name === 'yearly',
+              isBetaSpecial: isBeta && plan.promotional_price_id,
+              originalPrice: plan.promotional_price_id ? 
+                (await stripe.prices.retrieve(plan.standard_price_id)).unit_amount! / 100 : null,
+              savings: savings,
+              badge: plan.plan_name === 'yearly' ? (isBeta ? 'BETA SPECIAL' : 'BEST VALUE') : null,
+            };
+          } catch (error) {
+            logger.error(`Error fetching Stripe data for plan ${plan.plan_name}:`, error);
+            return {
+              id: plan.plan_name,
+              name: plan.plan_name.charAt(0).toUpperCase() + plan.plan_name.slice(1),
+              price: plan.plan_name === 'yearly' ? 49.99 : plan.plan_name === 'monthly' ? 9.99 : 2.99,
+              currency: 'USD',
+              interval: plan.billing_interval,
+              trialDays: plan.trial_days,
+              features: [
+                'Unlimited recipe access',
+                'Custom recipe creation',
+                'Advanced meal planning',
+                'Smart shopping lists',
+                'Priority support'
+              ],
+              error: 'Live pricing temporarily unavailable',
+            };
+          }
+        })
+      );
+
+      return res.json({
+        success: true,
+        plans: plansWithPricing,
+        isBeta,
+        betaMessage: isBeta ? 'Limited time BETA pricing - Lock in lifetime benefits!' : null,
+        freeFeatures: [
+          'Basic recipe search',
+          'Limited ingredient tracking',
+          'Basic meal planning',
+          'Community recipe access'
+        ],
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get pricing error:', error);
+    return next(createError('Failed to get pricing plans', 500));
+  }
+});
+
+// Get pricing plans (public endpoint) - /pricing (legacy endpoint)
 router.get('/pricing', async (req, res, next) => {
   try {
     const client = await pool.connect();
@@ -117,7 +226,86 @@ router.get('/pricing', async (req, res, next) => {
   }
 });
 
-// Get user's subscription status
+// Get user's subscription - /me endpoint (what the mobile app calls)
+router.get('/me', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // Get user's current subscription
+      const subscriptionResult = await client.query(`
+        SELECT s.*, sp.plan_name, sp.billing_interval, u.subscription_status
+        FROM users u
+        LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status IN ('active', 'trialing', 'past_due')
+        LEFT JOIN subscription_plans sp ON s.plan_id = sp.id
+        WHERE u.id = $1
+        ORDER BY s.created_at DESC
+        LIMIT 1
+      `, [req.user!.id]);
+
+      const user = subscriptionResult.rows[0];
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+      }
+
+      // Get usage statistics
+      const usageResult = await client.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM custom_recipes WHERE user_id = $1) as custom_recipes_created,
+          (SELECT COUNT(*) FROM user_custom_recipes WHERE user_id = $1) as community_recipes_saved,
+          (SELECT COUNT(*) FROM meal_plans WHERE user_id = $1) as meals_planned,
+          (SELECT COUNT(*) FROM shopping_list_items WHERE user_id = $1) as shopping_items_added,
+          (SELECT points FROM users WHERE id = $1) as total_points
+      `, [req.user!.id]);
+
+      const usage = usageResult.rows[0];
+
+      const subscriptionData = user.stripe_subscription_id ? {
+        id: user.stripe_subscription_id,
+        planId: user.plan_name,
+        status: user.status,
+        currentPeriodEnd: user.current_period_end,
+        cancelAtPeriodEnd: user.cancel_at_period_end,
+        billingInterval: user.billing_interval,
+        trialEnd: user.trial_end,
+      } : null;
+
+      return res.json({
+        success: true,
+        subscription: subscriptionData,
+        status: user.subscription_status || 'free',
+        usage: {
+          customRecipesCreated: parseInt(usage.custom_recipes_created) || 0,
+          communityRecipesSaved: parseInt(usage.community_recipes_saved) || 0,
+          mealsPlanned: parseInt(usage.meals_planned) || 0,
+          shoppingItemsAdded: parseInt(usage.shopping_items_added) || 0,
+          totalPoints: parseInt(usage.total_points) || 0,
+        },
+        limits: user.subscription_status === 'premium' ? {
+          customRecipes: 'unlimited',
+          savedRecipes: 'unlimited',
+          mealPlans: 'unlimited',
+          shoppingLists: 'unlimited',
+        } : {
+          customRecipes: 5,
+          savedRecipes: 20,
+          mealPlans: 7, // 1 week
+          shoppingLists: 3,
+        },
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get subscription status error:', error);
+    return next(createError('Failed to get subscription status', 500));
+  }
+});
+
+// Get user's subscription status (legacy endpoint)
 router.get('/status', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
     const client = await pool.connect();
