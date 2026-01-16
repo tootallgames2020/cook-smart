@@ -188,7 +188,7 @@ class IngredientService {
     return data.ingredients || [];
   }
 
-  async fixUncategorizedIngredients(): Promise<void> {
+  async fixUncategorizedIngredients(): Promise<{success: boolean; message: string; updated: any[]}> {
     const token = await this.getAuthToken();
 
     const response = await fetch(`${API_BASE_URL}/api/v1/ingredients/fix-categories`, {
@@ -206,6 +206,7 @@ class IngredientService {
     }
 
     console.log('✅ Fixed categories:', data.message);
+    return data;
   }
 }
 

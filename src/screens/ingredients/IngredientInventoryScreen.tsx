@@ -75,12 +75,29 @@ export const IngredientInventoryScreen: React.FC = () => {
 
   const handleFixCategories = async () => {
     try {
-      await ingredientService.fixUncategorizedIngredients();
-      Alert.alert('Success', 'Fixed uncategorized ingredients! Refreshing list...');
+      setLoading(true);
+      const result = await ingredientService.fixUncategorizedIngredients();
+      
+      // Check if any items were actually fixed
+      if (result && result.updated && result.updated.length > 0) {
+        Alert.alert(
+          'Success! 🎉', 
+          `Fixed ${result.updated.length} uncategorized ingredient${result.updated.length > 1 ? 's' : ''}! Refreshing list...`
+        );
+      } else {
+        Alert.alert(
+          'All Good! ✅', 
+          'No uncategorized ingredients found. Your inventory is already organized!'
+        );
+      }
+      
       await fetchIngredients();
     } catch (err) {
       console.error('Error fixing categories:', err);
-      Alert.alert('Error', 'Failed to fix categories. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fix categories. Please try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
