@@ -329,10 +329,41 @@ export const IngredientsList: React.FC<Props> = ({
     }
 
     try {
-      // TODO: Implement shopping list API call
+      // Import shopping list service
+      const {shoppingListService} = await import('../services/shoppingListService');
+      
+      // Convert missing ingredients to shopping list items
+      const items = missingIngredients.map(ing => {
+        // Parse ingredient string (e.g., "2 cups flour" or "1 tablespoon olive oil")
+        const parts = ing.description.trim().split(' ');
+        let quantity = '1';
+        let unit = '';
+        let ingredient = ing.description;
+
+        if (parts.length >= 2) {
+          // Try to extract quantity and unit
+          const firstPart = parts[0];
+          if (!isNaN(Number(firstPart)) || firstPart.match(/^\d+\/\d+$/)) {
+            quantity = firstPart;
+            unit = parts[1] || '';
+            ingredient = parts.slice(2).join(' ') || parts.slice(1).join(' ');
+          }
+        }
+
+        return {
+          ingredient: ingredient || ing.description,
+          quantity: quantity,
+          unit: unit,
+          category: 'Uncategorized',
+        };
+      });
+
+      // Add items to shopping list
+      await shoppingListService.addItems(items);
+      
       Alert.alert(
         'Added to Shopping List! 🛒',
-        `Added ${missingIngredients.length} missing ingredients to your shopping list.`,
+        `Added ${missingIngredients.length} missing ingredient${missingIngredients.length > 1 ? 's' : ''} to your shopping list.`,
         [{ text: 'Great!' }]
       );
     } catch (error) {
