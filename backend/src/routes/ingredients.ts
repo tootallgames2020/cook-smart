@@ -471,21 +471,72 @@ router.post('/fix-categories', authenticateToken, async (req: AuthRequest, res, 
   try {
     const client = await pool.connect();
     try {
-      // Update ingredients with null or empty categories to 'Uncategorized'
-      const result = await client.query(`
-        UPDATE user_ingredients 
-        SET category = 'Uncategorized' 
-        WHERE (category IS NULL OR category = '' OR category = 'null' OR TRIM(category) = '')
+      // Get all uncategorized ingredients for the user
+      const uncategorized = await client.query(`
+        SELECT id, ingredient_name, category
+        FROM user_ingredients 
+        WHERE (category IS NULL OR category = '' OR category = 'null' OR TRIM(category) = '' OR category = 'Uncategorized')
         AND user_id = $1
-        RETURNING id, ingredient_name, category
       `, [req.user!.id]);
 
-      logger.info(`Fixed categories for ${result.rows.length} ingredients for user ${req.user!.id}`);
+      if (uncategorized.rows.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No uncategorized ingredients found',
+          updated: [],
+        });
+      }
+
+      // Intelligent categorization mapping
+      const categoryMap: { [key: string]: string[] } = {
+        'Protein': ['chicken', 'beef', 'pork', 'turkey', 'fish', 'salmon', 'tuna', 'shrimp', 'egg', 'tofu', 'bacon', 'ham', 'sausage', 'lamb', 'duck'],
+        'Dairy': ['milk', 'cheese', 'butter', 'cream', 'yogurt', 'sour cream', 'cottage cheese', 'mozzarella', 'cheddar', 'parmesan', 'ricotta'],
+        'Vegetables': ['tomato', 'onion', 'garlic', 'pepper', 'carrot', 'celery', 'broccoli', 'spinach', 'lettuce', 'cucumber', 'potato', 'mushroom', 'zucchini', 'eggplant', 'cabbage', 'kale', 'asparagus', 'cauliflower'],
+        'Fruits': ['apple', 'banana', 'orange', 'lemon', 'lime', 'strawberry', 'blueberry', 'grape', 'watermelon', 'pineapple', 'mango', 'peach', 'pear', 'cherry', 'avocado'],
+        'Grains': ['rice', 'pasta', 'bread', 'flour', 'oat', 'quinoa', 'barley', 'wheat', 'cereal', 'noodle', 'tortilla', 'couscous'],
+        'Spices & Herbs': ['salt', 'pepper', 'basil', 'oregano', 'thyme', 'rosemary', 'cumin', 'paprika', 'cinnamon', 'ginger', 'turmeric', 'parsley', 'cilantro', 'dill', 'sage', 'mint'],
+        'Condiments': ['ketchup', 'mustard', 'mayonnaise', 'soy sauce', 'vinegar', 'hot sauce', 'bbq sauce', 'salsa', 'relish', 'worcestershire'],
+        'Oils & Fats': ['olive oil', 'vegetable oil', 'coconut oil', 'canola oil', 'sesame oil', 'oil'],
+        'Baking': ['sugar', 'brown sugar', 'baking powder', 'baking soda', 'yeast', 'vanilla', 'cocoa', 'chocolate chip'],
+        'Nuts & Seeds': ['almond', 'walnut', 'peanut', 'cashew', 'pecan', 'sunflower seed', 'chia seed', 'flax seed'],
+        'Beverages': ['coffee', 'tea', 'juice', 'soda', 'water', 'wine', 'beer'],
+        'Canned Goods': ['beans', 'corn', 'peas', 'soup', 'broth', 'stock', 'tomato sauce', 'tomato paste'],
+      };
+
+      const updated: any[] = [];
+
+      // Categorize each ingredient
+      for (const ingredient of uncategorized.rows) {
+        const name = (ingredient.ingredient_name || '').toLowerCase();
+        let assignedCategory = 'Other';
+
+        // Find matching category
+        for (const [category, keywords] of Object.entries(categoryMap)) {
+          if (keywords.some(keyword => name.includes(keyword))) {
+            assignedCategory = category;
+            break;
+          }
+        }
+
+        // Update the ingredient
+        const result = await client.query(`
+          UPDATE user_ingredients 
+          SET category = $1 
+          WHERE id = $2 AND user_id = $3
+          RETURNING id, ingredient_name, category
+        `, [assignedCategory, ingredient.id, req.user!.id]);
+
+        if (result.rows.length > 0) {
+          updated.push(result.rows[0]);
+        }
+      }
+
+      logger.info(`Intelligently categorized ${updated.length} ingredients for user ${req.user!.id}`);
 
       return res.json({
         success: true,
-        message: `Updated ${result.rows.length} ingredients to 'Uncategorized'`,
-        updated: result.rows,
+        message: `Categorized ${updated.length} ingredient${updated.length !== 1 ? 's' : ''}`,
+        updated: updated,
       });
     } finally {
       client.release();
