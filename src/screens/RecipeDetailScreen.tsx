@@ -8,6 +8,8 @@ import { CookingInstructions } from '../components/CookingInstructions';
 import { useRecipes } from '../contexts/RecipeContext';
 import { RecipeDetails } from '../services/recipeService';
 import { API_BASE_URL } from '../config/api';
+import { dietaryService, DietaryRestriction, Allergy } from '../services/dietaryService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Props {
   route: {
@@ -21,11 +23,16 @@ interface Props {
 export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { recipeId } = route.params;
   const { getRecipeDetails, saveRecipe, isRecipeSaved } = useRecipes();
+  const { user } = useAuth();
   const [recipe, setRecipe] = useState<RecipeDetails | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [servings, setServings] = useState(4);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userRestrictions, setUserRestrictions] = useState<DietaryRestriction[]>([]);
+  const [userAllergies, setUserAllergies] = useState<Allergy[]>([]);
+  const [conflictingIngredients, setConflictingIngredients] = useState<string[]>([]);
+  const [substitutions, setSubstitutions] = useState<Array<{ original: string; substitutes: Array<{ ingredient: string; ratio: string; notes?: string }> }>>([]);
 
   useEffect(() => {
     const loadRecipe = async () => {
@@ -50,6 +57,29 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         // Check if recipe is already saved
         const saved = await isRecipeSaved(recipeDetails.id);
         setIsFavorite(saved);
+
+        // Load user's dietary restrictions and allergies
+        if (user?.id) {
+          try {
+            const [restrictions, allergies] = await Promise.all([
+              dietaryService.getUserRestrictions(user.id),
+              dietaryService.getUserAllergies(user.id),
+            ]);
+            setUserRestrictions(restrictions);
+            setUserAllergies(allergies);
+
+            // Detect conflicting ingredients
+            const conflicts = detectConflicts(recipeDetails.ingredients, restrictions, allergies);
+            setConflictingIngredients(conflicts);
+
+            // Generate substitutions for conflicting ingredients
+            const subs = generateSubstitutions(conflicts, restrictions, allergies);
+            setSubstitutions(subs);
+          } catch (err) {
+            console.error('[RecipeDetailScreen] Error loading dietary preferences:', err);
+            // Don't fail the whole screen if dietary preferences fail
+          }
+        }
       } catch (err) {
         console.error('[RecipeDetailScreen] Error loading recipe:', err);
         setError(err instanceof Error ? err.message : 'Failed to load recipe');
@@ -61,7 +91,7 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     if (recipeId) {
       loadRecipe();
     }
-  }, [recipeId, getRecipeDetails, isRecipeSaved]);
+  }, [recipeId, getRecipeDetails, isRecipeSaved, user]);
 
   const handleFavoritePress = async () => {
     if (!recipe) return;
@@ -165,6 +195,111 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } while (Math.abs(decimal - h1 / k1) > decimal * tolerance);
     
     return k1 === 1 ? h1.toString() : `${h1}/${k1}`;
+  };
+
+  // Detect conflicting ingredients based on user's dietary restrictions and allergies
+  const detectConflicts = (
+    ingredients: string[],
+    restrictions: DietaryRestriction[],
+    allergies: Allergy[]
+  ): string[] => {
+    const conflicts: string[] = [];
+
+    ingredients.forEach(ingredient => {
+      const ingredientLower = ingredient.toLowerCase();
+
+      // Check against dietary restrictions
+      restrictions.forEach(restriction => {
+        restriction.excluded_ingredients.forEach(excluded => {
+          if (ingredientLower.includes(excluded.toLowerCase())) {
+            conflicts.push(ingredient);
+          }
+        });
+      });
+
+      // Check against allergies
+      allergies.forEach(allergy => {
+        allergy.trigger_ingredients.forEach(trigger => {
+          if (ingredientLower.includes(trigger.toLowerCase())) {
+            conflicts.push(ingredient);
+          }
+        });
+        allergy.cross_reactive_ingredients.forEach(crossReactive => {
+          if (ingredientLower.includes(crossReactive.toLowerCase())) {
+            conflicts.push(ingredient);
+          }
+        });
+      });
+    });
+
+    // Remove duplicates
+    return [...new Set(conflicts)];
+  };
+
+  // Generate substitutions for conflicting ingredients
+  const generateSubstitutions = (
+    conflicts: string[],
+    restrictions: DietaryRestriction[],
+    allergies: Allergy[]
+  ): Array<{ original: string; substitutes: Array<{ ingredient: string; ratio: string; notes?: string }> }> => {
+    const substitutions: Array<{ original: string; substitutes: Array<{ ingredient: string; ratio: string; notes?: string }> }> = [];
+
+    // Common substitution mappings
+    const substitutionMap: { [key: string]: Array<{ ingredient: string; ratio: string; notes?: string }> } = {
+      'milk': [
+        { ingredient: 'almond milk', ratio: '1:1', notes: 'Dairy-free alternative' },
+        { ingredient: 'oat milk', ratio: '1:1', notes: 'Creamy dairy-free option' },
+        { ingredient: 'coconut milk', ratio: '1:1', notes: 'Rich dairy-free alternative' },
+      ],
+      'butter': [
+        { ingredient: 'coconut oil', ratio: '1:1', notes: 'Vegan alternative' },
+        { ingredient: 'olive oil', ratio: '3:4', notes: 'Use 3/4 cup oil for 1 cup butter' },
+        { ingredient: 'vegan butter', ratio: '1:1', notes: 'Direct replacement' },
+      ],
+      'egg': [
+        { ingredient: 'flax egg', ratio: '1:1', notes: '1 tbsp ground flax + 3 tbsp water per egg' },
+        { ingredient: 'chia egg', ratio: '1:1', notes: '1 tbsp chia seeds + 3 tbsp water per egg' },
+        { ingredient: 'applesauce', ratio: '1/4 cup per egg', notes: 'Best for baking' },
+      ],
+      'cheese': [
+        { ingredient: 'nutritional yeast', ratio: '1:1', notes: 'Adds cheesy flavor' },
+        { ingredient: 'vegan cheese', ratio: '1:1', notes: 'Direct replacement' },
+        { ingredient: 'cashew cream', ratio: '1:1', notes: 'Creamy alternative' },
+      ],
+      'wheat flour': [
+        { ingredient: 'almond flour', ratio: '1:1', notes: 'Gluten-free, denser texture' },
+        { ingredient: 'rice flour', ratio: '1:1', notes: 'Gluten-free alternative' },
+        { ingredient: 'oat flour', ratio: '1:1', notes: 'Gluten-free if certified' },
+      ],
+      'soy sauce': [
+        { ingredient: 'coconut aminos', ratio: '1:1', notes: 'Soy-free alternative' },
+        { ingredient: 'tamari', ratio: '1:1', notes: 'Gluten-free soy sauce' },
+      ],
+      'peanut': [
+        { ingredient: 'almond butter', ratio: '1:1', notes: 'Nut alternative' },
+        { ingredient: 'sunflower seed butter', ratio: '1:1', notes: 'Nut-free alternative' },
+      ],
+      'honey': [
+        { ingredient: 'maple syrup', ratio: '1:1', notes: 'Vegan sweetener' },
+        { ingredient: 'agave nectar', ratio: '1:1', notes: 'Vegan alternative' },
+      ],
+    };
+
+    conflicts.forEach(conflict => {
+      const conflictLower = conflict.toLowerCase();
+      
+      // Find matching substitutions
+      Object.keys(substitutionMap).forEach(key => {
+        if (conflictLower.includes(key)) {
+          substitutions.push({
+            original: conflict,
+            substitutes: substitutionMap[key],
+          });
+        }
+      });
+    });
+
+    return substitutions;
   };
 
   const handleCookedThis = async () => {
@@ -362,8 +497,8 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <IngredientsList
           ingredients={recipe.ingredients}
           ingredientsWithStatus={getIngredientsWithStatus()}
-          conflictingIngredients={[]} // TODO: Implement dietary conflict detection
-          substitutions={[]} // TODO: Implement ingredient substitutions
+          conflictingIngredients={conflictingIngredients}
+          substitutions={substitutions}
           servings={servings}
           onServingsChange={handleServingsChange}
         />
