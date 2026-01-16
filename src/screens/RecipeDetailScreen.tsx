@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, SafeAreaView, Alert, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, SafeAreaView, Alert, View, Text, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RecipeDetailHeader } from '../components/RecipeDetailHeader';
@@ -117,9 +117,49 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  const handleSharePress = () => {
+  const handleSharePress = async () => {
     if (!recipe) return;
-    Alert.alert('Share Recipe', `Share ${recipe.title} with friends!`);
+    
+    try {
+      const shareMessage = `Check out this delicious recipe: ${recipe.title}\n\n` +
+        `🍽️ Servings: ${recipe.servings}\n` +
+        `⏱️ Ready in: ${recipe.readyInMinutes || 30} minutes\n\n` +
+        `Get the full recipe on Cook Smart app!`;
+
+      const result = await Share.share({
+        message: shareMessage,
+        title: recipe.title,
+      });
+
+      if (result.action === Share.sharedAction) {
+        // User shared successfully
+        console.log('Recipe shared successfully');
+        
+        // Optional: Track share analytics
+        try {
+          const token = await AsyncStorage.getItem('auth_token');
+          if (token) {
+            await fetch(`${API_BASE_URL}/api/v1/social/share`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                recipeId: recipe.id.toString(),
+                shareType: 'native_share',
+              }),
+            });
+          }
+        } catch (trackError) {
+          // Don't fail if tracking fails
+          console.log('Share tracking failed:', trackError);
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing recipe:', error);
+      Alert.alert('Share Failed', 'Unable to share this recipe. Please try again.');
+    }
   };
 
   const handleServingsChange = (newServings: number) => {
