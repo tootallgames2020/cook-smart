@@ -219,18 +219,18 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
 // Get ingredient categories
 router.get('/categories', authenticateToken, async (req: AuthRequest, res) => {
   const categories = [
-    { id: 'vegetables', name: 'Vegetables', icon: '🥬' },
-    { id: 'fruits', name: 'Fruits', icon: '🍎' },
-    { id: 'meat', name: 'Meat & Poultry', icon: '🥩' },
-    { id: 'seafood', name: 'Seafood', icon: '🐟' },
-    { id: 'dairy', name: 'Dairy', icon: '🥛' },
-    { id: 'grains', name: 'Grains & Cereals', icon: '🌾' },
+    { id: 'vegetables', name: 'Vegetables', icon: '🥕' },
+    { id: 'fruits', name: 'Fruits', icon: '🍓' },
+    { id: 'meat', name: 'Meat & Poultry', icon: '🍗' },
+    { id: 'seafood', name: 'Seafood', icon: '🦐' },
+    { id: 'dairy', name: 'Dairy', icon: '🧀' },
+    { id: 'grains', name: 'Grains & Cereals', icon: '🍞' },
     { id: 'legumes', name: 'Legumes', icon: '🫘' },
-    { id: 'nuts', name: 'Nuts & Seeds', icon: '🥜' },
+    { id: 'nuts', name: 'Nuts & Seeds', icon: '🌰' },
     { id: 'oils', name: 'Oils & Fats', icon: '🫒' },
-    { id: 'seasonings', name: 'Herbs & Spices', icon: '🌿' },
+    { id: 'seasonings', name: 'Herbs & Spices', icon: '🧂' },
     { id: 'condiments', name: 'Condiments', icon: '🍯' },
-    { id: 'beverages', name: 'Beverages', icon: '🥤' },
+    { id: 'beverages', name: 'Beverages', icon: '☕' },
     { id: 'other', name: 'Other', icon: '📦' },
   ];
 
