@@ -9,10 +9,19 @@ ADD COLUMN IF NOT EXISTS reward_granted BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS reward_months INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '1 year');
 
--- Add foreign key constraint for referred_user_id
-ALTER TABLE referrals 
-ADD CONSTRAINT IF NOT EXISTS referrals_referred_user_id_fkey 
-FOREIGN KEY (referred_user_id) REFERENCES users(id) ON DELETE SET NULL;
+-- Add foreign key constraint for referred_user_id (PostgreSQL doesn't support IF NOT EXISTS for constraints)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'referrals_referred_user_id_fkey' 
+        AND table_name = 'referrals'
+    ) THEN
+        ALTER TABLE referrals 
+        ADD CONSTRAINT referrals_referred_user_id_fkey 
+        FOREIGN KEY (referred_user_id) REFERENCES users(id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- Create referral_rewards table if it doesn't exist (referenced in backend code)
 CREATE TABLE IF NOT EXISTS referral_rewards (
