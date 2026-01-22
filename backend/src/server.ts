@@ -32,6 +32,7 @@ import mealPlanningRoutes from './routes/mealPlanning';
 import trendingRecipesRoutes from './routes/trendingRecipes';
 import achievementsRoutes from './routes/achievements';
 import recipeEnhancementsRoutes from './routes/recipeEnhancements';
+import usersRoutes from './routes/users';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -141,6 +142,7 @@ app.get('/health', async (req, res) => {
       environment: process.env.NODE_ENV || 'development',
       endpoints: {
         auth: '/api/v1/auth/*',
+        users: '/api/v1/users/*',
         recipes: '/api/v1/recipes/*',
         recipeDetails: '/api/v1/recipe-details/*',
         customRecipes: '/api/v1/custom-recipes/*',
@@ -174,6 +176,7 @@ app.get('/health', async (req, res) => {
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/auth', passwordResetRoutes);
+app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/recipes', recipeRoutes);
 app.use('/api/v1/recipe-details', recipeDetailsRoutes);
 app.use('/api/v1/custom-recipes', customRecipesRoutes);
