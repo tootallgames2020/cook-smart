@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, SafeAreaView, Alert } from 'react-native';
 import { BetaBanner } from '../components/BetaBanner';
 import { BetaPricingCard } from '../components/BetaPricingCard';
 import { paymentService, PricingPlan } from '../services/paymentService';
 
+interface Props {
+  navigation: any;
+}
 
 
-export const PricingScreen: React.FC = () => {
+
+export const PricingScreen: React.FC<Props> = ({ navigation }) => {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
 
   useEffect(() => {
@@ -20,6 +24,29 @@ export const PricingScreen: React.FC = () => {
     };
     loadPlans();
   }, []);
+
+  const handlePlanSelection = async (plan: PricingPlan) => {
+    try {
+      // For BETA: Show information about the plan
+      Alert.alert(
+        'BETA Pre-Purchase',
+        `You selected the ${plan.name} plan ($${plan.price}/${plan.interval}).\n\nDuring BETA, all features are free! This pre-purchase will give you a 30% discount when we launch.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Continue to Payment', 
+            onPress: () => {
+              // Navigate to payment screen with selected plan
+              navigation.navigate('PaymentMethods', { selectedPlan: plan });
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error selecting plan:', error);
+      Alert.alert('Error', 'Failed to process plan selection. Please try again.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -42,7 +69,7 @@ export const PricingScreen: React.FC = () => {
               interval={plan.interval}
               features={plan.features}
               isPopular={plan.id === 'monthly'}
-              onSelect={() => {/* TODO: Implement plan selection */}}
+              onSelect={() => handlePlanSelection(plan)}
             />
           ))}
         </View>

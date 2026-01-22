@@ -7,6 +7,7 @@ import { IngredientsList } from '../components/IngredientsList';
 import { CookingInstructions } from '../components/CookingInstructions';
 import { useRecipes } from '../contexts/RecipeContext';
 import { RecipeDetails } from '../services/recipeService';
+import recipeService from '../services/recipeService';
 import { API_BASE_URL } from '../config/api';
 import { dietaryService, DietaryRestriction, Allergy } from '../services/dietaryService';
 import { useAuth } from '../contexts/AuthContext';
@@ -98,7 +99,11 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     
     try {
       if (isFavorite) {
-        // TODO: Implement remove from favorites
+        // Remove from favorites
+        const savedRecipes = await recipeService.getSavedRecipes();
+        const updatedRecipes = savedRecipes.filter(r => r.recipe.id !== recipe.id);
+        await AsyncStorage.setItem('saved_recipes', JSON.stringify(updatedRecipes));
+        
         setIsFavorite(false);
         Alert.alert('Removed from Favorites', `${recipe.title} has been removed from your favorites.`);
       } else {

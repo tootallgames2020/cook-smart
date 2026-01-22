@@ -64,10 +64,11 @@ export async function logout(): Promise<void> {
  */
 export async function verifyAuth(): Promise<AuthResponse> {
   try {
-    // Mock implementation - replace with actual API call when available
+    const response = await authApi.getCurrentUser();
+    
     return {
-      success: false,
-      message: 'Not implemented',
+      success: true,
+      user: response.user as User,
     };
   } catch (error) {
     removeAuthToken();

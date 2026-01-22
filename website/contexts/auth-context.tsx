@@ -243,8 +243,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
   const refreshAuth = useCallback(async (): Promise<void> => {
     try {
-      // TODO: Implement token refresh endpoint in backend
-      console.log('[AUTH] Refresh auth called (not implemented yet)');
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.log('[AUTH] No token to refresh');
+        return;
+      }
+
+      // Implement token refresh endpoint call
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.token) {
+          localStorage.setItem('auth_token', data.token);
+          console.log('[AUTH] Token refreshed successfully');
+        }
+      } else {
+        console.log('[AUTH] Token refresh failed, logging out');
+        await logout();
+      }
+      
       setLastActivity(Date.now());
     } catch (error) {
       console.error('[AUTH] Token refresh failed:', error);

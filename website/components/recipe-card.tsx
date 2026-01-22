@@ -68,7 +68,9 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               className="text-muted-foreground hover:text-red-500 transition-colors"
               onClick={(e) => {
                 e.preventDefault();
-                // TODO: Implement favorite functionality
+                // Implement favorite functionality
+                console.log('Add to favorites:', recipe.title);
+                // TODO: Integrate with backend favorites API when available
               }}
             >
               <Heart className="h-5 w-5" />

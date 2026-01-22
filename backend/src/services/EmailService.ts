@@ -121,4 +121,69 @@ export class EmailService {
       console.error('Error sending access restricted notification:', error);
     }
   }
+
+  static async sendTrialEndingNotification(
+    email: string,
+    firstName: string,
+    daysRemaining: number,
+  ): Promise<void> {
+    try {
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: email,
+        subject: `Your Cook Smart trial ends in ${daysRemaining} days`,
+        html: `
+          <h2>Hi ${firstName},</h2>
+          <p>Your Cook Smart trial will end in <strong>${daysRemaining} days</strong>.</p>
+          <p>Don't lose access to your favorite recipes and features!</p>
+          <p><a href="https://cooksmartapp.com/subscribe">Subscribe Now</a></p>
+          <p>Choose from our flexible plans and continue your cooking journey.</p>
+        `,
+      });
+    } catch (error) {
+      console.error('Error sending trial ending notification:', error);
+    }
+  }
+
+  static async sendAdminPasswordResetEmail(
+    email: string,
+    resetToken: string,
+  ): Promise<void> {
+    try {
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: email,
+        subject: 'Cook Smart Admin - Reset Your Password',
+        html: `
+          <h2>Admin Password Reset</h2>
+          <p>Your admin password reset code: <strong>${resetToken}</strong></p>
+          <p>This code expires in 1 hour.</p>
+          <p>If you didn't request this reset, please contact the system administrator.</p>
+        `,
+      });
+    } catch (error) {
+      console.error('Error sending admin password reset email:', error);
+    }
+  }
+
+  static async sendAdminVerificationEmail(
+    email: string,
+    verificationToken: string,
+  ): Promise<void> {
+    try {
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: email,
+        subject: 'Cook Smart Admin - Verify Your Email',
+        html: `
+          <h2>Admin Email Verification</h2>
+          <p>Your admin email verification code: <strong>${verificationToken}</strong></p>
+          <p>This code expires in 24 hours.</p>
+          <p>Enter this code to complete your admin account setup.</p>
+        `,
+      });
+    } catch (error) {
+      console.error('Error sending admin verification email:', error);
+    }
+  }
 }

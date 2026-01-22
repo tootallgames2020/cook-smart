@@ -1,5 +1,6 @@
 import {API_BASE_URL} from '../config/api';
 import {getAuthToken} from '../utils/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface UserProfile {
   id: string;
@@ -113,15 +114,42 @@ class UserService {
     }
   }
 
-  // Get user stats (placeholder - would need backend endpoint)
+  // Get user stats
   async getUserStats(): Promise<UserStats> {
-    // TODO: Implement when backend endpoint is available
-    return {
-      totalRecipes: 0,
-      totalFavorites: 0,
-      totalRatings: 0,
-      averageRating: 0,
-    };
+    try {
+      const authToken = await AsyncStorage.getItem('auth_token');
+      if (!authToken) {
+        throw new Error('No authentication token');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/stats`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user stats');
+      }
+
+      const data = await response.json();
+      return data.stats || {
+        totalRecipes: 0,
+        totalFavorites: 0,
+        totalRatings: 0,
+        averageRating: 0,
+      };
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      // Return default stats on error
+      return {
+        totalRecipes: 0,
+        totalFavorites: 0,
+        totalRatings: 0,
+        averageRating: 0,
+      };
+    }
   }
 }
 

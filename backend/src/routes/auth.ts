@@ -261,4 +261,29 @@ router.post('/logout', authenticateToken, (req: AuthRequest, res) => {
   });
 });
 
+// Token refresh endpoint
+router.post('/refresh', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const user = req.user!;
+
+    // Generate new JWT token
+    const newToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '90d' }
+    );
+
+    logger.info(`Token refreshed for user: ${user.email}`);
+
+    return res.json({
+      success: true,
+      message: 'Token refreshed successfully',
+      token: newToken,
+    });
+  } catch (error) {
+    logger.error('Token refresh error:', error);
+    return next(createError('Failed to refresh token', 500));
+  }
+});
+
 export default router;

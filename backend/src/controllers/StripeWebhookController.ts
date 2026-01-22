@@ -432,8 +432,14 @@ export class StripeWebhookController {
           } as any,
         );
 
-        // TODO: Send email to user about trial ending
-        console.log(`Trial ending notification sent for user: ${user.email}`);
+        // Send email to user about trial ending
+        try {
+          const emailService = require('../services/EmailService');
+          await emailService.sendTrialEndingNotification(user.email, user.first_name || 'User');
+          console.log(`Trial ending email sent to user: ${user.email}`);
+        } catch (emailError) {
+          console.error('Failed to send trial ending email:', emailError);
+        }
       }
     } catch (error) {
       console.error('Error handling trial will end:', error);

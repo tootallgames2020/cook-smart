@@ -200,16 +200,6 @@ export const RecipeSearchScreen: React.FC<RecipeSearchScreenProps> = ({
 
         <View style={styles.statsRow}>
           <View style={styles.stat}>
-            <Icon name="check-circle" size={16} color="#10B981" />
-            <Text style={styles.statText}>{item.usedIngredientCount} have</Text>
-          </View>
-          <View style={styles.stat}>
-            <Icon name="shopping-cart" size={16} color="#F59E0B" />
-            <Text style={styles.statText}>
-              {item.missedIngredientCount} need
-            </Text>
-          </View>
-          <View style={styles.stat}>
             <Icon name="favorite" size={16} color="#EF4444" />
             <Text style={styles.statText}>{item.likes}</Text>
           </View>

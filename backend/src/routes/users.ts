@@ -108,3 +108,46 @@ router.patch(
 );
 
 export default router;
+
+// Get user statistics
+router.get(
+  '/stats',
+  authenticateToken,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        res.status(401).json({error: 'User not authenticated'});
+        return;
+      }
+
+      const pool = require('../config/database').default;
+
+      // Get user statistics
+      const statsQuery = `
+        SELECT
+          (SELECT COUNT(*) FROM user_recipes WHERE user_id = $1) as total_recipes,
+          (SELECT COUNT(*) FROM favorites WHERE user_id = $1) as total_favorites,
+          (SELECT COUNT(*) FROM recipe_ratings WHERE user_id = $1) as total_ratings,
+          (SELECT COALESCE(AVG(rating), 0) FROM recipe_ratings WHERE user_id = $1) as average_rating
+      `;
+
+      const result = await pool.query(statsQuery, [userId]);
+      const stats = result.rows[0];
+
+      res.json({
+        success: true,
+        stats: {
+          totalRecipes: parseInt(stats.total_recipes) || 0,
+          totalFavorites: parseInt(stats.total_favorites) || 0,
+          totalRatings: parseInt(stats.total_ratings) || 0,
+          averageRating: parseFloat(stats.average_rating) || 0,
+        },
+      });
+    } catch (error) {
+      console.error('[User Stats] Error:', error);
+      res.status(500).json({error: 'Failed to get user statistics'});
+    }
+  },
+);

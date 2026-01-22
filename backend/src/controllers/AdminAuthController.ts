@@ -61,8 +61,17 @@ export class AdminAuthController {
         req.get('user-agent'),
       );
 
-      // TODO: Send verification email with token
-      // For now, we'll auto-verify in development
+      // Send verification email with token
+      try {
+        const emailService = require('../services/EmailService');
+        const verificationUrl = `${process.env.ADMIN_FRONTEND_URL || 'https://admin.cooksmartapp.com'}/verify-email?token=${admin.verification_token}`;
+        await emailService.sendAdminVerificationEmail(email, verificationUrl);
+        console.log(`Verification email sent to admin: ${email}`);
+      } catch (emailError) {
+        console.error('Failed to send verification email:', emailError);
+      }
+
+      // For development, auto-verify
       if (process.env.NODE_ENV === 'development') {
         await AdminUserModel.verifyEmail(admin.verification_token!);
       }
@@ -295,8 +304,17 @@ export class AdminAuthController {
         return;
       }
 
-      // TODO: Send password reset email with token
-      // For now, log the token in development
+      // Send password reset email with token
+      try {
+        const emailService = require('../services/EmailService');
+        const resetUrl = `${process.env.ADMIN_FRONTEND_URL || 'https://admin.cooksmartapp.com'}/reset-password?token=${resetToken}`;
+        await emailService.sendAdminPasswordResetEmail(email, resetUrl);
+        console.log(`Password reset email sent to admin: ${email}`);
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+      }
+
+      // For development, log the token
       if (process.env.NODE_ENV === 'development') {
         console.log(`Password reset token for ${email}: ${resetToken}`);
       }

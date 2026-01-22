@@ -148,8 +148,47 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
       // Apply dietary filtering if user has restrictions
       let filteredRecipes = sortedRecipes;
       if (dietary_restrictions || allergies) {
-        // TODO: Implement dietary filtering logic
-        logger.info('Dietary filtering requested but not yet implemented');
+        logger.info('Applying dietary filtering', { dietary_restrictions, allergies });
+        
+        filteredRecipes = sortedRecipes.filter(recipe => {
+          const recipeTitle = recipe.title?.toLowerCase() || '';
+          const recipeIngredients = recipe.ingredients?.join(' ').toLowerCase() || '';
+          const recipeText = `${recipeTitle} ${recipeIngredients}`;
+          
+          // Filter out recipes with dietary restriction conflicts
+          if (dietary_restrictions) {
+            const restrictions = dietary_restrictions.split(',').map(r => r.trim().toLowerCase());
+            for (const restriction of restrictions) {
+              // Common dietary restriction filters
+              if (restriction.includes('vegetarian') && (recipeText.includes('meat') || recipeText.includes('chicken') || recipeText.includes('beef') || recipeText.includes('pork') || recipeText.includes('fish'))) {
+                return false;
+              }
+              if (restriction.includes('vegan') && (recipeText.includes('dairy') || recipeText.includes('milk') || recipeText.includes('cheese') || recipeText.includes('butter') || recipeText.includes('egg'))) {
+                return false;
+              }
+              if (restriction.includes('gluten-free') && (recipeText.includes('wheat') || recipeText.includes('flour') || recipeText.includes('bread') || recipeText.includes('pasta'))) {
+                return false;
+              }
+              if (restriction.includes('dairy-free') && (recipeText.includes('milk') || recipeText.includes('cheese') || recipeText.includes('butter') || recipeText.includes('cream'))) {
+                return false;
+              }
+            }
+          }
+          
+          // Filter out recipes with allergy conflicts
+          if (allergies) {
+            const allergyList = allergies.split(',').map(a => a.trim().toLowerCase());
+            for (const allergy of allergyList) {
+              if (recipeText.includes(allergy)) {
+                return false;
+              }
+            }
+          }
+          
+          return true;
+        });
+        
+        logger.info(`Filtered recipes: ${sortedRecipes.length} -> ${filteredRecipes.length}`);
       }
 
       // Award points for recipe search

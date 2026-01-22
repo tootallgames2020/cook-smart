@@ -7,6 +7,19 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
+/**
+ * Calculate access extension date based on months earned
+ */
+function calculateAccessExtension(monthsEarned: number): Date | null {
+  if (monthsEarned <= 0) return null;
+  
+  const now = new Date();
+  const extensionDate = new Date(now);
+  extensionDate.setMonth(extensionDate.getMonth() + monthsEarned);
+  
+  return extensionDate;
+}
+
 // Create/Get referral code for user (matches frontend expectation)
 router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
@@ -69,7 +82,7 @@ router.get('/access-info', authenticateToken, async (req: AuthRequest, res, next
       return res.json({
         success: true,
         totalMonthsEarned: parseInt(statsData.total_months_earned) || 0,
-        accessExtendedUntil: null, // TODO: Calculate based on subscription + earned months
+        accessExtendedUntil: calculateAccessExtension(parseInt(statsData.total_months_earned) || 0),
         activeReferrals: parseInt(statsData.active_referrals) || 0,
       });
     } finally {
