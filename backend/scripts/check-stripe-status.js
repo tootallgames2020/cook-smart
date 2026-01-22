@@ -168,7 +168,10 @@ async function checkStripeStatus() {
       );
 
       const dbProductIds = dbPlans.rows.map(p => p.stripe_product_id);
-      const orphanedProducts = cookSmartProducts.filter(p => !dbProductIds.includes(p.id));
+      const orphanedProducts = cookSmartProducts.filter(p => 
+        !dbProductIds.includes(p.id) && 
+        !p.name.toLowerCase().includes('[archived]')
+      );
 
       if (orphanedProducts.length > 0) {
         console.log(`⚠️  Found ${orphanedProducts.length} orphaned Cook Smart products in Stripe:`);
