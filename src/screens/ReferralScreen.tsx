@@ -27,26 +27,79 @@ const ReferralScreen: React.FC = () => {
   const loadReferralData = async () => {
     try {
       setLoading(true);
+      
+      // Check if user is authenticated first
+      const {isAuthenticated} = require('../utils/auth');
+      const authenticated = await isAuthenticated();
+      
+      if (!authenticated) {
+        setReferralCode('LOGIN_REQUIRED');
+        Alert.alert(
+          'Login Required',
+          'Please log in to access referral features.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login' as never),
+            },
+          ],
+        );
+        return;
+      }
+
       const code = await referralService.createReferral();
       setReferralCode(code);
 
       const info = await referralService.getReferralAccessInfo();
       setAccessInfo(info);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading referral data:', error);
-      // Set placeholder so UI still shows
-      setReferralCode('ERROR');
-      Alert.alert(
-        'Error',
-        'Unable to load referral code. Please try again later.',
-      );
+      
+      // Check if it's an authentication error
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        setReferralCode('AUTH_ERROR');
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please log in again.',
+          [
+            {
+              text: 'Login',
+              onPress: () => navigation.navigate('Login' as never),
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+          ],
+        );
+      } else {
+        // Generic error
+        setReferralCode('ERROR');
+        Alert.alert(
+          'Error',
+          'Unable to load referral code. Please check your internet connection and try again.',
+          [
+            {
+              text: 'Retry',
+              onPress: () => loadReferralData(),
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+          ],
+        );
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleShare = async () => {
-    if (!referralCode || referralCode === 'ERROR') return;
+    if (!referralCode || referralCode === 'ERROR' || referralCode === 'AUTH_ERROR' || referralCode === 'LOGIN_REQUIRED') {
+      Alert.alert('Error', 'Cannot share referral code. Please try loading it again.');
+      return;
+    }
 
     const message = `Join me on Cook Smart! Use my referral code ${referralCode} when you subscribe. Get personalized recipes, smart meal planning, and more! 🍳\n\nDownload: https://cooksmartapp.com`;
 
@@ -61,7 +114,10 @@ const ReferralScreen: React.FC = () => {
   };
 
   const handleCopyCode = () => {
-    if (!referralCode || referralCode === 'ERROR') return;
+    if (!referralCode || referralCode === 'ERROR' || referralCode === 'AUTH_ERROR' || referralCode === 'LOGIN_REQUIRED') {
+      Alert.alert('Error', 'Cannot copy referral code. Please try loading it again.');
+      return;
+    }
     Clipboard.setString(referralCode);
     Alert.alert('Copied!', `Referral code ${referralCode} copied to clipboard`);
   };
@@ -118,22 +174,51 @@ const ReferralScreen: React.FC = () => {
           ) : (
             <>
               <View style={styles.codeCard}>
-                <Text style={styles.code}>{referralCode}</Text>
+                <Text style={[
+                  styles.code, 
+                  (referralCode === 'ERROR' || referralCode === 'AUTH_ERROR' || referralCode === 'LOGIN_REQUIRED') && styles.errorCode
+                ]}>
+                  {referralCode === 'LOGIN_REQUIRED' ? 'LOGIN REQUIRED' :
+                   referralCode === 'AUTH_ERROR' ? 'SESSION EXPIRED' :
+                   referralCode === 'ERROR' ? 'ERROR LOADING' :
+                   referralCode}
+                </Text>
                 <TouchableOpacity
-                  style={styles.copyButton}
+                  style={[
+                    styles.copyButton,
+                    (referralCode === 'ERROR' || referralCode === 'AUTH_ERROR' || referralCode === 'LOGIN_REQUIRED') && styles.disabledButton
+                  ]}
                   onPress={handleCopyCode}
-                  disabled={referralCode === 'ERROR'}>
-                  <Icon name="content-copy" size={20} color="#10B981" />
-                  <Text style={styles.copyButtonText}>Copy</Text>
+                  disabled={referralCode === 'ERROR' || referralCode === 'AUTH_ERROR' || referralCode === 'LOGIN_REQUIRED'}>
+                  <Icon name="content-copy" size={20} color={
+                    (referralCode === 'ERROR' || referralCode === 'AUTH_ERROR' || referralCode === 'LOGIN_REQUIRED') ? '#9CA3AF' : '#10B981'
+                  } />
+                  <Text style={[
+                    styles.copyButtonText,
+                    (referralCode === 'ERROR' || referralCode === 'AUTH_ERROR' || referralCode === 'LOGIN_REQUIRED') && styles.disabledButtonText
+                  ]}>Copy</Text>
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShare}
-                disabled={referralCode === 'ERROR'}>
-                <Icon name="share" size={20} color="#FFFFFF" />
-                <Text style={styles.shareButtonText}>Share with Friends</Text>
+                style={[
+                  styles.shareButton,
+                  (referralCode === 'ERROR' || referralCode === 'AUTH_ERROR' || referralCode === 'LOGIN_REQUIRED') && styles.disabledShareButton
+                ]}
+                onPress={referralCode === 'LOGIN_REQUIRED' || referralCode === 'AUTH_ERROR' ? 
+                  () => navigation.navigate('Login' as never) : 
+                  referralCode === 'ERROR' ? loadReferralData : handleShare}
+                disabled={false}>
+                <Icon name={
+                  referralCode === 'LOGIN_REQUIRED' || referralCode === 'AUTH_ERROR' ? 'login' :
+                  referralCode === 'ERROR' ? 'refresh' : 'share'
+                } size={20} color="#FFFFFF" />
+                <Text style={styles.shareButtonText}>
+                  {referralCode === 'LOGIN_REQUIRED' ? 'Login to Continue' :
+                   referralCode === 'AUTH_ERROR' ? 'Login Again' :
+                   referralCode === 'ERROR' ? 'Try Again' :
+                   'Share with Friends'}
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -422,6 +507,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#374151',
     lineHeight: 20,
+  },
+  errorCode: {
+    color: '#EF4444',
+    fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#F3F4F6',
+  },
+  disabledButtonText: {
+    color: '#9CA3AF',
+  },
+  disabledShareButton: {
+    backgroundColor: '#6B7280',
   },
 });
 
