@@ -13,7 +13,75 @@ router.get('/plans', async (req, res, next) => {
   try {
     const client = await pool.connect();
     try {
-      // Check if we're in beta phase
+      // Check if subscription_plans table exists
+      const tableExists = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'subscription_plans'
+        );
+      `);
+
+      if (!tableExists.rows[0].exists) {
+        // Fallback to hardcoded plans if table doesn't exist
+        logger.warn('subscription_plans table not found, using fallback plans');
+        
+        const fallbackPlans = [
+          {
+            id: 1,
+            name: 'Yearly Premium',
+            displayName: 'Yearly Premium',
+            initialPrice: 49.99,
+            renewalPrice: 49.99,
+            billingInterval: 'year',
+            trialDays: 0,
+            features: [
+              'Unlimited recipe access',
+              'Custom recipe creation & sharing',
+              'Advanced meal planning',
+              'Smart shopping lists',
+              'Dietary restriction support',
+              'Ingredient inventory tracking',
+              'Recipe scaling & unit conversion',
+              'Priority customer support'
+            ]
+          },
+          {
+            id: 2,
+            name: 'Monthly Premium',
+            displayName: 'Monthly Premium',
+            initialPrice: 9.99,
+            renewalPrice: 9.99,
+            billingInterval: 'month',
+            trialDays: 7,
+            features: [
+              'Unlimited recipe access',
+              'Custom recipe creation & sharing',
+              'Advanced meal planning',
+              'Smart shopping lists',
+              'Dietary restriction support',
+              'Ingredient inventory tracking',
+              'Recipe scaling & unit conversion',
+              'Priority customer support'
+            ]
+          }
+        ];
+
+        return res.json({
+          success: true,
+          plans: fallbackPlans,
+          isBeta: true,
+          betaMessage: 'Limited time BETA pricing - Lock in lifetime benefits!',
+          freeFeatures: [
+            'Basic recipe search',
+            'Limited ingredient tracking',
+            'Basic meal planning',
+            'Community recipe access'
+          ],
+        });
+      }
+
+      // Original logic with subscription_plans table
       const isBeta = true; // During beta phase
       
       const result = await client.query(`

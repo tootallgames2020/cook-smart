@@ -53,7 +53,19 @@ class SubscriptionService {
         throw new Error(data.message || 'Failed to fetch subscription plans');
       }
 
-      return data.plans;
+      // Transform backend response to match mobile app interface
+      const transformedPlans: SubscriptionPlan[] = data.plans.map((plan: any, index: number) => ({
+        id: index + 1,
+        name: plan.id || plan.name, // Backend uses 'id' for plan name
+        displayName: plan.name || plan.displayName,
+        initialPrice: plan.price || plan.initialPrice || 0,
+        renewalPrice: plan.price || plan.renewalPrice || 0,
+        billingInterval: plan.interval || plan.billingInterval || 'month',
+        trialDays: plan.trialDays || 0,
+        features: plan.features || []
+      }));
+
+      return transformedPlans;
     } catch (error) {
       console.error('Error fetching subscription plans:', error);
       throw error;
