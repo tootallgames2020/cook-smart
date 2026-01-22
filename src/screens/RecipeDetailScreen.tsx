@@ -58,36 +58,6 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         const saved = await isRecipeSaved(recipeDetails.id);
         setIsFavorite(saved);
 
-        // Track recipe view for achievements
-        if (user?.id) {
-          try {
-            const token = await AsyncStorage.getItem('auth_token');
-            if (token) {
-              // Track the recipe view
-              const trackResponse = await fetch(`${API_BASE_URL}/api/v1/achievements/track-view`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  recipeId: recipeDetails.id.toString(),
-                  recipeType: 'api',
-                }),
-              });
-              
-              if (trackResponse.ok) {
-                console.log('[RecipeDetailScreen] Recipe view tracked successfully');
-              } else {
-                console.log('[RecipeDetailScreen] Recipe view tracking failed, but continuing...');
-              }
-            }
-          } catch (trackError) {
-            console.log('[RecipeDetailScreen] Recipe view tracking error:', trackError);
-            // Don't fail if tracking fails
-          }
-        }
-
         // Load user's dietary restrictions and allergies
         if (user?.id) {
           try {
