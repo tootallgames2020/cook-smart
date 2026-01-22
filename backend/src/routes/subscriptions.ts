@@ -81,14 +81,11 @@ router.get('/plans', async (req, res, next) => {
           ORDER BY sp.id
         `);
       } else {
-        // Post-beta: show all plans
+        // Post-beta: show all plans with trial pricing logic
         result = await client.query(`
           SELECT sp.*, 
-                 CASE 
-                   WHEN sp.promotional_price_id IS NOT NULL 
-                   THEN sp.promotional_price_id 
-                   ELSE sp.standard_price_id 
-                 END as current_price_id
+                 sp.promotional_price_id as trial_price_id,
+                 sp.standard_price_id as regular_price_id
           FROM subscription_plans sp
           WHERE sp.available_in_beta = true OR $1 = false
           ORDER BY 
@@ -104,16 +101,44 @@ router.get('/plans', async (req, res, next) => {
       const plansWithPricing = await Promise.all(
         result.rows.map(async (plan) => {
           try {
-            const price = await stripe.prices.retrieve(plan.current_price_id);
+            // For post-beta, we need to show both trial and regular pricing for yearly
+            let currentPriceId, trialPriceId, regularPriceId;
+            
+            if (isBeta) {
+              // Beta: use promotional price
+              currentPriceId = plan.current_price_id;
+            } else {
+              // Post-beta: show trial pricing for yearly, regular for others
+              if (plan.billing_interval === 'year') {
+                trialPriceId = plan.trial_price_id; // $24.99 during trial
+                regularPriceId = plan.regular_price_id; // $34.99 after trial
+                currentPriceId = trialPriceId; // Show trial price by default
+              } else {
+                currentPriceId = plan.regular_price_id; // Monthly/weekly use regular price
+              }
+            }
+
+            const price = await stripe.prices.retrieve(currentPriceId);
             const product = await stripe.products.retrieve(plan.stripe_product_id);
             
             // Calculate savings for yearly plan
             let savings = null;
-            if (plan.billing_interval === 'year' && plan.promotional_price_id) {
-              const standardPrice = await stripe.prices.retrieve(plan.standard_price_id);
-              const monthlyEquivalent = (standardPrice.unit_amount || 0) / 12;
-              const yearlyMonthly = (price.unit_amount || 0) / 12;
-              savings = Math.round(((monthlyEquivalent - yearlyMonthly) / monthlyEquivalent) * 100);
+            let originalPrice = null;
+            
+            if (plan.billing_interval === 'year') {
+              if (isBeta && plan.promotional_price_id) {
+                const standardPrice = await stripe.prices.retrieve(plan.standard_price_id);
+                originalPrice = standardPrice.unit_amount! / 100;
+                const monthlyEquivalent = (standardPrice.unit_amount || 0) / 12;
+                const yearlyMonthly = (price.unit_amount || 0) / 12;
+                savings = Math.round(((monthlyEquivalent - yearlyMonthly) / monthlyEquivalent) * 100);
+              } else if (!isBeta && trialPriceId && regularPriceId) {
+                const regularPrice = await stripe.prices.retrieve(regularPriceId);
+                originalPrice = regularPrice.unit_amount! / 100;
+                const monthlyEquivalent = (regularPrice.unit_amount || 0) / 12;
+                const yearlyMonthly = (price.unit_amount || 0) / 12;
+                savings = Math.round(((monthlyEquivalent - yearlyMonthly) / monthlyEquivalent) * 100);
+              }
             }
             
             return {
@@ -136,10 +161,12 @@ router.get('/plans', async (req, res, next) => {
               ],
               isPopular: plan.plan_name === 'yearly',
               isBetaSpecial: isBeta && plan.promotional_price_id,
-              originalPrice: plan.promotional_price_id ? 
-                (await stripe.prices.retrieve(plan.standard_price_id)).unit_amount! / 100 : null,
+              isTrialSpecial: !isBeta && plan.billing_interval === 'year' && trialPriceId,
+              originalPrice: originalPrice,
+              trialPrice: !isBeta && trialPriceId ? (await stripe.prices.retrieve(trialPriceId)).unit_amount! / 100 : null,
+              regularPrice: !isBeta && regularPriceId ? (await stripe.prices.retrieve(regularPriceId)).unit_amount! / 100 : null,
               savings: savings,
-              badge: plan.plan_name === 'yearly' ? (isBeta ? 'PRE-PURCHASE' : 'BEST VALUE') : null,
+              badge: plan.plan_name === 'yearly' ? (isBeta ? 'PRE-PURCHASE' : 'TRIAL SPECIAL') : null,
             };
           } catch (error) {
             logger.error(`Error fetching Stripe data for plan ${plan.plan_name}:`, error);
@@ -167,7 +194,7 @@ router.get('/plans', async (req, res, next) => {
         success: true,
         plans: plansWithPricing,
         isBeta,
-        betaMessage: isBeta ? 'BETA is FREE! Pre-purchase YEARLY at $24.99 to lock in this price for LIFE - even if yearly prices increase later!' : null,
+        betaMessage: isBeta ? 'BETA is FREE! Pre-purchase YEARLY at $24.99 to lock in this price for LIFE - even if yearly prices increase later!' : 'FREE 7-day trial! Subscribe to YEARLY during trial for $24.99 (regularly $34.99) - price locked for life!',
         freeFeatures: [
           'Basic recipe search',
           'Limited ingredient tracking',

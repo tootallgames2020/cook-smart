@@ -24,16 +24,35 @@ Cook Smart offers a **Lifetime Price Lock** exclusively for yearly subscription 
 
 ### Examples
 
-#### Beta Pre-Purchase Scenario
-1. User pre-purchases yearly during beta: $24.99/year
-2. App launches, regular yearly price becomes $34.99/year
-3. User keeps paying $24.99/year forever (as long as subscription stays active)
+### Pricing Tiers
+
+#### Beta Phase (Current)
+- **App Usage**: Completely FREE
+- **Pre-Purchase Option**: Yearly at $24.99 (normally $34.99)
+- **Price Lock**: $24.99/year forever
+
+#### Post-Beta Phase
+- **Free Trial**: 7 days for all users
+- **Trial Pricing**: Yearly at $24.99 (limited time during trial)
+- **Regular Pricing**: Yearly at $34.99, Monthly at $6.99, Weekly at $2.99
+- **Price Lock**: Whatever yearly price paid becomes lifetime rate
+
+#### Future Price Increases
+- **Existing Yearly Subscribers**: Keep their original price forever
+- **New Subscribers**: Pay current market rates
+- **Example**: If yearly goes from $34.99 to $39.99, existing users keep paying $34.99
 
 #### Post-Beta Scenario
-1. User subscribes yearly after launch: $34.99/year
-2. Next year we raise prices to $39.99/year
-3. User keeps paying $34.99/year forever
-4. New users pay $39.99/year
+1. User starts 7-day free trial
+2. During trial: yearly available at $24.99 (trial pricing)
+3. After trial ends: yearly becomes $34.99 (regular pricing)
+4. Users who subscribe at $24.99 during trial keep that price forever
+5. Users who subscribe at $34.99 after trial keep that price forever
+
+#### Trial Pricing Benefits (Post-Beta)
+- **During 7-day trial**: Yearly at $24.99 (same as beta pre-purchase price)
+- **After trial expires**: Yearly at $34.99 (regular price)
+- **Price lock applies**: Whatever price they pay becomes their lifetime rate
 
 #### Grace Period Scenario
 1. User's yearly subscription expires
