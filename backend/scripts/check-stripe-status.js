@@ -12,6 +12,67 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
+async function cleanupOrphanedProducts() {
+  console.log('🧹 Cleaning up orphaned Stripe products...\n');
+
+  try {
+    const client = await pool.connect();
+    
+    try {
+      // Get current products from database
+      const dbPlans = await client.query(`
+        SELECT stripe_product_id FROM subscription_plans WHERE stripe_product_id IS NOT NULL
+      `);
+      const dbProductIds = dbPlans.rows.map(p => p.stripe_product_id);
+
+      // Get all Cook Smart products from Stripe
+      const allProducts = await stripe.products.list({ limit: 100 });
+      const cookSmartProducts = allProducts.data.filter(p => 
+        p.name.toLowerCase().includes('cook smart') || 
+        p.description?.toLowerCase().includes('cook smart')
+      );
+
+      // Find orphaned products
+      const orphanedProducts = cookSmartProducts.filter(p => !dbProductIds.includes(p.id));
+
+      if (orphanedProducts.length === 0) {
+        console.log('✅ No orphaned products found to clean up');
+        return;
+      }
+
+      console.log(`Found ${orphanedProducts.length} orphaned products to clean up:`);
+      orphanedProducts.forEach(p => {
+        console.log(`   - ${p.id}: ${p.name}`);
+      });
+
+      console.log('\n🗑️  Archiving orphaned products...');
+
+      // Archive each orphaned product (safer than deleting)
+      for (const product of orphanedProducts) {
+        try {
+          await stripe.products.update(product.id, {
+            active: false,
+            name: `[ARCHIVED] ${product.name}`,
+            description: `Archived on ${new Date().toISOString()} - ${product.description || 'No description'}`
+          });
+          console.log(`   ✅ Archived: ${product.id}`);
+        } catch (error) {
+          console.log(`   ❌ Failed to archive ${product.id}: ${error.message}`);
+        }
+      }
+
+      console.log('\n✅ Cleanup complete! Orphaned products have been archived.');
+      console.log('   Note: Products are archived (not deleted) for safety. They can be reactivated if needed.');
+
+    } finally {
+      client.release();
+    }
+
+  } catch (error) {
+    console.error('❌ Error during cleanup:', error);
+  }
+}
+
 async function checkStripeStatus() {
   console.log('🔍 Checking Stripe setup status for Cook Smart...\n');
 
@@ -152,7 +213,21 @@ async function checkStripeStatus() {
 
 // Run if called directly
 if (require.main === module) {
-  checkStripeStatus();
+  const args = process.argv.slice(2);
+  
+  if (args.includes('--cleanup') || args.includes('-c')) {
+    cleanupOrphanedProducts();
+  } else if (args.includes('--help') || args.includes('-h')) {
+    console.log('Cook Smart Stripe Status Checker');
+    console.log('');
+    console.log('Usage:');
+    console.log('  node check-stripe-status.js           Check status only');
+    console.log('  node check-stripe-status.js --cleanup  Clean up orphaned products');
+    console.log('  node check-stripe-status.js -c         Clean up orphaned products (short)');
+    console.log('  node check-stripe-status.js --help     Show this help');
+  } else {
+    checkStripeStatus();
+  }
 }
 
-module.exports = { checkStripeStatus };
+module.exports = { checkStripeStatus, cleanupOrphanedProducts };
