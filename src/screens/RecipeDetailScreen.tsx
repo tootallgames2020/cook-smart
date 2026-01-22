@@ -311,6 +311,11 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         { ingredient: 'rice flour', ratio: '1:1', notes: 'Gluten-free alternative' },
         { ingredient: 'oat flour', ratio: '1:1', notes: 'Gluten-free if certified' },
       ],
+      'flour': [
+        { ingredient: 'almond flour', ratio: '1:1', notes: 'Gluten-free, denser texture' },
+        { ingredient: 'rice flour', ratio: '1:1', notes: 'Gluten-free alternative' },
+        { ingredient: 'oat flour', ratio: '1:1', notes: 'Gluten-free if certified' },
+      ],
       'soy sauce': [
         { ingredient: 'coconut aminos', ratio: '1:1', notes: 'Soy-free alternative' },
         { ingredient: 'tamari', ratio: '1:1', notes: 'Gluten-free soy sauce' },
@@ -323,14 +328,26 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         { ingredient: 'maple syrup', ratio: '1:1', notes: 'Vegan sweetener' },
         { ingredient: 'agave nectar', ratio: '1:1', notes: 'Vegan alternative' },
       ],
+      'cream': [
+        { ingredient: 'coconut cream', ratio: '1:1', notes: 'Dairy-free alternative' },
+        { ingredient: 'cashew cream', ratio: '1:1', notes: 'Rich dairy-free option' },
+      ],
+      'yogurt': [
+        { ingredient: 'coconut yogurt', ratio: '1:1', notes: 'Dairy-free alternative' },
+        { ingredient: 'almond yogurt', ratio: '1:1', notes: 'Light dairy-free option' },
+      ],
     };
+
+    console.log('[Substitutions] Processing conflicts:', conflicts);
 
     conflicts.forEach(conflict => {
       const conflictLower = conflict.toLowerCase();
+      console.log('[Substitutions] Checking conflict:', conflict, 'lowercase:', conflictLower);
       
       // Find matching substitutions
       Object.keys(substitutionMap).forEach(key => {
         if (conflictLower.includes(key)) {
+          console.log('[Substitutions] Found match for key:', key, 'in conflict:', conflict);
           substitutions.push({
             original: conflict,
             substitutes: substitutionMap[key],
@@ -339,6 +356,7 @@ export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       });
     });
 
+    console.log('[Substitutions] Generated substitutions:', substitutions);
     return substitutions;
   };
 

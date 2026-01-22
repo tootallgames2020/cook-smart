@@ -306,7 +306,27 @@ export const IngredientsList: React.FC<Props> = ({
   };
 
   const getSubstitution = (ingredient: string) => {
-    return substitutions.find(sub => sub.original === ingredient);
+    // First try exact match
+    let substitution = substitutions.find(sub => sub.original === ingredient);
+    
+    // If no exact match, try partial matching
+    if (!substitution) {
+      substitution = substitutions.find(sub => {
+        const ingredientLower = ingredient.toLowerCase();
+        const originalLower = sub.original.toLowerCase();
+        
+        // Check if the ingredient contains the substitution key or vice versa
+        return ingredientLower.includes(originalLower) || originalLower.includes(ingredientLower);
+      });
+    }
+    
+    if (substitution) {
+      console.log('[IngredientsList] Found substitution for:', ingredient, '→', substitution);
+    } else {
+      console.log('[IngredientsList] No substitution found for:', ingredient, 'Available substitutions:', substitutions.map(s => s.original));
+    }
+    
+    return substitution;
   };
 
   // Check if user has this ingredient in their inventory
@@ -333,12 +353,12 @@ export const IngredientsList: React.FC<Props> = ({
       const {shoppingListService} = await import('../services/shoppingListService');
       
       // Convert missing ingredients to shopping list items
-      const items = missingIngredients.map(ing => {
+      const items = missingIngredients.map(ingredientString => {
         // Parse ingredient string (e.g., "2 cups flour" or "1 tablespoon olive oil")
-        const parts = ing.description.trim().split(' ');
+        const parts = ingredientString.trim().split(' ');
         let quantity = '1';
         let unit = '';
-        let ingredient = ing.description;
+        let ingredient = ingredientString;
 
         if (parts.length >= 2) {
           // Try to extract quantity and unit
@@ -351,7 +371,7 @@ export const IngredientsList: React.FC<Props> = ({
         }
 
         return {
-          ingredient: ingredient || ing.description,
+          ingredient: ingredient || ingredientString,
           quantity: quantity,
           unit: unit,
           category: 'Uncategorized',
