@@ -39,7 +39,7 @@ async function setupStripeProducts() {
     // Create prices
     const yearlyPrice = await stripe.prices.create({
       product: product.id,
-      unit_amount: 4999, // $49.99
+      unit_amount: 3499, // $34.99 (post-beta full price)
       currency: 'usd',
       recurring: {
         interval: 'year'
@@ -49,7 +49,7 @@ async function setupStripeProducts() {
 
     const yearlyBetaPrice = await stripe.prices.create({
       product: product.id,
-      unit_amount: 2999, // $29.99 (beta special)
+      unit_amount: 2499, // $24.99 (beta special & trial price)
       currency: 'usd',
       recurring: {
         interval: 'year'
@@ -59,7 +59,7 @@ async function setupStripeProducts() {
 
     const monthlyPrice = await stripe.prices.create({
       product: product.id,
-      unit_amount: 999, // $9.99
+      unit_amount: 699, // $6.99
       currency: 'usd',
       recurring: {
         interval: 'month'
@@ -129,9 +129,9 @@ async function setupStripeProducts() {
     console.log('🎉 Stripe products setup complete!');
     console.log('📋 Summary:');
     console.log(`  Product ID: ${product.id}`);
-    console.log(`  Yearly: ${yearlyPrice.id} ($49.99/year)`);
-    console.log(`  Yearly Beta: ${yearlyBetaPrice.id} ($29.99/year)`);
-    console.log(`  Monthly: ${monthlyPrice.id} ($9.99/month)`);
+    console.log(`  Yearly: ${yearlyPrice.id} ($34.99/year)`);
+    console.log(`  Yearly Beta: ${yearlyBetaPrice.id} ($24.99/year)`);
+    console.log(`  Monthly: ${monthlyPrice.id} ($6.99/month)`);
     console.log(`  Weekly: ${weeklyPrice.id} ($2.99/week)`);
 
   } catch (error) {

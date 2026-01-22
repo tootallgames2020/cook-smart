@@ -31,29 +31,10 @@ router.get('/plans', async (req, res, next) => {
             id: 1,
             name: 'Yearly Premium',
             displayName: 'Yearly Premium',
-            initialPrice: 49.99,
-            renewalPrice: 49.99,
+            initialPrice: 24.99,
+            renewalPrice: 24.99,
             billingInterval: 'year',
             trialDays: 0,
-            features: [
-              'Unlimited recipe access',
-              'Custom recipe creation & sharing',
-              'Advanced meal planning',
-              'Smart shopping lists',
-              'Dietary restriction support',
-              'Ingredient inventory tracking',
-              'Recipe scaling & unit conversion',
-              'Priority customer support'
-            ]
-          },
-          {
-            id: 2,
-            name: 'Monthly Premium',
-            displayName: 'Monthly Premium',
-            initialPrice: 9.99,
-            renewalPrice: 9.99,
-            billingInterval: 'month',
-            trialDays: 7,
             features: [
               'Unlimited recipe access',
               'Custom recipe creation & sharing',
@@ -71,7 +52,7 @@ router.get('/plans', async (req, res, next) => {
           success: true,
           plans: fallbackPlans,
           isBeta: true,
-          betaMessage: 'Limited time BETA pricing - Lock in lifetime benefits!',
+          betaMessage: 'Limited time BETA pricing - Lock in lifetime benefits at $24.99/year!',
           freeFeatures: [
             'Basic recipe search',
             'Limited ingredient tracking',
@@ -81,25 +62,42 @@ router.get('/plans', async (req, res, next) => {
         });
       }
 
-      // Original logic with subscription_plans table
+      // Check if we're in beta phase
       const isBeta = true; // During beta phase
       
-      const result = await client.query(`
-        SELECT sp.*, 
-               CASE 
-                 WHEN sp.promotional_price_id IS NOT NULL AND $1 = true 
-                 THEN sp.promotional_price_id 
-                 ELSE sp.standard_price_id 
-               END as current_price_id
-        FROM subscription_plans sp
-        WHERE sp.available_in_beta = true OR $1 = false
-        ORDER BY 
-          CASE sp.billing_interval
-            WHEN 'year' THEN 1
-            WHEN 'month' THEN 2
-            WHEN 'week' THEN 3
-          END
-      `, [isBeta]);
+      let result;
+      if (isBeta) {
+        // During beta: only show yearly plan
+        result = await client.query(`
+          SELECT sp.*, 
+                 CASE 
+                   WHEN sp.promotional_price_id IS NOT NULL 
+                   THEN sp.promotional_price_id 
+                   ELSE sp.standard_price_id 
+                 END as current_price_id
+          FROM subscription_plans sp
+          WHERE sp.plan_name = 'yearly' AND sp.available_in_beta = true
+          ORDER BY sp.id
+        `);
+      } else {
+        // Post-beta: show all plans
+        result = await client.query(`
+          SELECT sp.*, 
+                 CASE 
+                   WHEN sp.promotional_price_id IS NOT NULL 
+                   THEN sp.promotional_price_id 
+                   ELSE sp.standard_price_id 
+                 END as current_price_id
+          FROM subscription_plans sp
+          WHERE sp.available_in_beta = true OR $1 = false
+          ORDER BY 
+            CASE sp.billing_interval
+              WHEN 'year' THEN 1
+              WHEN 'month' THEN 2
+              WHEN 'week' THEN 3
+            END
+        `, [isBeta]);
+      }
 
       // Get Stripe price details for each plan
       const plansWithPricing = await Promise.all(
@@ -124,7 +122,7 @@ router.get('/plans', async (req, res, next) => {
               price: price.unit_amount ? price.unit_amount / 100 : 0,
               currency: price.currency.toUpperCase(),
               interval: plan.billing_interval,
-              trialDays: plan.trial_days,
+              trialDays: isBeta ? 0 : plan.trial_days, // No trial during beta
               features: product.metadata?.features ? JSON.parse(product.metadata.features) : [
                 'Unlimited recipe access',
                 'Custom recipe creation & sharing',
@@ -147,10 +145,10 @@ router.get('/plans', async (req, res, next) => {
             return {
               id: plan.plan_name,
               name: plan.plan_name.charAt(0).toUpperCase() + plan.plan_name.slice(1),
-              price: plan.plan_name === 'yearly' ? 49.99 : plan.plan_name === 'monthly' ? 9.99 : 2.99,
+              price: plan.plan_name === 'yearly' ? 24.99 : plan.plan_name === 'monthly' ? 6.99 : 2.99,
               currency: 'USD',
               interval: plan.billing_interval,
-              trialDays: plan.trial_days,
+              trialDays: isBeta ? 0 : plan.trial_days,
               features: [
                 'Unlimited recipe access',
                 'Custom recipe creation',
@@ -168,7 +166,7 @@ router.get('/plans', async (req, res, next) => {
         success: true,
         plans: plansWithPricing,
         isBeta,
-        betaMessage: isBeta ? 'Limited time BETA pricing - Lock in lifetime benefits!' : null,
+        betaMessage: isBeta ? 'Limited time BETA pricing - Lock in lifetime benefits at $24.99/year!' : null,
         freeFeatures: [
           'Basic recipe search',
           'Limited ingredient tracking',
