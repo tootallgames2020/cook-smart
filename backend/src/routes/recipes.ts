@@ -156,8 +156,8 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
           const recipeText = `${recipeTitle} ${recipeIngredients}`;
           
           // Filter out recipes with dietary restriction conflicts
-          if (dietary_restrictions) {
-            const restrictions = dietary_restrictions.split(',').map(r => r.trim().toLowerCase());
+          if (dietary_restrictions && typeof dietary_restrictions === 'string') {
+            const restrictions = dietary_restrictions.split(',').map((r: string) => r.trim().toLowerCase());
             for (const restriction of restrictions) {
               // Common dietary restriction filters
               if (restriction.includes('vegetarian') && (recipeText.includes('meat') || recipeText.includes('chicken') || recipeText.includes('beef') || recipeText.includes('pork') || recipeText.includes('fish'))) {
@@ -176,8 +176,8 @@ router.get('/search', authenticateToken, async (req: AuthRequest, res, next) => 
           }
           
           // Filter out recipes with allergy conflicts
-          if (allergies) {
-            const allergyList = allergies.split(',').map(a => a.trim().toLowerCase());
+          if (allergies && typeof allergies === 'string') {
+            const allergyList = allergies.split(',').map((a: string) => a.trim().toLowerCase());
             for (const allergy of allergyList) {
               if (recipeText.includes(allergy)) {
                 return false;
