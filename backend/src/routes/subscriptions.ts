@@ -30,13 +30,14 @@ router.get('/plans', async (req, res, next) => {
           {
             id: 1,
             name: 'Yearly Premium',
-            displayName: 'Yearly Premium',
+            displayName: 'Yearly Premium (Pre-Purchase)',
             initialPrice: 24.99,
             renewalPrice: 24.99,
             billingInterval: 'year',
             trialDays: 0,
             features: [
-              'Unlimited recipe access',
+              'Lock in $24.99/year price for life',
+              'Unlimited recipe access (when launched)',
               'Custom recipe creation & sharing',
               'Advanced meal planning',
               'Smart shopping lists',
@@ -52,7 +53,7 @@ router.get('/plans', async (req, res, next) => {
           success: true,
           plans: fallbackPlans,
           isBeta: true,
-          betaMessage: 'Limited time BETA pricing - Lock in lifetime benefits at $24.99/year!',
+          betaMessage: 'BETA is FREE! Pre-purchase yearly at $24.99 to lock in this price for life when we launch!',
           freeFeatures: [
             'Basic recipe search',
             'Limited ingredient tracking',
@@ -138,7 +139,7 @@ router.get('/plans', async (req, res, next) => {
               originalPrice: plan.promotional_price_id ? 
                 (await stripe.prices.retrieve(plan.standard_price_id)).unit_amount! / 100 : null,
               savings: savings,
-              badge: plan.plan_name === 'yearly' ? (isBeta ? 'BETA SPECIAL' : 'BEST VALUE') : null,
+              badge: plan.plan_name === 'yearly' ? (isBeta ? 'PRE-PURCHASE' : 'BEST VALUE') : null,
             };
           } catch (error) {
             logger.error(`Error fetching Stripe data for plan ${plan.plan_name}:`, error);
@@ -166,7 +167,7 @@ router.get('/plans', async (req, res, next) => {
         success: true,
         plans: plansWithPricing,
         isBeta,
-        betaMessage: isBeta ? 'Limited time BETA pricing - Lock in lifetime benefits at $24.99/year!' : null,
+        betaMessage: isBeta ? 'BETA is FREE! Pre-purchase yearly at $24.99 to lock in this price for life when we launch!' : null,
         freeFeatures: [
           'Basic recipe search',
           'Limited ingredient tracking',
@@ -247,7 +248,7 @@ router.get('/pricing', async (req, res, next) => {
               originalPrice: plan.promotional_price_id ? 
                 (await stripe.prices.retrieve(plan.standard_price_id)).unit_amount! / 100 : null,
               savings: savings,
-              badge: plan.plan_name === 'yearly' ? (isBeta ? 'BETA SPECIAL' : 'BEST VALUE') : null,
+              badge: plan.plan_name === 'yearly' ? (isBeta ? 'PRE-PURCHASE' : 'BEST VALUE') : null,
             };
           } catch (error) {
             logger.error(`Error fetching Stripe data for plan ${plan.plan_name}:`, error);
