@@ -203,4 +203,94 @@ router.get('/progress', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+// Track recipe view for achievements
+router.post('/track-view', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { recipeId, recipeType } = req.body;
+
+    if (!recipeId) {
+      return res.status(400).json({ error: 'Recipe ID is required' });
+    }
+
+    // Ensure recipe_views table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recipe_views (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        recipe_id VARCHAR(255) NOT NULL,
+        recipe_type VARCHAR(50) DEFAULT 'api',
+        viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, recipe_id, recipe_type)
+      )
+    `);
+
+    // Create indexes if they don't exist
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_recipe_views_user_id ON recipe_views(user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_recipe_views_recipe_id ON recipe_views(recipe_id)
+    `);
+
+    // Insert or update recipe view
+    await pool.query(
+      `INSERT INTO recipe_views (user_id, recipe_id, recipe_type, viewed_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (user_id, recipe_id, recipe_type) 
+       DO UPDATE SET viewed_at = NOW()`,
+      [userId, recipeId.toString(), recipeType || 'api']
+    );
+
+    logger.info(`Recipe view tracked for user ${userId}: ${recipeId} (${recipeType || 'api'})`);
+
+    // Check if user earned any new achievements
+    try {
+      const recipeResult = await pool.query(
+        'SELECT COUNT(DISTINCT recipe_id) as count FROM recipe_views WHERE user_id = $1',
+        [userId]
+      );
+      const recipeCount = parseInt(recipeResult.rows[0]?.count || '0');
+
+      let newAchievements = [];
+      
+      // Check for first recipe achievement
+      if (recipeCount === 1) {
+        newAchievements.push({
+          type: 'first_recipe',
+          name: 'First Recipe',
+          description: 'View your first recipe'
+        });
+      }
+      
+      // Check for recipe explorer achievement
+      if (recipeCount === 5) {
+        newAchievements.push({
+          type: 'recipe_explorer',
+          name: 'Recipe Explorer',
+          description: 'View 5 different recipes'
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Recipe view tracked successfully',
+        recipeCount,
+        newAchievements
+      });
+    } catch (achievementError) {
+      logger.error('Error checking achievements:', achievementError);
+      res.json({ 
+        success: true, 
+        message: 'Recipe view tracked successfully (achievement check failed)',
+        recipeCount: 0
+      });
+    }
+
+  } catch (error) {
+    logger.error('Error tracking recipe view:', error);
+    res.status(500).json({ error: 'Failed to track recipe view' });
+  }
+});
+
 export default router;
