@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   list: {
-    maxHeight: 300,
+    // Remove fixed maxHeight to allow full scrolling
   },
   ingredientContainer: {
     marginBottom: 12,

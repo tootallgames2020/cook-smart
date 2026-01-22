@@ -75,7 +75,7 @@ export const IngredientProvider: React.FC<IngredientProviderProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [handleSessionExpired, isSessionExpiredError]);
+  }, [handleSessionExpired]);
 
   const addIngredient = useCallback(
     async (ingredientData: CreateIngredientDto) => {
@@ -99,7 +99,7 @@ export const IngredientProvider: React.FC<IngredientProviderProps> = ({
         setIsLoading(false);
       }
     },
-    [fetchIngredients, handleSessionExpired, isSessionExpiredError],
+    [fetchIngredients, handleSessionExpired],
   );
 
   const updateIngredient = useCallback(
@@ -130,7 +130,7 @@ export const IngredientProvider: React.FC<IngredientProviderProps> = ({
         setIsLoading(false);
       }
     },
-    [handleSessionExpired, isSessionExpiredError],
+    [handleSessionExpired],
   );
 
   const deleteIngredient = useCallback(
@@ -157,7 +157,7 @@ export const IngredientProvider: React.FC<IngredientProviderProps> = ({
         setIsLoading(false);
       }
     },
-    [handleSessionExpired, isSessionExpiredError],
+    [handleSessionExpired],
   );
 
   const searchIngredients = useCallback(
