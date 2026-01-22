@@ -25,15 +25,19 @@ async function cleanupOrphanedProducts() {
       `);
       const dbProductIds = dbPlans.rows.map(p => p.stripe_product_id);
 
-      // Get all Cook Smart products from Stripe
+      // Get all Cook Smart products from Stripe (exclude archived)
       const allProducts = await stripe.products.list({ limit: 100 });
       const cookSmartProducts = allProducts.data.filter(p => 
-        p.name.toLowerCase().includes('cook smart') || 
-        p.description?.toLowerCase().includes('cook smart')
+        (p.name.toLowerCase().includes('cook smart') || 
+         p.description?.toLowerCase().includes('cook smart')) &&
+        !p.name.toLowerCase().includes('[archived]')
       );
 
-      // Find orphaned products
-      const orphanedProducts = cookSmartProducts.filter(p => !dbProductIds.includes(p.id));
+      // Find orphaned products (exclude archived ones)
+      const orphanedProducts = cookSmartProducts.filter(p => 
+        !dbProductIds.includes(p.id) && 
+        !p.name.toLowerCase().includes('[archived]')
+      );
 
       if (orphanedProducts.length === 0) {
         console.log('✅ No orphaned products found to clean up');
