@@ -1,7 +1,7 @@
 # Cook Smart
 
-[![Version](https://img.shields.io/badge/version-1.1.8-blue.svg)](https://github.com/tootallgames2020/cook-smart)
-[![Status](https://img.shields.io/badge/status-production-green.svg)](https://cooksmartapp.com)
+[![Version](https://img.shields.io/badge/version-2.1.6-blue.svg)](https://github.com/tootallgames2020/cook-smart)
+[![Status](https://img.shields.io/badge/status-pre--launch-orange.svg)](https://cooksmartapp.com)
 [![License](https://img.shields.io/badge/license-proprietary-red.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-enterprise-brightgreen.svg)](SECURITY_AUDIT_REPORT.md)
 
@@ -10,11 +10,12 @@
 
 ## 🌟 Overview
 
-Cook Smart is a production-ready mobile application that revolutionizes meal planning by intelligently matching user ingredients with curated recipes. Built with enterprise-grade architecture and security standards, the platform serves thousands of users with real-time recipe generation, barcode scanning, and personalized dietary management.
+Cook Smart is a comprehensive mobile application that revolutionizes meal planning by intelligently matching user ingredients with curated recipes. Currently in final testing phase before Google Play launch, the platform features enterprise-grade architecture with full subscription management, dietary filtering, and smart inventory tracking.
 
 **🔗 Live Application**: [cooksmartapp.com](https://cooksmartapp.com)  
 **📱 API Endpoint**: [api.cooksmartapp.com](https://api.cooksmartapp.com)  
-**💬 Community**: [Discord Server](https://discord.gg/btemMmWy2e)
+**💬 Community**: [Discord Server](https://discord.gg/btemMmWy2e)  
+**📱 Status**: Pre-launch testing phase - Google Play submission pending
 
 ## ✨ Key Features
 
@@ -30,7 +31,8 @@ Cook Smart is a production-ready mobile application that revolutionizes meal pla
 - **🛒 Shopping Lists** - Auto-generated lists based on missing ingredients
 - **🏆 Gamification** - Points system and achievement tracking
 - **👥 Referral Program** - Built-in user acquisition and rewards system
-- **💳 Subscription Management** - Stripe-integrated payment processing
+- **💳 Subscription Management** - Full Stripe integration with beta pricing ($24.99/year)
+- **🔧 Smart Error Handling** - Robust crash prevention and user-friendly error recovery
 
 ## 🏗️ Architecture
 
@@ -47,12 +49,12 @@ Monitoring   │ AWS CloudWatch + Custom Analytics
 
 ### Infrastructure
 ```
-Production   │ AWS EC2 (Auto Scaling)
-Database     │ AWS RDS Multi-AZ (PostgreSQL)
-Load Balancer│ AWS Application Load Balancer
+Production   │ AWS EC2 (3.238.250.151)
+Database     │ Local PostgreSQL 16 on EC2
+Website      │ AWS S3 + CloudFront
 SSL/TLS      │ AWS Certificate Manager
 DNS          │ AWS Route 53
-Backup       │ Automated daily snapshots
+Process Mgmt │ PM2 (Backend)
 ```
 
 ### External Integrations
@@ -61,6 +63,23 @@ Backup       │ Automated daily snapshots
 - **Stripe** - Payment processing and subscription management
 - **Resend** - Transactional email delivery
 - **Discord** - Community integration and notifications
+
+## 🚀 Recent Updates (v2.1.6)
+
+### ✅ **Critical Fixes Applied**
+- **Fixed Ingredients Tab Crash** - Resolved infinite re-render loop in IngredientContext
+- **Null Category Handling** - Added robust error handling for ingredients with missing categories
+- **Subscription System** - Complete Stripe integration with real pricing ($24.99/year beta)
+- **Achievement Tracking** - Fixed recipe view tracking and achievement unlocking
+- **Shopping List Integration** - Fixed missing ingredients not appearing in shopping lists
+- **Dietary Substitutions** - Enhanced substitution matching for dietary conflicts
+
+### 🧪 **Testing Status**
+- Core functionality: ✅ Stable
+- Payment processing: ✅ Operational  
+- User authentication: ✅ Secure
+- Recipe matching: ✅ Optimized
+- **Google Play Ready**: Pending final tester approval
 
 ## 🚀 Website Deployment
 
@@ -77,6 +96,26 @@ Backup       │ Automated daily snapshots
 - SSL: Auto-managed by AWS
 
 **Cost:** ~$1-5/month
+
+## 📱 Backend Deployment
+
+**Production Server (AWS EC2):**
+```bash
+# SSH into production server
+ssh -i ~/.ssh/cook-smart-key.pem ubuntu@3.238.250.151
+
+# Navigate to backend and deploy
+cd /home/ubuntu/cook-smart/backend
+git pull origin fresh-project-migration
+npm run build
+pm2 restart cook-smart-backend
+```
+
+**Infrastructure:**
+- Server: AWS EC2 (3.238.250.151)
+- Database: Local PostgreSQL 16
+- Process Manager: PM2
+- SSL: AWS Certificate Manager
 
 ## 📚 Documentation
 

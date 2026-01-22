@@ -10,7 +10,7 @@ interface IngredientCardProps {
   onEdit?: (ingredient: Ingredient) => void;
 }
 
-const getCategoryIcon = (category: string): string => {
+const getCategoryIcon = (category: string | null | undefined): string => {
   const categoryMap: {[key: string]: string} = {
     proteins: 'set-meal',
     vegetables: 'eco',
@@ -20,6 +20,12 @@ const getCategoryIcon = (category: string): string => {
     spices: 'spa',
     other: 'category',
   };
+  
+  // Handle null, undefined, or empty category
+  if (!category || category.trim() === '') {
+    return 'category';
+  }
+  
   return categoryMap[category.toLowerCase()] || 'category';
 };
 
@@ -50,7 +56,9 @@ export const IngredientCard: React.FC<IngredientCardProps> = ({
 
       <View style={styles.content}>
         <Text style={styles.name}>{displayName}</Text>
-        <Text style={styles.category}>{ingredient.category}</Text>
+        <Text style={styles.category}>
+          {ingredient.category || 'Uncategorized'}
+        </Text>
         {ingredient.quantity && ingredient.unit && (
           <Text style={styles.quantity}>
             {ingredient.quantity} {ingredient.unit}

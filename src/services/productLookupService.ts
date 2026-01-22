@@ -209,14 +209,19 @@ class ProductLookupServiceImpl implements ProductLookupService {
       const token = await this.getAuthToken();
       const url = `${API_BASE_URL}/api/v1/barcode/lookup/${barcode}`;
       
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.API_TIMEOUT);
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        timeout: this.API_TIMEOUT,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const data: BarcodeApiResponse = await response.json();
 

@@ -34,7 +34,6 @@ export const AddIngredientScreen: React.FC = () => {
         category: productData.category || 'Other',
         quantity: 1,
         unit: 'unit',
-        barcode: productData.barcode,
       });
 
       Alert.alert('Success', `${productData.name} added to your ingredients!`, [

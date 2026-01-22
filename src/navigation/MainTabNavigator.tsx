@@ -7,9 +7,10 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import {useAuth} from '../contexts/AuthContext';
 import HomeScreen from '../screens/HomeScreen';
 import {IngredientInventoryScreen} from '../screens/ingredients/IngredientInventoryScreen';
+import {ErrorBoundary} from '../components/ErrorBoundary';
 import {AddIngredientScreen} from '../screens/ingredients/AddIngredientScreen';
 import {RecipeSearchScreen} from '../screens/recipes/RecipeSearchScreen';
-import {RecipeDetailScreen} from '../screens/RecipeDetailScreen';
+import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import {SavedRecipesScreen} from '../screens/recipes/SavedRecipesScreen';
 import SubscriptionPlansScreen from '../screens/SubscriptionPlansScreen';
 import SubscriptionDetailsScreen from '../screens/SubscriptionDetailsScreen';
@@ -40,13 +41,23 @@ const Stack = createStackNavigator();
 
 // Ingredients Stack Navigator
 const IngredientsStack = () => (
-  <Stack.Navigator screenOptions={{headerShown: false}}>
-    <Stack.Screen
-      name="IngredientInventory"
-      component={IngredientInventoryScreen}
-    />
-    <Stack.Screen name="AddIngredient" component={AddIngredientScreen} />
-  </Stack.Navigator>
+  <ErrorBoundary
+    onError={(error, errorInfo) => {
+      console.error('🚨 INGREDIENTS STACK ERROR:', {
+        error: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack,
+        timestamp: new Date().toISOString(),
+      });
+    }}>
+    <Stack.Navigator screenOptions={{headerShown: false}}>
+      <Stack.Screen
+        name="IngredientInventory"
+        component={IngredientInventoryScreen}
+      />
+      <Stack.Screen name="AddIngredient" component={AddIngredientScreen} />
+    </Stack.Navigator>
+  </ErrorBoundary>
 );
 
 // Recipes Stack Navigator

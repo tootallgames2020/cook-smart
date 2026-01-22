@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, SafeAreaView, Alert, View, Text, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { RecipeDetailHeader } from '../components/RecipeDetailHeader';
 import { IngredientsList } from '../components/IngredientsList';
 import { CookingInstructions } from '../components/CookingInstructions';
@@ -12,17 +13,14 @@ import { API_BASE_URL } from '../config/api';
 import { dietaryService, DietaryRestriction, Allergy } from '../services/dietaryService';
 import { useAuth } from '../contexts/AuthContext';
 
-interface Props {
-  route: {
-    params: {
-      recipeId: number | string;
-    };
-  };
-  navigation: any;
+interface RouteParams {
+  recipeId: number | string;
 }
 
-export const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { recipeId } = route.params;
+const RecipeDetailScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { recipeId } = route.params as RouteParams;
   const { getRecipeDetails, saveRecipe, isRecipeSaved } = useRecipes();
   const { user } = useAuth();
   const [recipe, setRecipe] = useState<RecipeDetails | null>(null);
@@ -689,3 +687,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export default RecipeDetailScreen;
