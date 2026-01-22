@@ -19,7 +19,7 @@ async function setupStripeProducts() {
     // Create Cook Smart product
     const product = await stripe.products.create({
       name: 'Cook Smart Premium',
-      description: 'Pre-purchase Cook Smart Premium - Lock in $24.99/year during BETA (normally $34.99). Full access when we launch!',
+      description: 'Pre-purchase Cook Smart Premium YEARLY - Lock in $24.99/year during BETA (normally $34.99). Price locked for life on yearly plans!',
       metadata: {
         features: JSON.stringify([
           'Lock in $24.99/year price for life',

@@ -53,7 +53,7 @@ router.get('/plans', async (req, res, next) => {
           success: true,
           plans: fallbackPlans,
           isBeta: true,
-          betaMessage: 'BETA is FREE! Pre-purchase yearly at $24.99 to lock in this price for life when we launch!',
+          betaMessage: 'BETA is FREE! Pre-purchase YEARLY at $24.99 to lock in this price for LIFE - even if yearly prices increase later!',
           freeFeatures: [
             'Basic recipe search',
             'Limited ingredient tracking',
@@ -167,7 +167,7 @@ router.get('/plans', async (req, res, next) => {
         success: true,
         plans: plansWithPricing,
         isBeta,
-        betaMessage: isBeta ? 'BETA is FREE! Pre-purchase yearly at $24.99 to lock in this price for life when we launch!' : null,
+        betaMessage: isBeta ? 'BETA is FREE! Pre-purchase YEARLY at $24.99 to lock in this price for LIFE - even if yearly prices increase later!' : null,
         freeFeatures: [
           'Basic recipe search',
           'Limited ingredient tracking',
