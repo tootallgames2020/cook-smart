@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {API_BASE_URL} from '../../config/api';
 import {Ingredient} from '../../services/ingredientService';
+import { IngredientCategorizationFeedback } from '../IngredientCategorizationFeedback';
 
 interface IngredientCardProps {
   ingredient: Ingredient;
   onDelete: (id: number) => void;
   onEdit?: (ingredient: Ingredient) => void;
+  onCategoryUpdated?: (ingredient: Ingredient, newCategory: string) => void;
 }
 
 const getCategoryIcon = (category: string | null | undefined): string => {
@@ -33,46 +35,71 @@ export const IngredientCard: React.FC<IngredientCardProps> = ({
   ingredient,
   onDelete,
   onEdit,
+  onCategoryUpdated,
 }) => {
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  
   const displayName =
     ingredient.ingredient_name || ingredient.name || 'Unknown';
   const iconName = getCategoryIcon(ingredient.category);
 
+  const handleFeedbackSubmitted = (correctCategory: string) => {
+    if (onCategoryUpdated) {
+      onCategoryUpdated(ingredient, correctCategory);
+    }
+  };
+
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => onEdit?.(ingredient)}
-      activeOpacity={onEdit ? 0.7 : 1}>
-      {ingredient.photo_url ? (
-        <Image
-          source={{uri: `${API_BASE_URL}${ingredient.photo_url}`}}
-          style={styles.photo}
-        />
-      ) : (
-        <View style={styles.iconContainer}>
-          <Icon name={iconName} size={24} color="#10B981" />
-        </View>
-      )}
-
-      <View style={styles.content}>
-        <Text style={styles.name}>{displayName}</Text>
-        <Text style={styles.category}>
-          {ingredient.category || 'Uncategorized'}
-        </Text>
-        {ingredient.quantity && ingredient.unit && (
-          <Text style={styles.quantity}>
-            {ingredient.quantity} {ingredient.unit}
-          </Text>
-        )}
-      </View>
-
+    <>
       <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => onDelete(ingredient.id)}
-        hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-        <Icon name="delete" size={20} color="#EF4444" />
+        style={styles.card}
+        onPress={() => onEdit?.(ingredient)}
+        activeOpacity={onEdit ? 0.7 : 1}>
+        {ingredient.photo_url ? (
+          <Image
+            source={{uri: `${API_BASE_URL}${ingredient.photo_url}`}}
+            style={styles.photo}
+          />
+        ) : (
+          <View style={styles.iconContainer}>
+            <Icon name={iconName} size={24} color="#10B981" />
+          </View>
+        )}
+
+        <View style={styles.content}>
+          <Text style={styles.name}>{displayName}</Text>
+          <TouchableOpacity 
+            style={styles.categoryContainer}
+            onPress={() => setShowFeedbackModal(true)}
+          >
+            <Text style={styles.category}>
+              {ingredient.category || 'Uncategorized'}
+            </Text>
+            <Icon name="edit" size={12} color="#6B7280" style={styles.editIcon} />
+          </TouchableOpacity>
+          {ingredient.quantity && ingredient.unit && (
+            <Text style={styles.quantity}>
+              {ingredient.quantity} {ingredient.unit}
+            </Text>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => onDelete(ingredient.id)}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <Icon name="delete" size={20} color="#EF4444" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
+
+      <IngredientCategorizationFeedback
+        visible={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        ingredientName={displayName}
+        currentCategory={ingredient.category || 'Uncategorized'}
+        onFeedbackSubmitted={handleFeedbackSubmitted}
+      />
+    </>
   );
 };
 
@@ -116,11 +143,19 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 2,
   },
+  categoryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
   category: {
     fontSize: 12,
     color: '#6B7280',
     textTransform: 'capitalize',
-    marginBottom: 2,
+    marginRight: 4,
+  },
+  editIcon: {
+    marginLeft: 2,
   },
   quantity: {
     fontSize: 12,

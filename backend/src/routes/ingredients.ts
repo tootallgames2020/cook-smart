@@ -466,9 +466,11 @@ router.post('/check-recipe-availability', authenticateToken, async (req: AuthReq
   }
 });
 
-// Fix uncategorized ingredients (admin/maintenance endpoint)
+// Enhanced categorization endpoint using new service
 router.post('/fix-categories', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
+    const { EnhancedIngredientCategorizationService } = await import('../services/EnhancedIngredientCategorizationService');
+    
     const client = await pool.connect();
     try {
       // Get all uncategorized ingredients for the user
@@ -487,205 +489,121 @@ router.post('/fix-categories', authenticateToken, async (req: AuthRequest, res, 
         });
       }
 
-      // Smart categorization with regex patterns and word boundaries
-      // Order matters: more specific patterns first to avoid false matches
-      const categoryPatterns: { category: string; patterns: RegExp[] }[] = [
-        // Spices & Herbs (check FIRST to avoid "pepper" matching vegetables)
-        {
-          category: 'Spices & Herbs',
-          patterns: [
-            /\b(black pepper|white pepper|red pepper flakes|cayenne pepper|peppercorn|ground pepper)\b/i,
-            /\b(salt|sea salt|kosher salt|table salt|himalayan salt)\b/i,
-            /\b(basil|oregano|thyme|rosemary|sage|mint|dill|tarragon|marjoram)\b/i,
-            /\b(cumin|coriander|cardamom|turmeric|curry|garam masala)\b/i,
-            /\b(paprika|chili powder|garlic powder|onion powder)\b/i,
-            /\b(cinnamon|nutmeg|cloves|allspice|ginger powder|ground ginger)\b/i,
-            /\b(parsley|cilantro|chives|bay leaf|bay leaves)\b/i,
-            /\b(vanilla extract|almond extract|peppermint extract)\b/i,
-          ],
-        },
-        // Protein (meats, poultry, seafood, eggs) - check BEFORE vegetables
-        {
-          category: 'Protein',
-          patterns: [
-            /\b(chicken|turkey|duck|quail|hen|poultry)\b/i,
-            /\b(beef|steak|ribeye|rib eye|rib-eye|sirloin|t-bone|t bone|filet|brisket|chuck|ground beef|hamburger)\b/i,
-            /\b(pork|bacon|ham|sausage|pork chop|pork loin|ribs|pulled pork|pork shoulder)\b/i,
-            /\b(lamb|mutton|veal|venison|bison|buffalo)\b/i,
-            /\b(fish|salmon|tuna|cod|halibut|tilapia|trout|mahi|bass|snapper)\b/i,
-            /\b(shrimp|prawn|crab|lobster|scallop|clam|mussel|oyster|squid|octopus|seafood)\b/i,
-            /\b(egg|eggs|egg white|egg yolk)\b/i,
-            /\b(tofu|tempeh|seitan)\b/i,
-          ],
-        },
-        // Dairy
-        {
-          category: 'Dairy',
-          patterns: [
-            /\b(milk|whole milk|skim milk|2% milk|1% milk|buttermilk)\b/i,
-            /\b(cheese|cheddar|mozzarella|parmesan|swiss|gouda|brie|feta|ricotta|provolone)\b/i,
-            /\b(butter|margarine|ghee|clarified butter)\b/i,
-            /\b(cream|heavy cream|whipping cream|half and half|sour cream|crème fraîche)\b/i,
-            /\b(yogurt|greek yogurt|cottage cheese|cream cheese)\b/i,
-          ],
-        },
-        // Vegetables (check AFTER spices to avoid "pepper" confusion)
-        {
-          category: 'Vegetables',
-          patterns: [
-            /\b(bell pepper|green pepper|red pepper|yellow pepper|sweet pepper|capsicum)\b/i,
-            /\b(tomato|cherry tomato|grape tomato|roma tomato|beefsteak tomato|heirloom tomato)\b/i,
-            /\b(onion|red onion|white onion|yellow onion|green onion|scallion|shallot|leek)\b/i,
-            /\b(garlic|garlic clove|minced garlic|fresh garlic)\b/i,
-            /\b(carrot|celery|broccoli|cauliflower|cabbage|brussels sprout)\b/i,
-            /\b(spinach|kale|lettuce|arugula|chard|collard|romaine)\b/i,
-            /\b(cucumber|zucchini|squash|eggplant|pumpkin|butternut)\b/i,
-            /\b(potato|sweet potato|yam|russet|yukon gold)\b/i,
-            /\b(mushroom|portobello|shiitake|button mushroom|cremini)\b/i,
-            /\b(asparagus|green bean|snap pea|snow pea|edamame)\b/i,
-            /\b(corn|beet|radish|turnip|parsnip|rutabaga)\b/i,
-          ],
-        },
-        // Fruits
-        {
-          category: 'Fruits',
-          patterns: [
-            /\b(apple|banana|orange|grapefruit|tangerine|clementine)\b/i,
-            /\b(lemon|lime|citrus)\b/i,
-            /\b(strawberry|blueberry|raspberry|blackberry|cranberry)\b/i,
-            /\b(grape|watermelon|cantaloupe|honeydew|melon)\b/i,
-            /\b(pineapple|mango|papaya|kiwi|passion fruit|dragon fruit)\b/i,
-            /\b(peach|pear|plum|apricot|nectarine)\b/i,
-            /\b(cherry|date|fig|pomegranate)\b/i,
-            /\b(avocado|coconut)\b/i,
-          ],
-        },
-        // Grains & Pasta
-        {
-          category: 'Grains',
-          patterns: [
-            /\b(rice|white rice|brown rice|jasmine rice|basmati|wild rice|arborio)\b/i,
-            /\b(pasta|spaghetti|penne|fettuccine|linguine|macaroni|rigatoni|farfalle)\b/i,
-            /\b(noodle|ramen|udon|soba|rice noodle|egg noodle)\b/i,
-            /\b(bread|baguette|sourdough|wheat bread|white bread|roll|bun)\b/i,
-            /\b(flour|all-purpose flour|wheat flour|bread flour|cake flour)\b/i,
-            /\b(oat|oatmeal|rolled oats|steel cut oats|quick oats)\b/i,
-            /\b(quinoa|couscous|bulgur|farro|barley)\b/i,
-            /\b(cereal|granola|cornmeal|polenta|grits)\b/i,
-            /\b(tortilla|wrap|pita|flatbread|naan)\b/i,
-          ],
-        },
-        // Oils & Fats
-        {
-          category: 'Oils & Fats',
-          patterns: [
-            /\b(olive oil|extra virgin|vegetable oil|canola oil|sunflower oil)\b/i,
-            /\b(coconut oil|sesame oil|peanut oil|avocado oil|grapeseed oil)\b/i,
-            /\b(cooking oil|frying oil|spray oil)\b/i,
-            /\boil\b/i, // Generic "oil" as last resort
-          ],
-        },
-        // Condiments & Sauces
-        {
-          category: 'Condiments',
-          patterns: [
-            /\b(ketchup|mustard|mayonnaise|mayo|relish)\b/i,
-            /\b(soy sauce|tamari|teriyaki|hoisin|fish sauce|oyster sauce)\b/i,
-            /\b(vinegar|balsamic|apple cider vinegar|white vinegar|rice vinegar|red wine vinegar)\b/i,
-            /\b(hot sauce|sriracha|tabasco|salsa|pico de gallo|guacamole)\b/i,
-            /\b(bbq sauce|barbecue sauce|worcestershire|steak sauce)\b/i,
-            /\b(honey|maple syrup|agave|molasses|corn syrup)\b/i,
-          ],
-        },
-        // Baking Supplies
-        {
-          category: 'Baking',
-          patterns: [
-            /\b(sugar|white sugar|granulated sugar|powdered sugar|confectioner|icing sugar)\b/i,
-            /\b(brown sugar|light brown sugar|dark brown sugar)\b/i,
-            /\b(baking powder|baking soda|yeast|active dry yeast|instant yeast)\b/i,
-            /\b(vanilla|vanilla extract|vanilla bean|vanilla paste)\b/i,
-            /\b(cocoa|cocoa powder|chocolate chip|chocolate chunk|baking chocolate)\b/i,
-            /\b(cornstarch|gelatin|cream of tartar|baking mix)\b/i,
-          ],
-        },
-        // Nuts & Seeds
-        {
-          category: 'Nuts & Seeds',
-          patterns: [
-            /\b(almond|walnut|pecan|cashew|pistachio|hazelnut|macadamia)\b/i,
-            /\b(peanut|peanut butter|almond butter|cashew butter)\b/i,
-            /\b(sunflower seed|pumpkin seed|chia seed|flax seed|sesame seed|hemp seed)\b/i,
-          ],
-        },
-        // Legumes & Canned Goods
-        {
-          category: 'Canned Goods',
-          patterns: [
-            /\b(beans|black bean|kidney bean|pinto bean|navy bean|lima bean|white bean)\b/i,
-            /\b(chickpea|garbanzo|lentil|split pea)\b/i,
-            /\b(canned|can of)\b/i,
-            /\b(broth|stock|chicken stock|beef broth|vegetable broth|bone broth)\b/i,
-            /\b(tomato sauce|tomato paste|crushed tomato|diced tomato|tomato puree)\b/i,
-            /\b(soup|condensed soup|cream of)\b/i,
-          ],
-        },
-        // Beverages
-        {
-          category: 'Beverages',
-          patterns: [
-            /\b(coffee|espresso|latte|cappuccino|americano)\b/i,
-            /\b(tea|green tea|black tea|herbal tea|chai|iced tea)\b/i,
-            /\b(juice|orange juice|apple juice|cranberry juice|grape juice)\b/i,
-            /\b(soda|cola|sprite|ginger ale|tonic water|club soda)\b/i,
-            /\b(water|sparkling water|mineral water|seltzer)\b/i,
-            /\b(wine|red wine|white wine|beer|ale|lager|stout)\b/i,
-            /\b(liquor|vodka|rum|whiskey|tequila|gin|bourbon)\b/i,
-          ],
-        },
-      ];
-
       const updated: any[] = [];
 
-      // Categorize each ingredient using smart pattern matching
+      // Use enhanced categorization service
       for (const ingredient of uncategorized.rows) {
-        const name = (ingredient.ingredient_name || '').toLowerCase().trim();
-        let assignedCategory = 'Other';
+        const analysis = await EnhancedIngredientCategorizationService.categorizeIngredient(
+          ingredient.ingredient_name
+        );
 
-        // Try to match against patterns in priority order
-        for (const { category, patterns } of categoryPatterns) {
-          if (patterns.some(pattern => pattern.test(name))) {
-            assignedCategory = category;
-            break; // Stop at first match
+        // Only update if we have reasonable confidence
+        if (analysis.primaryCategory.confidence >= 0.3) {
+          const result = await client.query(`
+            UPDATE user_ingredients 
+            SET category = $1 
+            WHERE id = $2 AND user_id = $3
+            RETURNING id, ingredient_name, category
+          `, [analysis.primaryCategory.category, ingredient.id, req.user!.id]);
+
+          if (result.rows.length > 0) {
+            updated.push({
+              ...result.rows[0],
+              confidence: analysis.primaryCategory.confidence,
+              reason: analysis.primaryCategory.reason,
+              alternatives: analysis.alternativeCategories
+            });
           }
-        }
-
-        // Update the ingredient
-        const result = await client.query(`
-          UPDATE user_ingredients 
-          SET category = $1 
-          WHERE id = $2 AND user_id = $3
-          RETURNING id, ingredient_name, category
-        `, [assignedCategory, ingredient.id, req.user!.id]);
-
-        if (result.rows.length > 0) {
-          updated.push(result.rows[0]);
         }
       }
 
-      logger.info(`Intelligently categorized ${updated.length} ingredients for user ${req.user!.id}`);
+      logger.info(`Enhanced categorization processed ${updated.length} ingredients for user ${req.user!.id}`);
 
       return res.json({
         success: true,
-        message: `Categorized ${updated.length} ingredient${updated.length !== 1 ? 's' : ''}`,
+        message: `Categorized ${updated.length} ingredient${updated.length !== 1 ? 's' : ''} using enhanced AI`,
         updated: updated,
+        totalProcessed: uncategorized.rows.length,
       });
     } finally {
       client.release();
     }
   } catch (error) {
-    logger.error('Fix categories error:', error);
-    return next(createError('Failed to fix categories', 500));
+    logger.error('Enhanced categorization error:', error);
+    return next(createError('Failed to categorize ingredients', 500));
+  }
+});
+
+// Analyze ingredient categorization (new endpoint)
+router.post('/analyze-categorization', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { ingredient_name } = req.body;
+    
+    if (!ingredient_name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ingredient name is required'
+      });
+    }
+
+    const { EnhancedIngredientCategorizationService } = await import('../services/EnhancedIngredientCategorizationService');
+    
+    const analysis = await EnhancedIngredientCategorizationService.categorizeIngredient(ingredient_name);
+    
+    return res.json({
+      success: true,
+      analysis
+    });
+  } catch (error) {
+    logger.error('Analyze categorization error:', error);
+    return next(createError('Failed to analyze ingredient categorization', 500));
+  }
+});
+
+// Submit categorization feedback (new endpoint)
+router.post('/categorization-feedback', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { ingredient_name, correct_category } = req.body;
+    
+    if (!ingredient_name || !correct_category) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ingredient name and correct category are required'
+      });
+    }
+
+    const { EnhancedIngredientCategorizationService } = await import('../services/EnhancedIngredientCategorizationService');
+    
+    await EnhancedIngredientCategorizationService.recordUserFeedback(
+      ingredient_name, 
+      correct_category, 
+      req.user!.id.toString()
+    );
+    
+    return res.json({
+      success: true,
+      message: 'Feedback recorded successfully'
+    });
+  } catch (error) {
+    logger.error('Categorization feedback error:', error);
+    return next(createError('Failed to record feedback', 500));
+  }
+});
+
+// Get categorization statistics (new endpoint)
+router.get('/categorization-stats', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { EnhancedIngredientCategorizationService } = await import('../services/EnhancedIngredientCategorizationService');
+    
+    const stats = await EnhancedIngredientCategorizationService.getCategoryStatistics();
+    
+    return res.json({
+      success: true,
+      statistics: stats
+    });
+  } catch (error) {
+    logger.error('Get categorization stats error:', error);
+    return next(createError('Failed to get categorization statistics', 500));
   }
 });
 
