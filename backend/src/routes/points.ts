@@ -19,16 +19,32 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
     const client = await pool.connect();
     try {
       const result = await client.query(
-        'SELECT points FROM users WHERE id = $1',
+        'SELECT id, points, updated_at FROM users WHERE id = $1',
         [req.user!.id]
       );
 
-      const points = result.rows[0]?.points || 0;
-      logger.info(`Points for user ${req.user!.id}: ${points}`);
+      const user = result.rows[0];
+      const points = user?.points || 0;
+      
+      // Calculate level based on points
+      const calculateLevel = (totalPoints: number): number => {
+        if (totalPoints < 100) return 0;
+        if (totalPoints < 500) return 1;
+        if (totalPoints < 2000) return 2;
+        if (totalPoints < 5000) return 3;
+        if (totalPoints < 10000) return 4;
+        return 5;
+      };
+
+      const level = calculateLevel(points);
+      
+      logger.info(`Points for user ${req.user!.id}: ${points}, level: ${level}`);
 
       res.json({
-        success: true,
-        points: points,
+        userId: user?.id || req.user!.id,
+        totalPoints: points,
+        level: level,
+        lastUpdated: user?.updated_at || new Date(),
       });
     } finally {
       client.release();
@@ -106,6 +122,57 @@ router.get('/leaderboard', authenticateToken, async (req: AuthRequest, res, next
   } catch (error) {
     logger.error('Get leaderboard error:', error);
     next(createError('Failed to get leaderboard', 500));
+  }
+});
+
+// Get points history
+router.get('/history', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { limit = 20, offset = 0 } = req.query;
+
+    const client = await pool.connect();
+    try {
+      // Check if points_transactions table exists, if not return empty array
+      const tableCheck = await client.query(
+        `SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'points_transactions'
+        )`
+      );
+
+      if (!tableCheck.rows[0].exists) {
+        // Return empty history if table doesn't exist yet
+        res.json([]);
+        return;
+      }
+
+      const result = await client.query(
+        `SELECT id, points, action, description, created_at
+         FROM points_transactions 
+         WHERE user_id = $1
+         ORDER BY created_at DESC 
+         LIMIT $2 OFFSET $3`,
+        [req.user!.id, parseInt(limit as string), parseInt(offset as string)]
+      );
+
+      const transactions = result.rows.map(row => ({
+        id: row.id,
+        userId: req.user!.id,
+        points: row.points,
+        action: row.action,
+        description: row.description,
+        dateCreated: row.created_at,
+      }));
+
+      res.json(transactions);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get points history error:', error);
+    // Return empty array on error to prevent app crashes
+    res.json([]);
   }
 });
 

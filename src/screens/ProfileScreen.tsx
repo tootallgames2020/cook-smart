@@ -57,6 +57,7 @@ export const ProfileScreen: React.FC<Props> = ({userId}) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [userPoints, setUserPoints] = useState<UserPoints | null>(null);
+  const [pointsLoading, setPointsLoading] = useState(true);
   const [transactions, setTransactions] = useState<PointsTransaction[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +123,7 @@ export const ProfileScreen: React.FC<Props> = ({userId}) => {
 
   const loadData = async () => {
     setLoading(true);
+    setPointsLoading(true);
     try {
       // Load real user profile
       const userProfile = await userService.getCurrentUser();
@@ -140,11 +142,22 @@ export const ProfileScreen: React.FC<Props> = ({userId}) => {
       });
 
       // Load real points data
-      const points = await pointsService.getUserPoints();
-      setUserPoints({
-        totalPoints: points.totalPoints,
-        level: points.level,
-      });
+      try {
+        const points = await pointsService.getUserPoints();
+        setUserPoints({
+          totalPoints: points.totalPoints,
+          level: points.level,
+        });
+      } catch (pointsError) {
+        console.error('Error loading points:', pointsError);
+        // Set default points if API fails
+        setUserPoints({
+          totalPoints: 0,
+          level: 0,
+        });
+      } finally {
+        setPointsLoading(false);
+      }
 
       // Load points history
       const history = await pointsService.getPointsHistory(20, 0);
@@ -165,6 +178,7 @@ export const ProfileScreen: React.FC<Props> = ({userId}) => {
       setUserPoints(mockUserPoints);
       setTransactions(mockTransactions);
       setLeaderboard(mockLeaderboard);
+      setPointsLoading(false);
     } finally {
       setLoading(false);
     }
@@ -224,7 +238,7 @@ export const ProfileScreen: React.FC<Props> = ({userId}) => {
           />
         )}
 
-        {userPoints && (
+        {!pointsLoading && userPoints && (
           <PointsDisplay userPoints={userPoints} onPress={handlePointsPress} />
         )}
 
