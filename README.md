@@ -67,6 +67,8 @@ Process Mgmt │ PM2 (Backend)
 ## 🚀 Recent Updates (v2.1.6)
 
 ### ✅ **Critical Fixes Applied**
+- **Fixed Points System Display** - Resolved loading flash issue where points briefly showed "0" before loading actual value
+- **Enhanced Points API** - Backend now returns proper format with level calculation (Beginner to Kitchen Legend)
 - **Fixed Ingredients Tab Crash** - Resolved infinite re-render loop in IngredientContext
 - **Null Category Handling** - Added robust error handling for ingredients with missing categories
 - **Subscription System** - Complete Stripe integration with real pricing ($24.99/year beta)
@@ -74,11 +76,18 @@ Process Mgmt │ PM2 (Backend)
 - **Shopping List Integration** - Fixed missing ingredients not appearing in shopping lists
 - **Dietary Substitutions** - Enhanced substitution matching for dietary conflicts
 
+### 🧹 **Codebase Cleanup**
+- **Bundle Drop Removal** - Removed experimental Bundle Drop integration to focus on core features
+- **Git Branch Cleanup** - Consolidated branches, removed experimental code
+- **Documentation Updates** - Updated README and infrastructure docs to reflect current state
+- **File Organization** - Cleaned up temporary files and unused components
+
 ### 🧪 **Testing Status**
 - Core functionality: ✅ Stable
 - Payment processing: ✅ Operational  
 - User authentication: ✅ Secure
 - Recipe matching: ✅ Optimized
+- Points system: ✅ Fixed and operational
 - **Google Play Ready**: Pending final tester approval
 
 ## 🚀 Website Deployment

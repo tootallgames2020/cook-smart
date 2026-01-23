@@ -3,9 +3,22 @@
  * Manages API URLs for different environments
  */
 
-// ALWAYS USE PRODUCTION - NO LOCAL DEVELOPMENT
-// We work on live side only
-export const API_BASE_URL = 'https://api.cooksmartapp.com';
+import { buildConfig } from './buildConfig';
+
+// API Base URLs for different environments
+const API_BASE_URLS = {
+  production: 'https://api.cooksmartapp.com',
+  test: 'http://3.238.250.151:3002',
+  development: 'http://192.168.12.196:3000',
+};
+
+// Get current API URL based on build environment
+export const API_BASE_URL = API_BASE_URLS[buildConfig.environment];
+
+// Log current environment for debugging
+if (buildConfig.enableDebugLogging) {
+  console.log(`[API Config] Environment: ${buildConfig.environment}, URL: ${API_BASE_URL}`);
+}
 
 // API Endpoints
 export const API_ENDPOINTS = {
