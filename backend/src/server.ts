@@ -37,6 +37,9 @@ import expirationRoutes from './routes/expiration';
 import familiesRoutes from './routes/families';
 import aiPreferencesRoutes from './routes/aiPreferences';
 import apexIntelligenceRoutes from './routes/apexIntelligence';
+import photoAnalysisRoutes from './routes/photoAnalysis';
+import voiceCommandsRoutes from './routes/voiceCommands';
+import predictiveAnalyticsRoutes from './routes/predictiveAnalytics';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -165,6 +168,12 @@ app.get('/health', async (req, res) => {
         admin: '/api/v1/admin/*',
         contact: '/contact',
         mealPlanning: '/api/v1/meal-planning/*',
+        families: '/api/v1/families/*',
+        aiPreferences: '/api/v1/ai-preferences/*',
+        apexIntelligence: '/api/v1/apex-intelligence/*',
+        photoAnalysis: '/api/v1/photo-analysis/*',
+        voiceCommands: '/api/v1/voice-commands/*',
+        predictiveAnalytics: '/api/v1/predictive-analytics/*',
       },
     });
   } catch (error) {
@@ -207,6 +216,9 @@ app.use('/api/v1/expiration', expirationRoutes);
 app.use('/api/v1/families', familiesRoutes);
 app.use('/api/v1/ai-preferences', aiPreferencesRoutes);
 app.use('/api/v1/apex-intelligence', apexIntelligenceRoutes);
+app.use('/api/v1/photo-analysis', photoAnalysisRoutes);
+app.use('/api/v1/voice-commands', voiceCommandsRoutes);
+app.use('/api/v1/predictive-analytics', predictiveAnalyticsRoutes);
 
 // Test endpoint
 app.get('/api/v1/test', (req, res) => {
