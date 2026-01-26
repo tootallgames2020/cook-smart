@@ -75,9 +75,16 @@ class RecipeCacheService {
   ): Promise<CachedRecipe[]> {
     try {
       const result = await pool.query(
-        `SELECT *, image_url as recipe_image FROM recipe_cache 
-         WHERE season = $1 OR season = 'all'
-         ORDER BY is_seasonal DESC, view_count DESC, trending_score DESC
+        `SELECT *, 
+         (recipe_data->>'image') as recipe_image,
+         (recipe_data->>'title') as title,
+         (recipe_data->>'description') as description
+         FROM recipe_cache 
+         WHERE (recipe_data->>'season') = $1 OR (recipe_data->>'season') = 'all'
+         ORDER BY 
+           CASE WHEN (recipe_data->>'isSeasonal')::boolean THEN 1 ELSE 0 END DESC,
+           (recipe_data->>'viewCount')::int DESC, 
+           (recipe_data->>'trendingScore')::int DESC
          LIMIT $2`,
         [season, limit],
       );
@@ -93,7 +100,7 @@ class RecipeCacheService {
     try {
       const result = await pool.query(
         `SELECT MAX(updated_at) as last_update FROM recipe_cache 
-         WHERE season = $1 AND is_seasonal = true`,
+         WHERE (recipe_data->>'season') = $1 AND (recipe_data->>'isSeasonal')::boolean = true`,
         [season],
       );
 
@@ -139,19 +146,23 @@ class RecipeCacheService {
       // Formula: (views * 1) + (saves * 3) + (shares * 5) with time decay
       await pool.query(`
         UPDATE recipe_cache
-        SET trending_score = (
-          (view_count * 1.0) + 
-          (save_count * 3.0) + 
-          (share_count * 5.0)
-        ) * (
-          CASE 
-            WHEN updated_at > NOW() - INTERVAL '7 days' THEN 1.0
-            WHEN updated_at > NOW() - INTERVAL '14 days' THEN 0.7
-            WHEN updated_at > NOW() - INTERVAL '30 days' THEN 0.4
-            ELSE 0.2
-          END
+        SET recipe_data = jsonb_set(
+          recipe_data,
+          '{trendingScore}',
+          (
+            (COALESCE((recipe_data->>'viewCount')::int, 0) * 1.0) + 
+            (COALESCE((recipe_data->>'saveCount')::int, 0) * 3.0) + 
+            (COALESCE((recipe_data->>'shareCount')::int, 0) * 5.0)
+          ) * (
+            CASE 
+              WHEN updated_at > NOW() - INTERVAL '7 days' THEN 1.0
+              WHEN updated_at > NOW() - INTERVAL '14 days' THEN 0.7
+              WHEN updated_at > NOW() - INTERVAL '30 days' THEN 0.4
+              ELSE 0.2
+            END
+          )::text::jsonb
         ),
-        last_trending_update = NOW()
+        updated_at = NOW()
       `);
 
       console.log('[RecipeCache] Trending scores updated');
@@ -163,9 +174,14 @@ class RecipeCacheService {
   async getTrendingRecipes(limit: number = 20): Promise<CachedRecipe[]> {
     try {
       const result = await pool.query(
-        `SELECT * FROM recipe_cache 
-         WHERE trending_score > 0
-         ORDER BY trending_score DESC, view_count DESC
+        `SELECT *,
+         (recipe_data->>'title') as title,
+         (recipe_data->>'image') as recipe_image
+         FROM recipe_cache 
+         WHERE COALESCE((recipe_data->>'trendingScore')::numeric, 0) > 0
+         ORDER BY 
+           (recipe_data->>'trendingScore')::numeric DESC, 
+           (recipe_data->>'viewCount')::int DESC
          LIMIT $1`,
         [limit],
       );
@@ -180,8 +196,8 @@ class RecipeCacheService {
   async getTrendingCacheAge(): Promise<number | null> {
     try {
       const result = await pool.query(
-        `SELECT MAX(last_trending_update) as last_update FROM recipe_cache 
-         WHERE trending_score > 0`,
+        `SELECT MAX(updated_at) as last_update FROM recipe_cache 
+         WHERE COALESCE((recipe_data->>'trendingScore')::numeric, 0) > 0`,
       );
 
       if (result.rows[0]?.last_update) {
@@ -248,36 +264,50 @@ class RecipeCacheService {
       const nutrition = this.parseNutrition(recipe);
       const dietaryInfo = this.parseDietaryInfo(recipe);
 
+      // Store all recipe data in the recipe_data JSONB column
+      const recipeData = {
+        id: recipe.recipe_id || recipe.id,
+        title: recipe.recipe_name || recipe.title || 'Untitled',
+        description: recipe.recipe_description || recipe.summary || '',
+        image: recipe.recipe_image || recipe.image || '',
+        readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
+        servings: parseInt(recipe.number_of_servings) || 4,
+        ingredients: ingredients,
+        instructions: instructions,
+        nutrition: nutrition,
+        dietaryInfo: dietaryInfo,
+        mealType: recipe.recipe_types || 'dinner',
+        cuisine: recipe.cuisine || 'international',
+        season: season,
+        isSeasonal: isSeasonal,
+        source: source,
+        // Additional metadata
+        viewCount: 0,
+        saveCount: 0,
+        shareCount: 0,
+        trendingScore: 0,
+        cachePriority: isSeasonal ? 10 : 5,
+        cachedAt: new Date().toISOString()
+      };
+
+      // Create cache key for uniqueness
+      const cacheKey = `${source}_${season}_${recipe.recipe_id || recipe.id}`;
+
       await pool.query(
         `INSERT INTO recipe_cache (
-          recipe_id, source, title, description, image_url,
-          ready_in_minutes, servings, ingredients, instructions,
-          nutrition, dietary_info, meal_type, cuisine, season,
-          is_seasonal, cache_priority
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-        ON CONFLICT (recipe_id) 
+          recipe_id, source, recipe_data, cache_key, expires_at
+        ) VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (cache_key) 
         DO UPDATE SET
+          recipe_data = EXCLUDED.recipe_data,
           updated_at = CURRENT_TIMESTAMP,
-          last_fetched_at = CURRENT_TIMESTAMP,
-          is_seasonal = EXCLUDED.is_seasonal,
-          season = EXCLUDED.season`,
+          expires_at = EXCLUDED.expires_at`,
         [
           recipeId,
           source,
-          recipe.recipe_name || recipe.title || 'Untitled',
-          recipe.recipe_description || recipe.summary || '',
-          recipe.recipe_image || recipe.image || '',
-          parseInt(recipe.cooking_time_min) || 30,
-          parseInt(recipe.number_of_servings) || 4,
-          JSON.stringify(ingredients),
-          instructions,
-          JSON.stringify(nutrition),
-          JSON.stringify(dietaryInfo),
-          recipe.recipe_types || 'dinner',
-          recipe.cuisine || 'international',
-          season,
-          isSeasonal,
-          isSeasonal ? 10 : 5,
+          JSON.stringify(recipeData),
+          cacheKey,
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Expire in 7 days
         ],
       );
     } catch (error) {
@@ -310,29 +340,35 @@ class RecipeCacheService {
     filters: any = {},
   ): Promise<CachedRecipe[]> {
     try {
-      let sql = 'SELECT * FROM recipe_cache WHERE 1=1';
+      let sql = `SELECT *,
+                 (recipe_data->>'title') as title,
+                 (recipe_data->>'image') as recipe_image
+                 FROM recipe_cache WHERE 1=1`;
       const params: any[] = [];
       let paramCount = 0;
 
       if (query) {
         paramCount++;
-        sql += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+        sql += ` AND ((recipe_data->>'title') ILIKE $${paramCount} OR (recipe_data->>'description') ILIKE $${paramCount})`;
         params.push(`%${query}%`);
       }
 
       if (filters.mealType) {
         paramCount++;
-        sql += ` AND meal_type = $${paramCount}`;
+        sql += ` AND (recipe_data->>'mealType') = $${paramCount}`;
         params.push(filters.mealType);
       }
 
       if (filters.season) {
         paramCount++;
-        sql += ` AND (season = $${paramCount} OR season = 'all')`;
+        sql += ` AND ((recipe_data->>'season') = $${paramCount} OR (recipe_data->>'season') = 'all')`;
         params.push(filters.season);
       }
 
-      sql += ' ORDER BY trending_score DESC, view_count DESC LIMIT 50';
+      sql += ` ORDER BY 
+               COALESCE((recipe_data->>'trendingScore')::numeric, 0) DESC, 
+               COALESCE((recipe_data->>'viewCount')::int, 0) DESC 
+               LIMIT 50`;
 
       const result = await pool.query(sql, params);
       return result.rows;
@@ -362,20 +398,25 @@ class RecipeCacheService {
         );
       }
 
-      // Update recipe cache metrics
+      // Update recipe cache metrics in JSONB
       const updateField =
         interactionType === 'view'
-          ? 'view_count'
+          ? 'viewCount'
           : interactionType === 'save'
-            ? 'save_count'
+            ? 'saveCount'
             : interactionType === 'share'
-              ? 'share_count'
+              ? 'shareCount'
               : null;
 
       if (updateField) {
         await pool.query(
           `UPDATE recipe_cache 
-           SET ${updateField} = ${updateField} + 1, updated_at = CURRENT_TIMESTAMP
+           SET recipe_data = jsonb_set(
+             recipe_data,
+             '{${updateField}}',
+             (COALESCE((recipe_data->>'${updateField}')::int, 0) + 1)::text::jsonb
+           ),
+           updated_at = CURRENT_TIMESTAMP
            WHERE recipe_id = $1`,
           [recipeId],
         );
@@ -384,8 +425,20 @@ class RecipeCacheService {
       if (interactionType === 'rate' && rating) {
         await pool.query(
           `UPDATE recipe_cache 
-           SET rating_count = rating_count + 1,
-               rating_average = ((rating_average * rating_count) + $2) / (rating_count + 1)
+           SET recipe_data = jsonb_set(
+             jsonb_set(
+               recipe_data,
+               '{ratingCount}',
+               (COALESCE((recipe_data->>'ratingCount')::int, 0) + 1)::text::jsonb
+             ),
+             '{ratingAverage}',
+             (
+               (
+                 COALESCE((recipe_data->>'ratingAverage')::numeric, 0) * 
+                 COALESCE((recipe_data->>'ratingCount')::int, 0) + $2
+               ) / (COALESCE((recipe_data->>'ratingCount')::int, 0) + 1)
+             )::text::jsonb
+           )
            WHERE recipe_id = $1`,
           [recipeId, rating],
         );
@@ -474,8 +527,8 @@ class RecipeCacheService {
       // Clean old low-priority recipes (keep cache under control)
       await pool.query(
         `DELETE FROM recipe_cache 
-         WHERE cache_priority < 5 
-         AND view_count < 10 
+         WHERE COALESCE((recipe_data->>'cachePriority')::int, 0) < 5 
+         AND COALESCE((recipe_data->>'viewCount')::int, 0) < 10 
          AND created_at < NOW() - INTERVAL '90 days'`,
       );
 
