@@ -8,9 +8,9 @@
  * - Export meal plans and shopping lists
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { AutoMealPlanningService, MealPlanRequest, MealPlan } from '../services/AutoMealPlanningService';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -19,7 +19,7 @@ const router = Router();
  * POST /api/v1/meal-planning/generate
  * Generate a new AI-powered meal plan
  */
-router.post('/generate', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.post('/generate', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const {
@@ -77,7 +77,7 @@ router.post('/generate', authenticateToken, async (req: Request, res: Response):
  * GET /api/v1/meal-planning/plans
  * Get user's meal plan history
  */
-router.get('/plans', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.get('/plans', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -111,7 +111,7 @@ router.get('/plans', authenticateToken, async (req: Request, res: Response): Pro
  * GET /api/v1/meal-planning/plans/:planId
  * Get a specific meal plan by ID
  */
-router.get('/plans/:planId', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.get('/plans/:planId', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const { planId } = req.params;
@@ -152,7 +152,7 @@ router.get('/plans/:planId', authenticateToken, async (req: Request, res: Respon
  * PUT /api/v1/meal-planning/plans/:planId/meals/:mealId
  * Update a specific meal in a meal plan
  */
-router.put('/plans/:planId/meals/:mealId', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.put('/plans/:planId/meals/:mealId', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const { planId, mealId } = req.params;
@@ -192,7 +192,7 @@ router.put('/plans/:planId/meals/:mealId', authenticateToken, async (req: Reques
  * POST /api/v1/meal-planning/plans/:planId/regenerate-day
  * Regenerate meals for a specific day
  */
-router.post('/plans/:planId/regenerate-day', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.post('/plans/:planId/regenerate-day', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const { planId } = req.params;
@@ -235,7 +235,7 @@ router.post('/plans/:planId/regenerate-day', authenticateToken, async (req: Requ
  * GET /api/v1/meal-planning/plans/:planId/shopping-list
  * Get shopping list for a meal plan
  */
-router.get('/plans/:planId/shopping-list', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.get('/plans/:planId/shopping-list', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const { planId } = req.params;
@@ -285,7 +285,7 @@ router.get('/plans/:planId/shopping-list', authenticateToken, async (req: Reques
  * POST /api/v1/meal-planning/plans/:planId/export
  * Export meal plan in various formats
  */
-router.post('/plans/:planId/export', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.post('/plans/:planId/export', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const { planId } = req.params;
@@ -353,7 +353,7 @@ router.post('/plans/:planId/export', authenticateToken, async (req: Request, res
  * DELETE /api/v1/meal-planning/plans/:planId
  * Delete a meal plan
  */
-router.delete('/plans/:planId', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.delete('/plans/:planId', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const { planId } = req.params;
@@ -394,7 +394,7 @@ router.delete('/plans/:planId', authenticateToken, async (req: Request, res: Res
  * GET /api/v1/meal-planning/suggestions
  * Get meal suggestions based on current inventory
  */
-router.get('/suggestions', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.get('/suggestions', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const meal_type = req.query.meal_type as string;
@@ -434,7 +434,7 @@ router.get('/suggestions', authenticateToken, async (req: Request, res: Response
  * POST /api/v1/meal-planning/quick-plan
  * Generate a quick meal plan for today/tomorrow
  */
-router.post('/quick-plan', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.post('/quick-plan', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     const { target_date, meal_types, use_expiring_ingredients } = req.body;
