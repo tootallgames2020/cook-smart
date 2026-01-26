@@ -247,23 +247,23 @@ class PaymentService {
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to get payment methods');
+      throw new Error(data.message || 'Failed to get payment methods');
     }
 
     return data.paymentMethods;
   }
 
-  async addPaymentMethod(paymentData: PaymentData): Promise<PaymentMethod> {
+  async addPaymentMethod(paymentMethodId: string): Promise<PaymentMethod> {
     const response = await fetch(`${API_BASE}/payments/payment-methods`, {
       method: 'POST',
       headers: await this.getAuthHeaders(),
-      body: JSON.stringify(paymentData),
+      body: JSON.stringify({ paymentMethodId }),
     });
 
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to add payment method');
+      throw new Error(data.message || 'Failed to add payment method');
     }
 
     return data.paymentMethod;
@@ -281,7 +281,7 @@ class PaymentService {
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to set default payment method');
+      throw new Error(data.message || 'Failed to set default payment method');
     }
   }
 
@@ -297,7 +297,7 @@ class PaymentService {
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to delete payment method');
+      throw new Error(data.message || 'Failed to delete payment method');
     }
   }
 
@@ -309,7 +309,7 @@ class PaymentService {
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to get billing history');
+      throw new Error(data.message || 'Failed to get billing history');
     }
 
     return data.billingHistory;
