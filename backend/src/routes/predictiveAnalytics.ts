@@ -30,14 +30,16 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!analysis_type) {
       res.status(400).json({
         success: false,
         error: 'analysis_type is required (consumption, shopping, waste, budget, seasonal, family_insights)',
-      });`n      return;
+      });
+      return;
     }
 
     const validAnalysisTypes = ['consumption', 'shopping', 'waste', 'budget', 'seasonal', 'family_insights'];
@@ -45,7 +47,8 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
       res.status(400).json({
         success: false,
         error: `Invalid analysis_type. Must be one of: ${validAnalysisTypes.join(', ')}`,
-      });`n      return;
+      });
+      return;
     }
 
     const timeHorizon = parseInt(time_horizon_days) || 30;
@@ -53,7 +56,8 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
       res.status(400).json({
         success: false,
         error: 'time_horizon_days must be between 1 and 365',
-      });`n      return;
+      });
+      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -101,7 +105,8 @@ router.get('/consumption', authenticateToken, async (req: AuthRequest, res: Resp
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -142,7 +147,8 @@ router.get('/shopping', authenticateToken, async (req: AuthRequest, res: Respons
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -183,7 +189,8 @@ router.get('/waste', authenticateToken, async (req: AuthRequest, res: Response) 
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -224,7 +231,8 @@ router.get('/budget', authenticateToken, async (req: AuthRequest, res: Response)
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -265,7 +273,8 @@ router.get('/seasonal', authenticateToken, async (req: AuthRequest, res: Respons
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -307,14 +316,16 @@ router.get('/family-insights', authenticateToken, async (req: AuthRequest, res: 
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!family_id) {
       res.status(400).json({
         success: false,
         error: 'family_id is required for family insights',
-      });`n      return;
+      });
+      return;
     }
 
     // Verify user is member of the family
@@ -323,7 +334,8 @@ router.get('/family-insights', authenticateToken, async (req: AuthRequest, res: 
       res.status(403).json({
         success: false,
         error: 'Access denied: not a member of this family',
-      });`n      return;
+      });
+      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -365,7 +377,8 @@ router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Respon
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     // Generate multiple analysis types for dashboard
@@ -434,7 +447,8 @@ router.get('/history', authenticateToken, async (req: AuthRequest, res: Response
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const history = await getPredictiveAnalysisHistory(userId, analysis_type, limit);
@@ -468,14 +482,16 @@ router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Respon
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!analysis_id) {
       res.status(400).json({
         success: false,
         error: 'analysis_id is required',
-      });`n      return;
+      });
+      return;
     }
 
     await storePredictiveAnalysisFeedback(userId, {
@@ -611,12 +627,12 @@ router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Res
  * HELPER FUNCTIONS
  */
 
-async function verifyFamilyMembership(userId: string, familyId: string): Promise<boolean> {
+async function verifyFamilyMembership(_userId: string, _familyId: string): Promise<boolean> {
   // This would verify that the user is a member of the specified family
   return true; // Placeholder - would check family_members table
 }
 
-async function getPredictiveAnalysisHistory(userId: string, analysisType?: string, limit: number = 20): Promise<any[]> {
+async function getPredictiveAnalysisHistory(_userId: string, _analysisType?: string, _limit: number = 20): Promise<any[]> {
   // This would query the predictive_analysis_log table
   return []; // Placeholder
 }
@@ -695,3 +711,4 @@ function generateOverallInsights(analyses: any): any {
 }
 
 export default router;
+

@@ -27,14 +27,16 @@ router.post('/process', authenticateToken, async (req: AuthRequest, res: Respons
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!command_text || typeof command_text !== 'string') {
       res.status(400).json({
         success: false,
         error: 'command_text is required and must be a string',
-      });`n      return;
+      });
+      return;
     }
 
     const voiceCommand: VoiceCommand = {
@@ -77,7 +79,8 @@ router.get('/history', authenticateToken, async (req: AuthRequest, res: Response
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     // Get voice command history from database
@@ -111,7 +114,8 @@ router.get('/analytics', authenticateToken, async (req: AuthRequest, res: Respon
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const analytics = await getVoiceCommandAnalytics(userId, days);
@@ -144,14 +148,16 @@ router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Respon
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!command_id || !feedback_type) {
       res.status(400).json({
         success: false,
         error: 'command_id and feedback_type are required',
-      });`n      return;
+      });
+      return;
     }
 
     await storeVoiceCommandFeedback(userId, {
@@ -271,7 +277,8 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const testCommands = [
@@ -282,7 +289,7 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
       'Find a recipe with pasta',
     ];
 
-    const testResults = [];
+    const testResults: any[] = [];
 
     for (const commandText of testCommands) {
       try {
@@ -300,7 +307,8 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
           response: result.response_text,
           confidence: result.confidence,
           processing_time_ms: result.processing_time_ms,
-        });`n      return;
+        });
+      return;
       } catch (testError) {
         testResults.push({
           command: commandText,
@@ -309,7 +317,8 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
           confidence: 0,
           processing_time_ms: 0,
           error: testError instanceof Error ? testError.message : 'Unknown error',
-        });`n      return;
+        });
+      return;
       }
     }
 
@@ -340,13 +349,13 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
  * HELPER FUNCTIONS
  */
 
-async function getVoiceCommandHistory(userId: string, limit: number): Promise<any[]> {
+async function getVoiceCommandHistory(_userId: string, _limit: number): Promise<any[]> {
   // This would query the voice_command_log table
   // For now, return empty array as table doesn't exist yet
   return [];
 }
 
-async function getVoiceCommandAnalytics(userId: string, days: number): Promise<any> {
+async function getVoiceCommandAnalytics(_userId: string, _days: number): Promise<any> {
   // This would analyze voice command usage patterns
   return {
     total_commands: 0,
@@ -364,3 +373,4 @@ async function storeVoiceCommandFeedback(userId: string, feedback: any): Promise
 }
 
 export default router;
+

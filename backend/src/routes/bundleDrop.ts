@@ -100,7 +100,8 @@ router.post('/check', (req, res): void => {
       res.status(400).json({
         success: false,
         message: 'Missing required fields: appId, version',
-      });`n    return;
+      });
+    return;
     }
     
     // Determine environment based on appId
@@ -113,7 +114,8 @@ router.post('/check', (req, res): void => {
       res.status(400).json({
         success: false,
         message: 'Invalid appId',
-      });`n    return;
+      });
+    return;
     }
     
     const bundleInfo = getBundleInfo(environment);
@@ -132,7 +134,7 @@ router.post('/check', (req, res): void => {
     // Force update to push email verification and ingredient classification features
     const hasUpdate = true; // Always return true to push latest features
     
-    if (hasUpdate) {
+    if (hasUpdate && bundleInfo) {
       const response: UpdateCheckResponse = {
         hasUpdate: true,
         bundle: {
@@ -159,7 +161,8 @@ router.post('/check', (req, res): void => {
       success: false,
       message: 'Failed to check for updates',
       error: error instanceof Error ? error.message : 'Unknown error',
-    });`n    return;
+    });
+    return;
   }
 });
 
@@ -172,7 +175,8 @@ router.get('/download/:environment/:filename', (req: Request, res: Response) => 
       res.status(400).json({
         success: false,
         message: 'Invalid environment',
-      });`n    return;
+      });
+    return;
     }
     
     const bundleDir = getBundleDirectory(environment as 'staging' | 'production');
@@ -183,14 +187,16 @@ router.get('/download/:environment/:filename', (req: Request, res: Response) => 
       res.status(403).json({
         success: false,
         message: 'Access denied',
-      });`n    return;
+      });
+    return;
     }
     
     if (!fs.existsSync(filePath)) {
       res.status(404).json({
         success: false,
         message: 'Bundle file not found',
-      });`n    return;
+      });
+    return;
     }
     
     // Set appropriate headers for bundle download
@@ -211,7 +217,8 @@ router.get('/download/:environment/:filename', (req: Request, res: Response) => 
       success: false,
       message: 'Failed to download bundle',
       error: error instanceof Error ? error.message : 'Unknown error',
-    });`n    return;
+    });
+    return;
   }
 });
 
@@ -241,7 +248,8 @@ router.get('/health', (_req, res): void => {
           available: false,
         },
       },
-    });`n    return;
+    });
+    return;
     
   } catch (error) {
     logger.error('Bundle Drop health check error:', error);
@@ -249,8 +257,10 @@ router.get('/health', (_req, res): void => {
       status: 'ERROR',
       message: 'Bundle Drop service health check failed',
       error: error instanceof Error ? error.message : 'Unknown error',
-    });`n    return;
+    });
+    return;
   }
 });
 
 export default router;
+

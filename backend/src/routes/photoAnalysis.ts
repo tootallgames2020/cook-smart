@@ -43,14 +43,16 @@ router.post('/receipt', authenticateToken, upload.single('photo'), async (req: A
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!req.file) {
       res.status(400).json({
         success: false,
         error: 'Photo file is required',
-      });`n      return;
+      });
+      return;
     }
 
     // Convert file buffer to base64
@@ -120,14 +122,16 @@ router.post('/pantry', authenticateToken, upload.single('photo'), async (req: Au
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!req.file) {
       res.status(400).json({
         success: false,
         error: 'Photo file is required',
-      });`n      return;
+      });
+      return;
     }
 
     const photoBase64 = req.file.buffer.toString('base64');
@@ -194,14 +198,16 @@ router.post('/food-identification', authenticateToken, upload.single('photo'), a
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!req.file) {
       res.status(400).json({
         success: false,
         error: 'Photo file is required',
-      });`n      return;
+      });
+      return;
     }
 
     const photoBase64 = req.file.buffer.toString('base64');
@@ -271,14 +277,16 @@ router.post('/barcode', authenticateToken, upload.single('photo'), async (req: A
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!req.file) {
       res.status(400).json({
         success: false,
         error: 'Photo file is required',
-      });`n      return;
+      });
+      return;
     }
 
     const photoBase64 = req.file.buffer.toString('base64');
@@ -349,7 +357,8 @@ router.get('/history', authenticateToken, async (req: AuthRequest, res: Response
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     const history = await PhotoAnalysisService.getPhotoAnalysisHistory(userId, limit);
@@ -487,14 +496,16 @@ router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Respon
       res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });`n      return;
+      });
+      return;
     }
 
     if (!analysis_id || !feedback_type) {
       res.status(400).json({
         success: false,
         error: 'analysis_id and feedback_type are required',
-      });`n      return;
+      });
+      return;
     }
 
     await storePhotoAnalysisFeedback(userId, {
@@ -523,7 +534,7 @@ router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Respon
  * HELPER FUNCTIONS
  */
 
-async function updateInventoryFromPantryAnalysis(userId: string, pantryAnalysis: any): Promise<any> {
+async function updateInventoryFromPantryAnalysis(_userId: string, _pantryAnalysis: any): Promise<any> {
   // This would update inventory based on pantry photo analysis
   return {
     items_added: 0,
@@ -559,3 +570,4 @@ async function storePhotoAnalysisFeedback(userId: string, feedback: any): Promis
 }
 
 export default router;
+
