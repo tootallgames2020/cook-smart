@@ -101,6 +101,14 @@ const ProfileScreenNew: React.FC = () => {
       onPress: () => navigation.navigate('DietaryPreferences' as never),
     },
     {
+      id: 'ai-settings',
+      title: 'AI Features',
+      subtitle: 'Voice, photo & smart features',
+      icon: 'psychology',
+      color: '#9333EA',
+      onPress: () => navigation.navigate('AISettings' as never),
+    },
+    {
       id: 'achievements',
       title: 'Achievements',
       subtitle: 'View your badges',

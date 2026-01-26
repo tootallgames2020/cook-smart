@@ -6,12 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {useAuth} from '../contexts/AuthContext';
 import {FeedbackModal} from '../components/FeedbackModal';
+import VoiceCommandButton from '../components/VoiceCommandButton';
 import feedbackService from '../services/feedbackService';
+import voiceService from '../services/voiceService';
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -23,7 +26,44 @@ const HomeScreen: React.FC = () => {
     rating?: number;
     category?: string;
   }) => {
-    await feedbackService.submitFeedback(feedback);
+    await feedbackService.submitGeneralFeedback(feedback);
+  };
+
+  const handleVoiceCommand = async (command: string) => {
+    try {
+      // Show processing feedback
+      Alert.alert('Processing...', `Voice command: "${command}"`);
+      
+      // Process the voice command
+      const response = await voiceService.processTextAsVoice(command, false);
+      
+      if (response.success) {
+        Alert.alert('Voice Command', response.response_text);
+        
+        // Handle specific actions based on the response
+        if (response.action_taken) {
+          switch (response.action_taken) {
+            case 'navigate_ingredients':
+              navigation.navigate('Ingredients' as never);
+              break;
+            case 'navigate_recipes':
+              navigation.navigate('Recipes' as never);
+              break;
+            case 'navigate_shopping':
+              navigation.navigate('ShoppingList' as never);
+              break;
+            default:
+              // Action was handled by the backend
+              break;
+          }
+        }
+      } else {
+        Alert.alert('Voice Command Failed', response.response_text || 'Could not process command');
+      }
+    } catch (error) {
+      console.error('Voice command error:', error);
+      Alert.alert('Voice Error', 'Could not process voice command. Please try again.');
+    }
   };
 
   const quickActions = [
@@ -280,6 +320,13 @@ const HomeScreen: React.FC = () => {
         visible={feedbackModalVisible}
         onClose={() => setFeedbackModalVisible(false)}
         onSubmit={handleSubmitFeedback}
+      />
+
+      {/* Voice Command Button */}
+      <VoiceCommandButton
+        onVoiceCommand={handleVoiceCommand}
+        size="large"
+        position="floating"
       />
     </ScrollView>
   );

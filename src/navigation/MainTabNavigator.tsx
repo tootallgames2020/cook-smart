@@ -34,7 +34,7 @@ import HolidayPreferencesScreen from '../screens/HolidayPreferencesScreen';
 import CommunityFeedScreen from '../screens/CommunityFeedScreen';
 import TrendingRecipesScreen from '../screens/TrendingRecipesScreen';
 import StepByStepCookingScreen from '../screens/StepByStepCookingScreen';
-import SeasonalRecipesScreen from '../screens/SeasonalRecipesScreen';
+import AISettingsScreen from '../screens/AISettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -103,6 +103,7 @@ const AccountStack = () => (
       name="DietaryPreferences"
       component={DietaryPreferencesScreen}
     />
+    <Stack.Screen name="AISettings" component={AISettingsScreen} />
     <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} />
     <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
     <Stack.Screen name="DataPolicy" component={DataPolicyScreen} />
