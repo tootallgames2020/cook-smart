@@ -14,12 +14,12 @@ CREATE TABLE IF NOT EXISTS system_health_log (
     ai_model_avg_accuracy DECIMAL(3,2),
     error_rate DECIMAL(5,4),
     cpu_usage_percent DECIMAL(5,2),
-    memory_usage_percent DECIMAL(5,2),
-    
-    -- Indexes for performance
-    INDEX idx_system_health_recorded_at (recorded_at DESC),
-    INDEX idx_system_health_score (health_score DESC)
+    memory_usage_percent DECIMAL(5,2)
 );
+
+-- Create indexes for system_health_log
+CREATE INDEX IF NOT EXISTS idx_system_health_recorded_at ON system_health_log (recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_health_score ON system_health_log (health_score DESC);
 
 -- Maintenance Actions Log Table
 CREATE TABLE IF NOT EXISTS maintenance_actions_log (
@@ -44,14 +44,14 @@ CREATE TABLE IF NOT EXISTS maintenance_actions_log (
     
     -- Results
     actual_impact TEXT,
-    performance_improvement DECIMAL(5,2),
-    
-    -- Indexes for performance
-    INDEX idx_maintenance_actions_executed_at (executed_at DESC),
-    INDEX idx_maintenance_actions_type (action_type),
-    INDEX idx_maintenance_actions_success (success),
-    INDEX idx_maintenance_actions_priority (priority)
+    performance_improvement DECIMAL(5,2)
 );
+
+-- Create indexes for maintenance_actions_log
+CREATE INDEX IF NOT EXISTS idx_maintenance_actions_executed_at ON maintenance_actions_log (executed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_maintenance_actions_type ON maintenance_actions_log (action_type);
+CREATE INDEX IF NOT EXISTS idx_maintenance_actions_success ON maintenance_actions_log (success);
+CREATE INDEX IF NOT EXISTS idx_maintenance_actions_priority ON maintenance_actions_log (priority);
 
 -- System Issues Log Table
 CREATE TABLE IF NOT EXISTS system_issues_log (
@@ -78,15 +78,15 @@ CREATE TABLE IF NOT EXISTS system_issues_log (
     
     -- Recurrence tracking
     first_occurrence TIMESTAMP WITH TIME ZONE,
-    occurrence_count INTEGER DEFAULT 1,
-    
-    -- Indexes for performance
-    INDEX idx_system_issues_detected_at (detected_at DESC),
-    INDEX idx_system_issues_severity (severity),
-    INDEX idx_system_issues_component (component),
-    INDEX idx_system_issues_resolved (resolved_at),
-    INDEX idx_system_issues_auto_fixable (auto_fixable)
+    occurrence_count INTEGER DEFAULT 1
 );
+
+-- Create indexes for system_issues_log
+CREATE INDEX IF NOT EXISTS idx_system_issues_detected_at ON system_issues_log (detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_issues_severity ON system_issues_log (severity);
+CREATE INDEX IF NOT EXISTS idx_system_issues_component ON system_issues_log (component);
+CREATE INDEX IF NOT EXISTS idx_system_issues_resolved ON system_issues_log (resolved_at);
+CREATE INDEX IF NOT EXISTS idx_system_issues_auto_fixable ON system_issues_log (auto_fixable);
 
 -- AI Model Performance Log Table
 CREATE TABLE IF NOT EXISTS ai_model_performance_log (
@@ -113,13 +113,13 @@ CREATE TABLE IF NOT EXISTS ai_model_performance_log (
     
     -- Performance tracking
     recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    response_time_ms INTEGER,
-    
-    -- Indexes for performance
-    INDEX idx_ai_model_performance_recorded_at (recorded_at DESC),
-    INDEX idx_ai_model_performance_model (model_name, model_version),
-    INDEX idx_ai_model_performance_accuracy (accuracy_score DESC)
+    response_time_ms INTEGER
 );
+
+-- Create indexes for ai_model_performance_log
+CREATE INDEX IF NOT EXISTS idx_ai_model_performance_recorded_at ON ai_model_performance_log (recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_model_performance_model ON ai_model_performance_log (model_name, model_version);
+CREATE INDEX IF NOT EXISTS idx_ai_model_performance_accuracy ON ai_model_performance_log (accuracy_score DESC);
 
 -- Bot Configuration Table
 CREATE TABLE IF NOT EXISTS maintenance_bot_config (
@@ -135,11 +135,12 @@ CREATE TABLE IF NOT EXISTS maintenance_bot_config (
     
     -- Validation
     is_active BOOLEAN DEFAULT TRUE,
-    validation_schema JSONB,
-    
-    INDEX idx_maintenance_bot_config_key (config_key),
-    INDEX idx_maintenance_bot_config_active (is_active)
+    validation_schema JSONB
 );
+
+-- Create indexes for maintenance_bot_config
+CREATE INDEX IF NOT EXISTS idx_maintenance_bot_config_key ON maintenance_bot_config (config_key);
+CREATE INDEX IF NOT EXISTS idx_maintenance_bot_config_active ON maintenance_bot_config (is_active);
 
 -- System Alerts Table
 CREATE TABLE IF NOT EXISTS system_alerts (
@@ -164,14 +165,14 @@ CREATE TABLE IF NOT EXISTS system_alerts (
     -- Alert metadata
     alert_data JSONB,
     escalation_level INTEGER DEFAULT 1,
-    notification_sent BOOLEAN DEFAULT FALSE,
-    
-    -- Indexes for performance
-    INDEX idx_system_alerts_created_at (created_at DESC),
-    INDEX idx_system_alerts_severity (severity),
-    INDEX idx_system_alerts_resolved (resolved_at),
-    INDEX idx_system_alerts_component (component)
+    notification_sent BOOLEAN DEFAULT FALSE
 );
+
+-- Create indexes for system_alerts
+CREATE INDEX IF NOT EXISTS idx_system_alerts_created_at ON system_alerts (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_severity ON system_alerts (severity);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_resolved ON system_alerts (resolved_at);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_component ON system_alerts (component);
 
 -- Performance Baselines Table
 CREATE TABLE IF NOT EXISTS performance_baselines (
@@ -195,10 +196,12 @@ CREATE TABLE IF NOT EXISTS performance_baselines (
     -- Status
     is_active BOOLEAN DEFAULT TRUE,
     
-    UNIQUE(metric_name, component),
-    INDEX idx_performance_baselines_metric (metric_name, component),
-    INDEX idx_performance_baselines_active (is_active)
+    UNIQUE(metric_name, component)
 );
+
+-- Create indexes for performance_baselines
+CREATE INDEX IF NOT EXISTS idx_performance_baselines_metric ON performance_baselines (metric_name, component);
+CREATE INDEX IF NOT EXISTS idx_performance_baselines_active ON performance_baselines (is_active);
 
 -- Insert default configuration
 INSERT INTO maintenance_bot_config (config_key, config_value, description) VALUES
