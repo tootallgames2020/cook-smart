@@ -10,9 +10,9 @@
  * - Family behavior insights
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { PredictiveAnalyticsService, PredictiveAnalysisRequest, PredictiveAnalysisResult } from '../services/PredictiveAnalyticsService';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -21,9 +21,9 @@ const router = Router();
  * POST /api/v1/predictive-analytics/analyze
  * Generate predictive analysis based on user data
  */
-router.post('/analyze', authenticateToken, async (req: Request, res: Response) => {
+router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { analysis_type, time_horizon_days, family_id, include_confidence_intervals } = req.body;
 
     if (!userId) {
@@ -92,9 +92,9 @@ router.post('/analyze', authenticateToken, async (req: Request, res: Response) =
  * GET /api/v1/predictive-analytics/consumption
  * Get consumption pattern predictions
  */
-router.get('/consumption', authenticateToken, async (req: Request, res: Response) => {
+router.get('/consumption', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
@@ -133,9 +133,9 @@ router.get('/consumption', authenticateToken, async (req: Request, res: Response
  * GET /api/v1/predictive-analytics/shopping
  * Get shopping behavior predictions
  */
-router.get('/shopping', authenticateToken, async (req: Request, res: Response) => {
+router.get('/shopping', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
@@ -174,9 +174,9 @@ router.get('/shopping', authenticateToken, async (req: Request, res: Response) =
  * GET /api/v1/predictive-analytics/waste
  * Get waste reduction predictions
  */
-router.get('/waste', authenticateToken, async (req: Request, res: Response) => {
+router.get('/waste', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
@@ -215,9 +215,9 @@ router.get('/waste', authenticateToken, async (req: Request, res: Response) => {
  * GET /api/v1/predictive-analytics/budget
  * Get budget optimization predictions
  */
-router.get('/budget', authenticateToken, async (req: Request, res: Response) => {
+router.get('/budget', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
@@ -256,9 +256,9 @@ router.get('/budget', authenticateToken, async (req: Request, res: Response) => 
  * GET /api/v1/predictive-analytics/seasonal
  * Get seasonal trend predictions
  */
-router.get('/seasonal', authenticateToken, async (req: Request, res: Response) => {
+router.get('/seasonal', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 90; // Default to 3 months for seasonal
 
     if (!userId) {
@@ -297,9 +297,9 @@ router.get('/seasonal', authenticateToken, async (req: Request, res: Response) =
  * GET /api/v1/predictive-analytics/family-insights
  * Get family behavior insights (requires family membership)
  */
-router.get('/family-insights', authenticateToken, async (req: Request, res: Response) => {
+router.get('/family-insights', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const family_id = req.query.family_id as string;
     const days = parseInt(req.query.days as string) || 30;
 
@@ -356,9 +356,9 @@ router.get('/family-insights', authenticateToken, async (req: Request, res: Resp
  * GET /api/v1/predictive-analytics/dashboard
  * Get comprehensive analytics dashboard data
  */
-router.get('/dashboard', authenticateToken, async (req: Request, res: Response) => {
+router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const family_id = req.query.family_id as string;
 
     if (!userId) {
@@ -424,9 +424,9 @@ router.get('/dashboard', authenticateToken, async (req: Request, res: Response) 
  * GET /api/v1/predictive-analytics/history
  * Get user's predictive analysis history
  */
-router.get('/history', authenticateToken, async (req: Request, res: Response) => {
+router.get('/history', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const analysis_type = req.query.analysis_type as string;
     const limit = parseInt(req.query.limit as string) || 20;
 
@@ -459,10 +459,10 @@ router.get('/history', authenticateToken, async (req: Request, res: Response) =>
  * POST /api/v1/predictive-analytics/feedback
  * Provide feedback on predictive analysis accuracy
  */
-router.post('/feedback', authenticateToken, async (req: Request, res: Response) => {
+router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { analysis_id, prediction_accuracy, helpful_recommendations, comments } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -503,7 +503,7 @@ router.post('/feedback', authenticateToken, async (req: Request, res: Response) 
  * GET /api/v1/predictive-analytics/capabilities
  * Get available predictive analytics capabilities
  */
-router.get('/capabilities', authenticateToken, async (req: Request, res: Response) => {
+router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const capabilities = {
       consumption_analysis: {
@@ -628,11 +628,11 @@ async function storePredictiveAnalysisFeedback(userId: string, feedback: any): P
 
 function generateOverallInsights(analyses: any): any {
   const insights = {
-    top_priorities: [],
+    top_priorities: [] as string[],
     efficiency_score: 0,
     potential_savings: 0,
-    waste_risk_level: 'low',
-    key_recommendations: [],
+    waste_risk_level: 'low' as 'low' | 'medium' | 'high',
+    key_recommendations: [] as string[],
   };
 
   // Analyze consumption data

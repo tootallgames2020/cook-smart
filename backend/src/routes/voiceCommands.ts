@@ -7,9 +7,9 @@
  * - Configure voice processing preferences
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { VoiceCommandService, VoiceCommand, VoiceResponse } from '../services/VoiceCommandService';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -18,10 +18,10 @@ const router = Router();
  * POST /api/v1/voice-commands/process
  * Process a voice command
  */
-router.post('/process', authenticateToken, async (req: Request, res: Response) => {
+router.post('/process', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { command_text, processing_method } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -68,9 +68,9 @@ router.post('/process', authenticateToken, async (req: Request, res: Response) =
  * GET /api/v1/voice-commands/history
  * Get user's voice command history
  */
-router.get('/history', authenticateToken, async (req: Request, res: Response) => {
+router.get('/history', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const limit = parseInt(req.query.limit as string) || 20;
 
     if (!userId) {
@@ -102,9 +102,9 @@ router.get('/history', authenticateToken, async (req: Request, res: Response) =>
  * GET /api/v1/voice-commands/analytics
  * Get voice command usage analytics
  */
-router.get('/analytics', authenticateToken, async (req: Request, res: Response) => {
+router.get('/analytics', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
@@ -135,10 +135,10 @@ router.get('/analytics', authenticateToken, async (req: Request, res: Response) 
  * POST /api/v1/voice-commands/feedback
  * Provide feedback on voice command results
  */
-router.post('/feedback', authenticateToken, async (req: Request, res: Response) => {
+router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { command_id, feedback_type, rating, comments } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -179,7 +179,7 @@ router.post('/feedback', authenticateToken, async (req: Request, res: Response) 
  * GET /api/v1/voice-commands/capabilities
  * Get available voice command capabilities and examples
  */
-router.get('/capabilities', authenticateToken, async (req: Request, res: Response) => {
+router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const capabilities = {
       ingredient_management: {
@@ -263,9 +263,9 @@ router.get('/capabilities', authenticateToken, async (req: Request, res: Respons
  * POST /api/v1/voice-commands/test
  * Test voice command processing with sample commands
  */
-router.post('/test', authenticateToken, async (req: Request, res: Response) => {
+router.post('/test', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({

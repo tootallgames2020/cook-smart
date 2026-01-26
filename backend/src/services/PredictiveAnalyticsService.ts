@@ -351,7 +351,7 @@ export class PredictiveAnalyticsService {
 
     } catch (error) {
       logger.error('Generate predictive analysis error:', error);
-      throw new Error(`Predictive analysis failed: ${error.message}`);
+      throw new Error(`Predictive analysis failed: ${(error as Error).message}`);
     }
   }
 

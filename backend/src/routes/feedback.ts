@@ -287,7 +287,7 @@ router.get('/my-stats', authenticateToken, async (req: AuthRequest, res, next) =
 
       return res.json({
         success: true,
-        by_type: result.rows.map(row => ({
+        by_type: result.rows.map((row: any) => ({
           feedback_type: row.feedback_type,
           count: parseInt(row.feedback_count),
           avg_confidence: parseFloat(row.avg_confidence),

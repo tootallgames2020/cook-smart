@@ -8,9 +8,9 @@
  * - Enhanced barcode scanning with AI insights
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { PhotoAnalysisService, PhotoAnalysisRequest, PhotoAnalysisResult } from '../services/PhotoAnalysisService';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import multer from 'multer';
 
@@ -34,9 +34,9 @@ const upload = multer({
  * POST /api/v1/photo-analysis/receipt
  * Analyze a receipt photo to extract ingredients and prices
  */
-router.post('/receipt', authenticateToken, upload.single('photo'), async (req: Request, res: Response) => {
+router.post('/receipt', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { store_name, location, auto_add_ingredients } = req.body;
 
     if (!userId) {
@@ -111,9 +111,9 @@ router.post('/receipt', authenticateToken, upload.single('photo'), async (req: R
  * POST /api/v1/photo-analysis/pantry
  * Analyze a pantry/fridge photo to identify ingredients
  */
-router.post('/pantry', authenticateToken, upload.single('photo'), async (req: Request, res: Response) => {
+router.post('/pantry', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { location_type, auto_update_inventory } = req.body;
 
     if (!userId) {
@@ -185,9 +185,9 @@ router.post('/pantry', authenticateToken, upload.single('photo'), async (req: Re
  * POST /api/v1/photo-analysis/food-identification
  * Identify food items in a photo and provide nutritional information
  */
-router.post('/food-identification', authenticateToken, upload.single('photo'), async (req: Request, res: Response) => {
+router.post('/food-identification', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { add_to_inventory, estimated_quantity, estimated_unit } = req.body;
 
     if (!userId) {
@@ -262,9 +262,9 @@ router.post('/food-identification', authenticateToken, upload.single('photo'), a
  * POST /api/v1/photo-analysis/barcode
  * Enhanced barcode analysis with AI insights
  */
-router.post('/barcode', authenticateToken, upload.single('photo'), async (req: Request, res: Response) => {
+router.post('/barcode', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { add_to_inventory, quantity, unit } = req.body;
 
     if (!userId) {
@@ -339,9 +339,9 @@ router.post('/barcode', authenticateToken, upload.single('photo'), async (req: R
  * GET /api/v1/photo-analysis/history
  * Get user's photo analysis history
  */
-router.get('/history', authenticateToken, async (req: Request, res: Response) => {
+router.get('/history', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const limit = parseInt(req.query.limit as string) || 20;
     const analysis_type = req.query.analysis_type as string;
 
@@ -379,7 +379,7 @@ router.get('/history', authenticateToken, async (req: Request, res: Response) =>
  * GET /api/v1/photo-analysis/capabilities
  * Get photo analysis capabilities and supported formats
  */
-router.get('/capabilities', authenticateToken, async (req: Request, res: Response) => {
+router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const capabilities = {
       receipt_scanning: {
@@ -478,10 +478,10 @@ router.get('/capabilities', authenticateToken, async (req: Request, res: Respons
  * POST /api/v1/photo-analysis/feedback
  * Provide feedback on photo analysis results
  */
-router.post('/feedback', authenticateToken, async (req: Request, res: Response) => {
+router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { analysis_id, feedback_type, rating, corrections, comments } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({

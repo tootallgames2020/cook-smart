@@ -128,7 +128,7 @@ export class AutoMealPlanningService {
 
       // Get user's meal planning preferences
       const aiPreferences = await AIPreferencesService.getUserPreferences(request.user_id);
-      const planningLevel = aiPreferences?.auto_meal_planning || false;
+      const planningLevel = aiPreferences?.auto_meal_planning ? 'enabled' : 'disabled';
 
       // Gather context for meal planning
       const context = await this.gatherMealPlanningContext(request);
@@ -151,7 +151,7 @@ export class AutoMealPlanningService {
 
     } catch (error) {
       logger.error('Generate meal plan error:', error);
-      throw new Error(`Meal plan generation failed: ${error.message}`);
+      throw new Error(`Meal plan generation failed: ${(error as Error).message}`);
     }
   }
 
@@ -386,7 +386,8 @@ export class AutoMealPlanningService {
         expiring_ingredients: expiringIngredients,
         meal_type: mealType,
         time_constraint: request.preferences?.cooking_time_limit || 45,
-        difficulty_preference: (request.preferences?.difficulty_preference === 'challenging' ? 'hard' : request.preferences?.difficulty_preference) || 'medium',
+        difficulty_preference: (request.preferences?.difficulty_preference === 'challenging' ? 'hard' : 
+                              request.preferences?.difficulty_preference === 'easy' ? 'easy' : 'medium') as 'easy' | 'medium' | 'hard',
         dietary_restrictions: request.dietary_restrictions || [],
       };
 

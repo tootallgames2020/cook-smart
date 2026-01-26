@@ -514,30 +514,39 @@ export class ApexPhotoIntelligenceService {
       }
 
       // Generate AI insights (simplified for now)
-      result.ai_insights = {
-        meal_quality_score: 0.85,
-        health_optimization_tips: ['Consider adding more vegetables', 'Good protein balance'],
-        cooking_suggestions: ['Try grilling instead of frying'],
-        ingredient_substitutions: []
-      };
+      result.ai_insights = [
+        {
+          insight_type: 'meal_quality',
+          confidence: 0.85,
+          message: 'Good protein balance detected',
+          actionable: true
+        },
+        {
+          insight_type: 'health_optimization',
+          confidence: 0.90,
+          message: 'Consider adding more vegetables',
+          actionable: true
+        }
+      ];
       
       // Create actionable recommendations (simplified for now)
       result.recommendations = [
         {
-          type: 'nutrition',
+          recommendation_id: 'nutrition_001',
           priority: 'high',
           title: 'Add more vegetables',
           description: 'This meal could benefit from additional vegetables for better nutrition balance',
-          action_items: ['Add a side salad', 'Include steamed broccoli']
+          confidence: 0.85,
+          estimated_impact: 'medium'
         }
       ];
       
       // Prepare learning feedback (simplified for now)
       result.learning_feedback = {
-        accuracy_confidence: 0.92,
-        improvement_areas: ['portion_estimation', 'food_quality_assessment'],
-        user_feedback_request: 'How accurate was this analysis?',
-        model_version: '1.0.0'
+        feedback_id: 'apex_photo_' + Date.now(),
+        model_version: '1.0.0',
+        confidence_score: 0.92,
+        user_feedback_requested: true
       };
 
       // Track usage for analytics
@@ -554,7 +563,7 @@ export class ApexPhotoIntelligenceService {
 
     } catch (error) {
       logger.error('Apex photo analysis error:', error);
-      throw new Error(`Apex photo analysis failed: ${error.message}`);
+      throw new Error(`Apex photo analysis failed: ${(error as Error).message}`);
     }
   }
 
