@@ -1,5 +1,4 @@
-import express, { Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
+import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -165,7 +164,7 @@ router.post('/check', (req, res): void => {
 });
 
 // Download bundle endpoint
-router.get('/download/:environment/:filename', (req: AuthRequest, res: Response): void: void => {
+router.get('/download/:environment/:filename', (req: Request, res: Response) => {
   try {
     const { environment, filename } = req.params;
     
