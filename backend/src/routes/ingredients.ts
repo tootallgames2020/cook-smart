@@ -369,11 +369,11 @@ router.post('/from-shopping/:shopping_id', authenticateToken, async (req: AuthRe
   }
 });
 
-// Use ingredient for cooking (reduces quantity)
+// Use ingredient for cooking (reduces quantity with cross-unit conversion support)
 router.post('/:id/use', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
     const { id } = req.params;
-    const { quantity_used, recipe_id } = req.body;
+    const { quantity_used, unit_used, recipe_id } = req.body;
 
     if (!quantity_used || quantity_used <= 0) {
       return res.status(400).json({
@@ -399,23 +399,65 @@ router.post('/:id/use', authenticateToken, async (req: AuthRequest, res, next) =
 
       const ingredient = ingredientResult.rows[0];
       const currentQuantity = ingredient.quantity || 0;
-      const newQuantity = Math.max(0, currentQuantity - quantity_used);
+      const inventoryUnit = ingredient.unit || 'piece';
+      const usedUnit = unit_used || inventoryUnit; // Default to inventory unit if not specified
 
-      // Update ingredient quantity
-      const result = await client.query(
-        `UPDATE user_ingredients 
-         SET quantity = $1, updated_at = NOW()
-         WHERE id = $2 AND user_id = $3
-         RETURNING *`,
-        [newQuantity, id, req.user!.id]
+      // 🚀 APPLY CROSS-UNIT INVENTORY CONVERSION
+      const { InventoryUnitConverter } = await import('../services/InventoryUnitConverter');
+      
+      const conversionResult = InventoryUnitConverter.subtractUsage(
+        currentQuantity,
+        inventoryUnit,
+        quantity_used,
+        usedUnit,
+        ingredient.ingredient_name
       );
 
-      // Log ingredient usage
+      if (!conversionResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: `Unit conversion failed: ${conversionResult.error}`,
+          details: {
+            inventoryQuantity: currentQuantity,
+            inventoryUnit,
+            usedQuantity: quantity_used,
+            usedUnit,
+            ingredient: ingredient.ingredient_name,
+          },
+        });
+      }
+
+      const newQuantity = conversionResult.remainingQuantity!;
+      const finalUnit = conversionResult.remainingUnit!;
+
+      // Update ingredient quantity with potentially converted unit
+      const result = await client.query(
+        `UPDATE user_ingredients 
+         SET quantity = $1, unit = $2, updated_at = NOW()
+         WHERE id = $3 AND user_id = $4
+         RETURNING *`,
+        [newQuantity, finalUnit, id, req.user!.id]
+      );
+
+      // Log ingredient usage with conversion details
       await client.query(
         `INSERT INTO ingredient_usage_log 
-         (user_id, ingredient_id, ingredient_name, quantity_used, recipe_id, used_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [req.user!.id, ingredient.ingredient_id, ingredient.ingredient_name, quantity_used, recipe_id]
+         (user_id, ingredient_id, ingredient_name, quantity_used, unit_used, recipe_id, conversion_details, used_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [
+          req.user!.id, 
+          ingredient.ingredient_id, 
+          ingredient.ingredient_name, 
+          quantity_used, 
+          usedUnit,
+          recipe_id,
+          JSON.stringify({
+            originalInventory: `${currentQuantity} ${inventoryUnit}`,
+            usedAmount: `${quantity_used} ${usedUnit}`,
+            conversionUsed: conversionResult.conversionUsed,
+            remainingAmount: `${newQuantity} ${finalUnit}`,
+          })
+        ]
       );
 
       // Award points for using ingredients
@@ -425,7 +467,7 @@ router.post('/:id/use', authenticateToken, async (req: AuthRequest, res, next) =
       );
 
       // If ingredient is completely used up, remove it from inventory
-      let message = 'Ingredient quantity updated';
+      let message = 'Ingredient quantity updated with unit conversion';
       let ingredientData = result.rows[0];
       
       if (newQuantity === 0) {
@@ -439,12 +481,24 @@ router.post('/:id/use', authenticateToken, async (req: AuthRequest, res, next) =
         ingredientData = null; // Indicate ingredient was removed
       }
 
+      logger.info(`Ingredient usage with conversion: ${ingredient.ingredient_name} - ${conversionResult.conversionUsed}`);
+
       return res.json({
         success: true,
         message,
         ingredient: ingredientData,
-        quantityUsed: quantity_used,
-        remainingQuantity: newQuantity,
+        usage: {
+          quantityUsed: quantity_used,
+          unitUsed: usedUnit,
+          conversionUsed: conversionResult.conversionUsed,
+          convertedQuantity: conversionResult.convertedQuantity,
+        },
+        inventory: {
+          previousQuantity: currentQuantity,
+          previousUnit: inventoryUnit,
+          remainingQuantity: newQuantity,
+          remainingUnit: finalUnit,
+        },
         points_awarded: 1,
         removed: newQuantity === 0,
       });
@@ -660,6 +714,63 @@ router.get('/categorization-stats', authenticateToken, async (req: AuthRequest, 
   } catch (error) {
     logger.error('Get categorization stats error:', error);
     return next(createError('Failed to get categorization statistics', 500));
+  }
+});
+
+// Test unit conversion endpoint (for debugging and validation)
+router.post('/test-conversion', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { 
+      inventory_quantity, 
+      inventory_unit, 
+      used_quantity, 
+      used_unit, 
+      ingredient_name 
+    } = req.body;
+
+    if (!inventory_quantity || !inventory_unit || !used_quantity || !used_unit || !ingredient_name) {
+      return res.status(400).json({
+        success: false,
+        message: 'All parameters required: inventory_quantity, inventory_unit, used_quantity, used_unit, ingredient_name',
+      });
+    }
+
+    const { InventoryUnitConverter } = await import('../services/InventoryUnitConverter');
+    
+    const conversionResult = InventoryUnitConverter.subtractUsage(
+      inventory_quantity,
+      inventory_unit,
+      used_quantity,
+      used_unit,
+      ingredient_name
+    );
+
+    // Also test if conversion is possible
+    const canConvert = InventoryUnitConverter.canConvert(
+      used_unit,
+      inventory_unit,
+      ingredient_name
+    );
+
+    // Get supported conversions for this ingredient
+    const supportedConversions = InventoryUnitConverter.getSupportedConversions(ingredient_name);
+
+    return res.json({
+      success: true,
+      test: {
+        input: {
+          inventory: `${inventory_quantity} ${inventory_unit}`,
+          used: `${used_quantity} ${used_unit}`,
+          ingredient: ingredient_name,
+        },
+        result: conversionResult,
+        canConvert,
+        supportedConversions: supportedConversions.slice(0, 10), // Limit for readability
+      },
+    });
+  } catch (error) {
+    logger.error('Test conversion error:', error);
+    return next(createError('Failed to test conversion', 500));
   }
 });
 
