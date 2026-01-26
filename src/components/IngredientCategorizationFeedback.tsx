@@ -67,7 +67,7 @@ export const IngredientCategorizationFeedback: React.FC<Props> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${/* get token */}`,
+          // TODO: Add authorization header when auth is implemented
         },
         body: JSON.stringify({ ingredient_name: ingredientName }),
       });
@@ -94,7 +94,7 @@ export const IngredientCategorizationFeedback: React.FC<Props> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${/* get token */}`,
+          // TODO: Add authorization header when auth is implemented
         },
         body: JSON.stringify({
           ingredient_name: ingredientName,

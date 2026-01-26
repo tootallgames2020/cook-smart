@@ -33,6 +33,10 @@ import trendingRecipesRoutes from './routes/trendingRecipes';
 import achievementsRoutes from './routes/achievements';
 import recipeEnhancementsRoutes from './routes/recipeEnhancements';
 import usersRoutes from './routes/users';
+import expirationRoutes from './routes/expiration';
+import familiesRoutes from './routes/families';
+import aiPreferencesRoutes from './routes/aiPreferences';
+import apexIntelligenceRoutes from './routes/apexIntelligence';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -199,6 +203,10 @@ app.use('/api/v1/meal-planning', mealPlanningRoutes);
 app.use('/api/v1', trendingRecipesRoutes);
 app.use('/api/v1/achievements', achievementsRoutes);
 app.use('/api/v1/recipe-enhancements', recipeEnhancementsRoutes);
+app.use('/api/v1/expiration', expirationRoutes);
+app.use('/api/v1/families', familiesRoutes);
+app.use('/api/v1/ai-preferences', aiPreferencesRoutes);
+app.use('/api/v1/apex-intelligence', apexIntelligenceRoutes);
 
 // Test endpoint
 app.get('/api/v1/test', (req, res) => {

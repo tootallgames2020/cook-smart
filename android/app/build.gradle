@@ -111,6 +111,20 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+    
+    flavorDimensions "version"
+    productFlavors {
+        production {
+            dimension "version"
+            // Uses default applicationId: com.cooksmartfresh
+        }
+        firebase {
+            dimension "version"
+            applicationId "cook.smart.test"
+            versionNameSuffix "-firebase"
+            // This creates the package name Firebase expects
+        }
+    }
 }
 
 dependencies {

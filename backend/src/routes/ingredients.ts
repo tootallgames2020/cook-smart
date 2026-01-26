@@ -53,7 +53,17 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
 // Add ingredient to pantry
 router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
-    const { ingredient_name, customName, quantity, unit, expiration_date, expirationDate, notes, category } = req.body;
+    const { 
+      ingredient_name, 
+      customName, 
+      quantity, 
+      unit, 
+      expiration_date, 
+      expirationDate, 
+      notes, 
+      category,
+      storage_type = 'fresh'
+    } = req.body;
 
     // Handle both field name formats (mobile app uses customName, web might use ingredient_name)
     const rawIngredientName = ingredient_name || customName;
@@ -63,6 +73,15 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Ingredient name is required (ingredient_name or customName)',
+      });
+    }
+
+    // Validate storage type
+    const validStorageTypes = ['fresh', 'frozen', 'canned', 'dried', 'refrigerated'];
+    if (!validStorageTypes.includes(storage_type)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid storage type. Must be one of: ${validStorageTypes.join(', ')}`,
       });
     }
 
@@ -88,12 +107,25 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
       standardizedUnit = unit || 'piece';
     }
 
+    // 🧊 AUTO-SET EXPIRATION DATE WITH STORAGE TYPE
+    let finalExpirationDate = expDate;
+    if (!finalExpirationDate) {
+      const { SmartExpirationService } = await import('../services/SmartExpirationService');
+      const autoExpiration = await SmartExpirationService.autoSetExpirationDate(
+        standardizedName, 
+        storage_type
+      );
+      if (autoExpiration) {
+        finalExpirationDate = autoExpiration.toISOString();
+      }
+    }
+
     const client = await pool.connect();
     try {
       const result = await client.query(
         `INSERT INTO user_ingredients 
-         (user_id, ingredient_id, ingredient_name, quantity, unit, expiration_date, notes, category, added_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         (user_id, ingredient_id, ingredient_name, quantity, unit, expiration_date, notes, category, storage_type, added_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
          RETURNING *`,
         [
           req.user!.id,
@@ -101,9 +133,10 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
           standardizedName, // Use standardized name
           quantity || null,
           standardizedUnit, // Use standardized unit
-          expDate || null,
+          finalExpirationDate || null,
           notes || null,
           category || detectedCategory, // Use provided category or detected category
+          storage_type, // Include storage type
         ]
       );
 
@@ -113,7 +146,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
         [req.user!.id]
       );
 
-      logger.info(`Ingredient added by user ${req.user!.id}: "${rawIngredientName}" → "${standardizedName}"`);
+      logger.info(`Ingredient added by user ${req.user!.id}: "${rawIngredientName}" → "${standardizedName}" (${storage_type})`);
 
       return res.status(201).json({
         success: true,
@@ -125,6 +158,10 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
           standardized: standardizedName,
           category: detectedCategory,
           unit: standardizedUnit,
+        },
+        preservation: {
+          storage_type,
+          expiration_auto_set: !expDate && finalExpirationDate,
         },
       });
     } finally {
