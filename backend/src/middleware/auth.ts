@@ -11,6 +11,7 @@ export interface AuthRequest extends Request {
     is_co_founder?: boolean;
     is_special_user?: boolean;
     subscription_status?: string;
+    family_id?: string;
   };
 }
 
@@ -33,13 +34,22 @@ export const authenticateToken = async (
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
     
-    // Get user from database
+    // Get user from database with family information
     const client = await pool.connect();
     try {
-      const result = await client.query(
-        'SELECT id, email, is_admin, is_co_founder, is_special_user, subscription_status FROM users WHERE id = $1',
-        [decoded.userId]
-      );
+      const result = await client.query(`
+        SELECT 
+          u.id, 
+          u.email, 
+          u.is_admin, 
+          u.is_co_founder, 
+          u.is_special_user, 
+          u.subscription_status,
+          fm.family_id::text as family_id
+        FROM users u
+        LEFT JOIN family_members fm ON u.id = fm.user_id
+        WHERE u.id = $1
+      `, [decoded.userId]);
 
       if (result.rows.length === 0) {
         res.status(401).json({

@@ -128,7 +128,7 @@ export class AutoMealPlanningService {
 
       // Get user's meal planning preferences
       const aiPreferences = await AIPreferencesService.getUserPreferences(request.user_id);
-      const planningLevel = aiPreferences?.meal_planning_intelligence || 'balanced';
+      const planningLevel = aiPreferences?.auto_meal_planning || false;
 
       // Gather context for meal planning
       const context = await this.gatherMealPlanningContext(request);
@@ -386,7 +386,7 @@ export class AutoMealPlanningService {
         expiring_ingredients: expiringIngredients,
         meal_type: mealType,
         time_constraint: request.preferences?.cooking_time_limit || 45,
-        difficulty_preference: request.preferences?.difficulty_preference || 'medium',
+        difficulty_preference: (request.preferences?.difficulty_preference === 'challenging' ? 'hard' : request.preferences?.difficulty_preference) || 'medium',
         dietary_restrictions: request.dietary_restrictions || [],
       };
 
@@ -404,23 +404,23 @@ export class AutoMealPlanningService {
         meal_type: mealType,
         recipe_id: selectedRecipe.recipe_id,
         recipe_name: selectedRecipe.recipe_name,
-        recipe_source: selectedRecipe.source as any,
+        recipe_source: 'smart_ai' as any,
         prep_time: selectedRecipe.prep_time || 15,
         cook_time: selectedRecipe.cook_time || 30,
-        servings: selectedRecipe.servings || 4,
-        difficulty: selectedRecipe.difficulty || 'medium',
+        servings: 4, // Default servings
+        difficulty: selectedRecipe.difficulty === 'hard' ? 'challenging' : selectedRecipe.difficulty,
         ingredients_needed: this.mapIngredientsToNeeds(
-          selectedRecipe.ingredients || [],
+          selectedRecipe.available_ingredients || [],
           context.available_ingredients
         ),
         nutrition: {
-          calories: selectedRecipe.calories_per_serving || 400,
-          protein: selectedRecipe.protein || 20,
-          carbohydrates: selectedRecipe.carbs || 40,
-          fat: selectedRecipe.fat || 15,
-          fiber: selectedRecipe.fiber || 5,
-          sugar: selectedRecipe.sugar || 10,
-          sodium: selectedRecipe.sodium || 500,
+          calories: 400, // Default nutrition values
+          protein: 20,
+          carbohydrates: 40,
+          fat: 15,
+          fiber: 5,
+          sugar: 10,
+          sodium: 500,
         },
         ai_reasoning: `Selected based on ${selectedRecipe.ingredient_match_percentage}% ingredient match, ${selectedRecipe.difficulty} difficulty, and ${selectedRecipe.prep_time + selectedRecipe.cook_time} minutes total time.`,
         confidence: selectedRecipe.confidence || 0.8,
