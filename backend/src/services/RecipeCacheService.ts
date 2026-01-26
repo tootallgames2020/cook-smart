@@ -256,9 +256,14 @@ class RecipeCacheService {
     isSeasonal: boolean = false,
   ): Promise<void> {
     try {
-      const recipeId = `${source}_${recipe.recipe_id || recipe.id}`;
+      if (!recipe) {
+        console.warn('[RecipeCache] Attempted to cache null/undefined recipe');
+        return;
+      }
 
-      // Parse ingredients
+      const recipeId = `${source}_${recipe.recipe_id || recipe.id || 'unknown'}`;
+
+      // Parse recipe data with error handling
       const ingredients = this.parseIngredients(recipe);
       const instructions = this.parseInstructions(recipe);
       const nutrition = this.parseNutrition(recipe);
@@ -266,18 +271,18 @@ class RecipeCacheService {
 
       // Store all recipe data in the recipe_data JSONB column
       const recipeData = {
-        id: recipe.recipe_id || recipe.id,
-        title: recipe.recipe_name || recipe.title || 'Untitled',
-        description: recipe.recipe_description || recipe.summary || '',
+        id: recipe.recipe_id || recipe.id || 'unknown',
+        title: recipe.recipe_name || recipe.title || 'Untitled Recipe',
+        description: recipe.recipe_description || recipe.summary || 'No description available',
         image: recipe.recipe_image || recipe.image || '',
-        readyInMinutes: parseInt(recipe.cooking_time_min) || 30,
-        servings: parseInt(recipe.number_of_servings) || 4,
+        readyInMinutes: parseInt(recipe.cooking_time_min || recipe.readyInMinutes) || 30,
+        servings: parseInt(recipe.number_of_servings || recipe.servings) || 4,
         ingredients: ingredients,
         instructions: instructions,
         nutrition: nutrition,
         dietaryInfo: dietaryInfo,
-        mealType: recipe.recipe_types || 'dinner',
-        cuisine: recipe.cuisine || 'international',
+        mealType: recipe.recipe_types || recipe.dishTypes?.[0] || 'dinner',
+        cuisine: recipe.cuisine || recipe.cuisines?.[0] || 'international',
         season: season,
         isSeasonal: isSeasonal,
         source: source,
@@ -291,7 +296,7 @@ class RecipeCacheService {
       };
 
       // Create cache key for uniqueness
-      const cacheKey = `${source}_${season}_${recipe.recipe_id || recipe.id}`;
+      const cacheKey = `${source}_${season}_${recipe.recipe_id || recipe.id || Date.now()}`;
 
       await pool.query(
         `INSERT INTO recipe_cache (
@@ -312,6 +317,7 @@ class RecipeCacheService {
       );
     } catch (error) {
       console.error('[RecipeCache] Cache recipe error:', error);
+      // Don't throw - just log and continue
     }
   }
 
@@ -455,55 +461,131 @@ class RecipeCacheService {
   private parseIngredients(recipe: any): any[] {
     if (!recipe.ingredients) return [];
 
-    const ingredientList = Array.isArray(recipe.ingredients.ingredient)
-      ? recipe.ingredients.ingredient
-      : [recipe.ingredients.ingredient];
+    try {
+      // Handle different ingredient formats from FatSecret
+      let ingredientList: any[] = [];
+      
+      if (Array.isArray(recipe.ingredients)) {
+        ingredientList = recipe.ingredients;
+      } else if (recipe.ingredients.ingredient) {
+        ingredientList = Array.isArray(recipe.ingredients.ingredient)
+          ? recipe.ingredients.ingredient
+          : [recipe.ingredients.ingredient];
+      } else {
+        return [];
+      }
 
-    return ingredientList.map((ing: any) => ({
-      name: ing.ingredient_description || ing.food_name || '',
-      amount: parseFloat(ing.number_of_units) || 1,
-      unit: ing.measurement_description || '',
-    }));
+      return ingredientList.map((ing: any) => {
+        if (!ing) return { name: 'Unknown ingredient', amount: 1, unit: '' };
+        
+        return {
+          name: ing.ingredient_description || ing.food_name || ing.name || 'Unknown ingredient',
+          amount: parseFloat(ing.number_of_units || ing.amount) || 1,
+          unit: ing.measurement_description || ing.unit || '',
+        };
+      });
+    } catch (error) {
+      console.error('[RecipeCache] Parse ingredients error:', error);
+      return [];
+    }
   }
 
   private parseInstructions(recipe: any): string {
-    if (!recipe.directions || !recipe.directions.direction) return '';
+    try {
+      if (!recipe.directions && !recipe.instructions) return '';
 
-    const directionList = Array.isArray(recipe.directions.direction)
-      ? recipe.directions.direction
-      : [recipe.directions.direction];
+      // Handle different instruction formats
+      let directionList: any[] = [];
+      
+      if (recipe.instructions) {
+        if (typeof recipe.instructions === 'string') {
+          return recipe.instructions;
+        }
+        if (Array.isArray(recipe.instructions)) {
+          directionList = recipe.instructions;
+        }
+      } else if (recipe.directions) {
+        if (recipe.directions.direction) {
+          directionList = Array.isArray(recipe.directions.direction)
+            ? recipe.directions.direction
+            : [recipe.directions.direction];
+        }
+      }
 
-    return directionList
-      .map(
-        (d: any, index: number) =>
-          `${index + 1}. ${d.direction_description || d}`,
-      )
-      .join('\n');
+      if (directionList.length === 0) return '';
+
+      return directionList
+        .map((d: any, index: number) => {
+          const instruction = d.direction_description || d.instruction || d.text || d;
+          return `${index + 1}. ${instruction}`;
+        })
+        .join('\n');
+    } catch (error) {
+      console.error('[RecipeCache] Parse instructions error:', error);
+      return '';
+    }
   }
 
   private parseNutrition(recipe: any): any {
-    if (!recipe.serving_sizes?.serving) return null;
+    try {
+      // Handle different nutrition formats
+      if (recipe.nutrition) {
+        return {
+          calories: parseFloat(recipe.nutrition.calories) || 0,
+          protein: parseFloat(recipe.nutrition.protein) || 0,
+          carbs: parseFloat(recipe.nutrition.carbohydrate || recipe.nutrition.carbs) || 0,
+          fat: parseFloat(recipe.nutrition.fat) || 0,
+        };
+      }
+      
+      if (recipe.serving_sizes?.serving) {
+        const serving = recipe.serving_sizes.serving;
+        return {
+          calories: parseFloat(serving.calories) || 0,
+          protein: parseFloat(serving.protein) || 0,
+          carbs: parseFloat(serving.carbohydrate) || 0,
+          fat: parseFloat(serving.fat) || 0,
+        };
+      }
 
-    const serving = recipe.serving_sizes.serving;
-    return {
-      calories: parseFloat(serving.calories) || 0,
-      protein: parseFloat(serving.protein) || 0,
-      carbs: parseFloat(serving.carbohydrate) || 0,
-      fat: parseFloat(serving.fat) || 0,
-    };
+      // Default nutrition if none provided
+      return {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      };
+    } catch (error) {
+      console.error('[RecipeCache] Parse nutrition error:', error);
+      return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    }
   }
 
   private parseDietaryInfo(recipe: any): any {
-    const recipeTypes = recipe.recipe_types || '';
-    const typesString =
-      typeof recipeTypes === 'string' ? recipeTypes : String(recipeTypes);
+    try {
+      const recipeTypes = recipe.recipe_types || recipe.diets || recipe.dietary_info || '';
+      const typesString = typeof recipeTypes === 'string' ? recipeTypes : String(recipeTypes);
+      const lowerTypes = typesString.toLowerCase();
 
-    return {
-      vegetarian: typesString.toLowerCase().includes('vegetarian') || false,
-      vegan: typesString.toLowerCase().includes('vegan') || false,
-      glutenFree: typesString.toLowerCase().includes('gluten') || false,
-      dairyFree: typesString.toLowerCase().includes('dairy') || false,
-    };
+      return {
+        vegetarian: lowerTypes.includes('vegetarian') || false,
+        vegan: lowerTypes.includes('vegan') || false,
+        glutenFree: lowerTypes.includes('gluten') || lowerTypes.includes('gluten-free') || false,
+        dairyFree: lowerTypes.includes('dairy') || lowerTypes.includes('dairy-free') || false,
+        keto: lowerTypes.includes('keto') || lowerTypes.includes('ketogenic') || false,
+        paleo: lowerTypes.includes('paleo') || false,
+      };
+    } catch (error) {
+      console.error('[RecipeCache] Parse dietary info error:', error);
+      return {
+        vegetarian: false,
+        vegan: false,
+        glutenFree: false,
+        dairyFree: false,
+        keto: false,
+        paleo: false,
+      };
+    }
   }
 
   // ============================================
