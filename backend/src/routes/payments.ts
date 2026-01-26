@@ -599,33 +599,34 @@ router.get('/billing-history', authenticateToken, async (req: AuthRequest, res, 
       const result = await client.query(`
         SELECT 
           ph.id,
-          ph.created_at as date,
+          ph.stripe_invoice_id,
           ph.amount,
+          ph.currency,
           ph.status,
           ph.description,
-          ph.receipt_url as "receiptUrl",
-          COALESCE(sp.plan_name, 'Unknown Plan') as "planName"
+          ph.receipt_url,
+          ph.created_at,
+          s.stripe_subscription_id
         FROM payment_history ph
         LEFT JOIN subscriptions s ON ph.subscription_id = s.id
-        LEFT JOIN subscription_plans sp ON s.plan_id = sp.id
         WHERE ph.user_id = $1
         ORDER BY ph.created_at DESC
         LIMIT 50
       `, [req.user!.id]);
 
-      const billingHistory = result.rows.map(row => ({
-        id: row.id,
-        date: row.date,
-        amount: parseFloat(row.amount),
-        status: row.status,
-        description: row.description,
-        planName: row.planName,
-        receiptUrl: row.receiptUrl,
-      }));
-
       return res.json({
         success: true,
-        billingHistory,
+        billingHistory: result.rows.map(row => ({
+          id: row.id,
+          invoiceId: row.stripe_invoice_id,
+          amount: row.amount,
+          currency: row.currency,
+          status: row.status,
+          description: row.description,
+          receiptUrl: row.receipt_url,
+          date: row.created_at,
+          subscriptionId: row.stripe_subscription_id
+        }))
       });
     } finally {
       client.release();
