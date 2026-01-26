@@ -97,10 +97,10 @@ router.post('/check', (req, res): void => {
     const { appId, version }: UpdateCheckRequest = req.body;
     
     if (!appId || !version) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Missing required fields: appId, version',
-      });
+      });`n    return;
     }
     
     // Determine environment based on appId
@@ -110,17 +110,17 @@ router.post('/check', (req, res): void => {
     } else if (appId === '550e8400-e29b-41d4-a716-446655440002') {
       environment = 'production';
     } else {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Invalid appId',
-      });
+      });`n    return;
     }
     
     const bundleInfo = getBundleInfo(environment);
     
     if (!bundleInfo) {
       logger.warn(`No bundle info found for environment: ${environment}`);
-      return res.json({
+      res.json({
         hasUpdate: false,
         message: 'No bundle available',
       } as UpdateCheckResponse);
@@ -145,9 +145,9 @@ router.post('/check', (req, res): void => {
       };
       
       logger.info(`Update available for ${appId} (${environment}): ${bundleInfo.version}`);
-      return res.json(response);
+      res.json(response);
     } else {
-      return res.json({
+      res.json({
         hasUpdate: false,
         message: 'App is up to date',
       } as UpdateCheckResponse);
@@ -155,11 +155,11 @@ router.post('/check', (req, res): void => {
     
   } catch (error) {
     logger.error('Bundle Drop check error:', error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: 'Failed to check for updates',
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    });`n    return;
   }
 });
 
@@ -169,10 +169,10 @@ router.get('/download/:environment/:filename', (req: Request, res: Response) => 
     const { environment, filename } = req.params;
     
     if (environment !== 'staging' && environment !== 'production') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Invalid environment',
-      });
+      });`n    return;
     }
     
     const bundleDir = getBundleDirectory(environment as 'staging' | 'production');
@@ -180,17 +180,17 @@ router.get('/download/:environment/:filename', (req: Request, res: Response) => 
     
     // Security check: ensure file is within bundle directory
     if (!filePath.startsWith(bundleDir)) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'Access denied',
-      });
+      });`n    return;
     }
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Bundle file not found',
-      });
+      });`n    return;
     }
     
     // Set appropriate headers for bundle download
@@ -207,11 +207,11 @@ router.get('/download/:environment/:filename', (req: Request, res: Response) => 
     
   } catch (error) {
     logger.error('Bundle Drop download error:', error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: 'Failed to download bundle',
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    });`n    return;
   }
 });
 
@@ -221,7 +221,7 @@ router.get('/health', (_req, res): void => {
     const stagingBundle = getBundleInfo('staging');
     const productionBundle = getBundleInfo('production');
     
-    return res.json({
+    res.json({
       status: 'OK',
       message: 'Bundle Drop service is running',
       timestamp: new Date().toISOString(),
@@ -241,15 +241,15 @@ router.get('/health', (_req, res): void => {
           available: false,
         },
       },
-    });
+    });`n    return;
     
   } catch (error) {
     logger.error('Bundle Drop health check error:', error);
-    return res.status(500).json({
+    res.status(500).json({
       status: 'ERROR',
       message: 'Bundle Drop service health check failed',
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    });`n    return;
   }
 });
 

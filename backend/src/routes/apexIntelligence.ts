@@ -30,7 +30,7 @@ const getUserInfo = (req: AuthRequest) => ({
  */
 
 // Generate complete nutrition analysis
-router.post('/nutrition/analyze', async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/nutrition/analyze', async (req: AuthRequest, res: Response) => {
   try {
     const user = getUserInfo(req);
     const {
@@ -65,7 +65,7 @@ router.post('/nutrition/analyze', async (req: AuthRequest, res: Response): Promi
 });
 
 // Get nutrition coaching insights
-router.get('/nutrition/coaching', async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/nutrition/coaching', async (req: AuthRequest, res: Response) => {
   try {
     const user = getUserInfo(req);
 
@@ -98,7 +98,7 @@ router.get('/nutrition/coaching', async (req: AuthRequest, res: Response): Promi
 });
 
 // Get nutrition trends analysis
-router.get('/nutrition/trends', async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/nutrition/trends', async (req: AuthRequest, res: Response) => {
   try {
     const user = getUserInfo(req);
     const { period_days = '30' } = req.query;
@@ -136,7 +136,7 @@ router.get('/nutrition/trends', async (req: AuthRequest, res: Response): Promise
  */
 
 // Analyze meal photo with complete intelligence
-router.post('/photo/meal-analysis', async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/photo/meal-analysis', async (req: AuthRequest, res: Response) => {
   try {
     const user = getUserInfo(req);
     const {
@@ -185,7 +185,7 @@ router.post('/photo/meal-analysis', async (req: AuthRequest, res: Response): Pro
 });
 
 // Analyze pantry photo for inventory intelligence
-router.post('/photo/pantry-analysis', async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/photo/pantry-analysis', async (req: AuthRequest, res: Response) => {
   try {
     const user = getUserInfo(req);
     const { photo_base64, pantry_location = 'kitchen' } = req.body;
@@ -231,7 +231,7 @@ router.post('/photo/pantry-analysis', async (req: AuthRequest, res: Response): P
  */
 
 // Process voice command with apex intelligence
-router.post('/voice/process', async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/voice/process', async (req: AuthRequest, res: Response) => {
   try {
     const user = getUserInfo(req);
     const {
@@ -291,7 +291,7 @@ router.post('/voice/process', async (req: AuthRequest, res: Response): Promise<v
  */
 
 // Generate consumption forecast
-router.post('/predictive/consumption-forecast', async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/predictive/consumption-forecast', async (req: AuthRequest, res: Response) => {
   try {
     const user = getUserInfo(req);
     const {
@@ -327,7 +327,7 @@ router.post('/predictive/consumption-forecast', async (req: AuthRequest, res: Re
 });
 
 // Generate shopping optimization analysis
-router.post('/predictive/shopping-optimization', async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/predictive/shopping-optimization', async (req: AuthRequest, res: Response) => {
   try {
     const user = getUserInfo(req);
     const {
@@ -361,7 +361,7 @@ router.post('/predictive/shopping-optimization', async (req: AuthRequest, res: R
 });
 
 // Get system capabilities
-router.get('/capabilities', async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/capabilities', async (req: AuthRequest, res: Response) => {
   try {
     res.json({
       success: true,
@@ -411,7 +411,7 @@ router.get('/capabilities', async (req: AuthRequest, res: Response): Promise<voi
 });
 
 // Get system health and performance metrics
-router.get('/health', async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/health', async (req: AuthRequest, res: Response) => {
   try {
     res.json({
       success: true,

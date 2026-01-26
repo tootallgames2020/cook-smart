@@ -34,23 +34,23 @@ const upload = multer({
  * POST /api/v1/photo-analysis/receipt
  * Analyze a receipt photo to extract ingredients and prices
  */
-router.post('/receipt', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/receipt', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { store_name, location, auto_add_ingredients } = req.body;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Photo file is required',
-      });
+      });`n      return;
     }
 
     // Convert file buffer to base64
@@ -111,23 +111,23 @@ router.post('/receipt', authenticateToken, upload.single('photo'), async (req: A
  * POST /api/v1/photo-analysis/pantry
  * Analyze a pantry/fridge photo to identify ingredients
  */
-router.post('/pantry', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/pantry', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { location_type, auto_update_inventory } = req.body;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Photo file is required',
-      });
+      });`n      return;
     }
 
     const photoBase64 = req.file.buffer.toString('base64');
@@ -185,23 +185,23 @@ router.post('/pantry', authenticateToken, upload.single('photo'), async (req: Au
  * POST /api/v1/photo-analysis/food-identification
  * Identify food items in a photo and provide nutritional information
  */
-router.post('/food-identification', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/food-identification', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { add_to_inventory, estimated_quantity, estimated_unit } = req.body;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Photo file is required',
-      });
+      });`n      return;
     }
 
     const photoBase64 = req.file.buffer.toString('base64');
@@ -262,23 +262,23 @@ router.post('/food-identification', authenticateToken, upload.single('photo'), a
  * POST /api/v1/photo-analysis/barcode
  * Enhanced barcode analysis with AI insights
  */
-router.post('/barcode', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/barcode', authenticateToken, upload.single('photo'), async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { add_to_inventory, quantity, unit } = req.body;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Photo file is required',
-      });
+      });`n      return;
     }
 
     const photoBase64 = req.file.buffer.toString('base64');
@@ -339,17 +339,17 @@ router.post('/barcode', authenticateToken, upload.single('photo'), async (req: A
  * GET /api/v1/photo-analysis/history
  * Get user's photo analysis history
  */
-router.get('/history', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/history', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const limit = parseInt(req.query.limit as string) || 20;
     const analysis_type = req.query.analysis_type as string;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const history = await PhotoAnalysisService.getPhotoAnalysisHistory(userId, limit);
@@ -379,7 +379,7 @@ router.get('/history', authenticateToken, async (req: AuthRequest, res: Response
  * GET /api/v1/photo-analysis/capabilities
  * Get photo analysis capabilities and supported formats
  */
-router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const capabilities = {
       receipt_scanning: {
@@ -478,23 +478,23 @@ router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Res
  * POST /api/v1/photo-analysis/feedback
  * Provide feedback on photo analysis results
  */
-router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { analysis_id, feedback_type, rating, corrections, comments } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!analysis_id || !feedback_type) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'analysis_id and feedback_type are required',
-      });
+      });`n      return;
     }
 
     await storePhotoAnalysisFeedback(userId, {

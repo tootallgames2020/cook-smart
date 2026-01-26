@@ -21,39 +21,39 @@ const router = Router();
  * POST /api/v1/predictive-analytics/analyze
  * Generate predictive analysis based on user data
  */
-router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { analysis_type, time_horizon_days, family_id, include_confidence_intervals } = req.body;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!analysis_type) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'analysis_type is required (consumption, shopping, waste, budget, seasonal, family_insights)',
-      });
+      });`n      return;
     }
 
     const validAnalysisTypes = ['consumption', 'shopping', 'waste', 'budget', 'seasonal', 'family_insights'];
     if (!validAnalysisTypes.includes(analysis_type)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: `Invalid analysis_type. Must be one of: ${validAnalysisTypes.join(', ')}`,
-      });
+      });`n      return;
     }
 
     const timeHorizon = parseInt(time_horizon_days) || 30;
     if (timeHorizon < 1 || timeHorizon > 365) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'time_horizon_days must be between 1 and 365',
-      });
+      });`n      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -92,16 +92,16 @@ router.post('/analyze', authenticateToken, async (req: AuthRequest, res: Respons
  * GET /api/v1/predictive-analytics/consumption
  * Get consumption pattern predictions
  */
-router.get('/consumption', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/consumption', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -133,16 +133,16 @@ router.get('/consumption', authenticateToken, async (req: AuthRequest, res: Resp
  * GET /api/v1/predictive-analytics/shopping
  * Get shopping behavior predictions
  */
-router.get('/shopping', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/shopping', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -174,16 +174,16 @@ router.get('/shopping', authenticateToken, async (req: AuthRequest, res: Respons
  * GET /api/v1/predictive-analytics/waste
  * Get waste reduction predictions
  */
-router.get('/waste', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/waste', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -215,16 +215,16 @@ router.get('/waste', authenticateToken, async (req: AuthRequest, res: Response):
  * GET /api/v1/predictive-analytics/budget
  * Get budget optimization predictions
  */
-router.get('/budget', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/budget', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -256,16 +256,16 @@ router.get('/budget', authenticateToken, async (req: AuthRequest, res: Response)
  * GET /api/v1/predictive-analytics/seasonal
  * Get seasonal trend predictions
  */
-router.get('/seasonal', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/seasonal', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 90; // Default to 3 months for seasonal
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -297,33 +297,33 @@ router.get('/seasonal', authenticateToken, async (req: AuthRequest, res: Respons
  * GET /api/v1/predictive-analytics/family-insights
  * Get family behavior insights (requires family membership)
  */
-router.get('/family-insights', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/family-insights', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const family_id = req.query.family_id as string;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!family_id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'family_id is required for family insights',
-      });
+      });`n      return;
     }
 
     // Verify user is member of the family
     const isFamilyMember = await verifyFamilyMembership(userId, family_id);
     if (!isFamilyMember) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         error: 'Access denied: not a member of this family',
-      });
+      });`n      return;
     }
 
     const analysisRequest: PredictiveAnalysisRequest = {
@@ -356,16 +356,16 @@ router.get('/family-insights', authenticateToken, async (req: AuthRequest, res: 
  * GET /api/v1/predictive-analytics/dashboard
  * Get comprehensive analytics dashboard data
  */
-router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const family_id = req.query.family_id as string;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     // Generate multiple analysis types for dashboard
@@ -424,17 +424,17 @@ router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Respon
  * GET /api/v1/predictive-analytics/history
  * Get user's predictive analysis history
  */
-router.get('/history', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/history', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const analysis_type = req.query.analysis_type as string;
     const limit = parseInt(req.query.limit as string) || 20;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const history = await getPredictiveAnalysisHistory(userId, analysis_type, limit);
@@ -459,23 +459,23 @@ router.get('/history', authenticateToken, async (req: AuthRequest, res: Response
  * POST /api/v1/predictive-analytics/feedback
  * Provide feedback on predictive analysis accuracy
  */
-router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { analysis_id, prediction_accuracy, helpful_recommendations, comments } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!analysis_id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'analysis_id is required',
-      });
+      });`n      return;
     }
 
     await storePredictiveAnalysisFeedback(userId, {
@@ -503,7 +503,7 @@ router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Respon
  * GET /api/v1/predictive-analytics/capabilities
  * Get available predictive analytics capabilities
  */
-router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const capabilities = {
       consumption_analysis: {

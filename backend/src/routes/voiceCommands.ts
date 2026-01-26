@@ -18,23 +18,23 @@ const router = Router();
  * POST /api/v1/voice-commands/process
  * Process a voice command
  */
-router.post('/process', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/process', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { command_text, processing_method } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!command_text || typeof command_text !== 'string') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'command_text is required and must be a string',
-      });
+      });`n      return;
     }
 
     const voiceCommand: VoiceCommand = {
@@ -68,16 +68,16 @@ router.post('/process', authenticateToken, async (req: AuthRequest, res: Respons
  * GET /api/v1/voice-commands/history
  * Get user's voice command history
  */
-router.get('/history', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/history', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const limit = parseInt(req.query.limit as string) || 20;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     // Get voice command history from database
@@ -102,16 +102,16 @@ router.get('/history', authenticateToken, async (req: AuthRequest, res: Response
  * GET /api/v1/voice-commands/analytics
  * Get voice command usage analytics
  */
-router.get('/analytics', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/analytics', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const days = parseInt(req.query.days as string) || 30;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const analytics = await getVoiceCommandAnalytics(userId, days);
@@ -135,23 +135,23 @@ router.get('/analytics', authenticateToken, async (req: AuthRequest, res: Respon
  * POST /api/v1/voice-commands/feedback
  * Provide feedback on voice command results
  */
-router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { command_id, feedback_type, rating, comments } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     if (!command_id || !feedback_type) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'command_id and feedback_type are required',
-      });
+      });`n      return;
     }
 
     await storeVoiceCommandFeedback(userId, {
@@ -179,7 +179,7 @@ router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Respon
  * GET /api/v1/voice-commands/capabilities
  * Get available voice command capabilities and examples
  */
-router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const capabilities = {
       ingredient_management: {
@@ -263,15 +263,15 @@ router.get('/capabilities', authenticateToken, async (req: AuthRequest, res: Res
  * POST /api/v1/voice-commands/test
  * Test voice command processing with sample commands
  */
-router.post('/test', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User authentication required',
-      });
+      });`n      return;
     }
 
     const testCommands = [
@@ -300,7 +300,7 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response):
           response: result.response_text,
           confidence: result.confidence,
           processing_time_ms: result.processing_time_ms,
-        });
+        });`n      return;
       } catch (testError) {
         testResults.push({
           command: commandText,
@@ -309,7 +309,7 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response):
           confidence: 0,
           processing_time_ms: 0,
           error: testError instanceof Error ? testError.message : 'Unknown error',
-        });
+        });`n      return;
       }
     }
 
