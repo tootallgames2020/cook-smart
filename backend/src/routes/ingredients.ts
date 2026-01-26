@@ -56,14 +56,36 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
     const { ingredient_name, customName, quantity, unit, expiration_date, expirationDate, notes, category } = req.body;
 
     // Handle both field name formats (mobile app uses customName, web might use ingredient_name)
-    const ingredientName = ingredient_name || customName;
+    const rawIngredientName = ingredient_name || customName;
     const expDate = expiration_date || expirationDate;
 
-    if (!ingredientName) {
+    if (!rawIngredientName) {
       return res.status(400).json({
         success: false,
         message: 'Ingredient name is required (ingredient_name or customName)',
       });
+    }
+
+    // 🚀 APPLY ADVANCED INGREDIENT STANDARDIZATION
+    const { ComprehensiveIngredientStandardizer } = await import('../services/ComprehensiveIngredientStandardizer');
+    
+    let standardizedName: string;
+    let detectedCategory: string;
+    let standardizedUnit: string;
+    
+    try {
+      const standardized = await ComprehensiveIngredientStandardizer.standardizeIngredient(rawIngredientName);
+      standardizedName = standardized.standardName;
+      detectedCategory = standardized.category;
+      standardizedUnit = standardized.standardUnit;
+      
+      logger.info(`Ingredient standardized: "${rawIngredientName}" → "${standardizedName}" (${detectedCategory})`);
+    } catch (error) {
+      // Fallback to raw name if standardization fails
+      logger.warn(`Ingredient standardization failed for "${rawIngredientName}":`, error);
+      standardizedName = rawIngredientName;
+      detectedCategory = category || 'other';
+      standardizedUnit = unit || 'piece';
     }
 
     const client = await pool.connect();
@@ -75,13 +97,13 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
          RETURNING *`,
         [
           req.user!.id,
-          ingredientName.toLowerCase().replace(/\s+/g, '_'), // Generate simple ID
-          ingredientName,
+          standardizedName.toLowerCase().replace(/\s+/g, '_'), // Generate ID from standardized name
+          standardizedName, // Use standardized name
           quantity || null,
-          unit || 'piece',
+          standardizedUnit, // Use standardized unit
           expDate || null,
           notes || null,
-          category || 'other',
+          category || detectedCategory, // Use provided category or detected category
         ]
       );
 
@@ -91,13 +113,19 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
         [req.user!.id]
       );
 
-      logger.info(`Ingredient added by user ${req.user!.id}: ${ingredientName}`);
+      logger.info(`Ingredient added by user ${req.user!.id}: "${rawIngredientName}" → "${standardizedName}"`);
 
       return res.status(201).json({
         success: true,
         message: 'Ingredient added successfully',
         ingredient: result.rows[0],
         points_awarded: 2,
+        standardization: {
+          original: rawIngredientName,
+          standardized: standardizedName,
+          category: detectedCategory,
+          unit: standardizedUnit,
+        },
       });
     } finally {
       client.release();
@@ -263,6 +291,28 @@ router.post('/from-shopping/:shopping_id', authenticateToken, async (req: AuthRe
 
       const shoppingItem = shoppingResult.rows[0];
 
+      // 🚀 APPLY ADVANCED INGREDIENT STANDARDIZATION
+      const { ComprehensiveIngredientStandardizer } = await import('../services/ComprehensiveIngredientStandardizer');
+      
+      let standardizedName: string;
+      let detectedCategory: string;
+      let standardizedUnit: string;
+      
+      try {
+        const standardized = await ComprehensiveIngredientStandardizer.standardizeIngredient(shoppingItem.item_name);
+        standardizedName = standardized.standardName;
+        detectedCategory = standardized.category;
+        standardizedUnit = standardized.standardUnit;
+        
+        logger.info(`Shopping item standardized: "${shoppingItem.item_name}" → "${standardizedName}" (${detectedCategory})`);
+      } catch (error) {
+        // Fallback to raw name if standardization fails
+        logger.warn(`Shopping item standardization failed for "${shoppingItem.item_name}":`, error);
+        standardizedName = shoppingItem.item_name;
+        detectedCategory = shoppingItem.category || 'other';
+        standardizedUnit = shoppingItem.unit || 'piece';
+      }
+
       // Add to inventory
       const result = await client.query(
         `INSERT INTO user_ingredients 
@@ -274,13 +324,13 @@ router.post('/from-shopping/:shopping_id', authenticateToken, async (req: AuthRe
          RETURNING *`,
         [
           req.user!.id,
-          shoppingItem.item_name.toLowerCase().replace(/\s+/g, '_'),
-          shoppingItem.item_name,
+          standardizedName.toLowerCase().replace(/\s+/g, '_'), // Use standardized name for ID
+          standardizedName, // Use standardized name
           shoppingItem.quantity || 1,
-          shoppingItem.unit || 'piece',
+          standardizedUnit, // Use standardized unit
           expiration_date || null,
           notes || shoppingItem.notes,
-          shoppingItem.category || 'other',
+          shoppingItem.category || detectedCategory, // Use detected category if none provided
         ]
       );
 
@@ -296,13 +346,19 @@ router.post('/from-shopping/:shopping_id', authenticateToken, async (req: AuthRe
         [req.user!.id]
       );
 
-      logger.info(`Ingredient moved from shopping to inventory: ${shoppingItem.item_name}`);
+      logger.info(`Ingredient moved from shopping to inventory: "${shoppingItem.item_name}" → "${standardizedName}"`);
 
       return res.status(201).json({
         success: true,
         message: 'Ingredient moved from shopping list to inventory',
         ingredient: result.rows[0],
         points_awarded: 3,
+        standardization: {
+          original: shoppingItem.item_name,
+          standardized: standardizedName,
+          category: detectedCategory,
+          unit: standardizedUnit,
+        },
       });
     } finally {
       client.release();
