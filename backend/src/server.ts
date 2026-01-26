@@ -40,6 +40,7 @@ import apexIntelligenceRoutes from './routes/apexIntelligence';
 import photoAnalysisRoutes from './routes/photoAnalysis';
 import voiceCommandsRoutes from './routes/voiceCommands';
 import predictiveAnalyticsRoutes from './routes/predictiveAnalytics';
+import maintenanceBotRoutes from './routes/maintenanceBot';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -174,6 +175,7 @@ app.get('/health', async (req, res) => {
         photoAnalysis: '/api/v1/photo-analysis/*',
         voiceCommands: '/api/v1/voice-commands/*',
         predictiveAnalytics: '/api/v1/predictive-analytics/*',
+        maintenanceBot: '/api/v1/maintenance-bot/*',
       },
     });
   } catch (error) {
@@ -219,6 +221,7 @@ app.use('/api/v1/apex-intelligence', apexIntelligenceRoutes);
 app.use('/api/v1/photo-analysis', photoAnalysisRoutes);
 app.use('/api/v1/voice-commands', voiceCommandsRoutes);
 app.use('/api/v1/predictive-analytics', predictiveAnalyticsRoutes);
+app.use('/api/v1/maintenance-bot', maintenanceBotRoutes);
 
 // Test endpoint
 app.get('/api/v1/test', (req, res) => {
