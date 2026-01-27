@@ -204,6 +204,24 @@ const AISettingsScreen: React.FC = () => {
       })
     ),
 
+    // Family Management Section - only show if family coordination is enabled
+    preferences['family_coordination'] && React.createElement(View, { style: styles.familyManagementSection },
+      React.createElement(Text, { style: styles.sectionTitle }, "Family Management"),
+      React.createElement(Text, { style: styles.sectionSubtitle }, "Manage your family coordination settings"),
+      
+      React.createElement(TouchableOpacity, {
+        style: styles.familyManagementCard,
+        onPress: () => (navigation as any).navigate('FamilyManagement')
+      },
+        React.createElement(Icon, { name: "people", size: 32, color: "#8B5CF6" }),
+        React.createElement(View, { style: styles.familyManagementInfo },
+          React.createElement(Text, { style: styles.familyManagementTitle }, "Manage Family"),
+          React.createElement(Text, { style: styles.familyManagementDescription }, "Create or join a family, invite members, and coordinate shopping")
+        ),
+        React.createElement(Icon, { name: "chevron-forward", size: 20, color: "#666" })
+      )
+    ),
+
     React.createElement(View, { style: styles.aiScreensSection },
       React.createElement(Text, { style: styles.sectionTitle }, "Explore AI Features"),
       React.createElement(Text, { style: styles.sectionSubtitle }, "Test and explore individual AI capabilities"),
@@ -488,6 +506,41 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 16,
+  },
+  familyManagementSection: {
+    margin: 15,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  familyManagementCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  familyManagementInfo: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  familyManagementTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  familyManagementDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 18,
   },
 });
 
