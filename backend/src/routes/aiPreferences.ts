@@ -30,6 +30,301 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
   }
 });
 
+// Update single AI preference
+router.post('/update', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { feature_name, enabled } = req.body;
+
+    if (!feature_name || typeof enabled !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Feature name and enabled status are required',
+      });
+    }
+
+    // Create update object with the specific feature
+    const updates = { [feature_name]: enabled };
+
+    const updatedPreferences = await AIPreferencesService.updateUserPreferences(
+      req.user!.id,
+      updates
+    );
+
+    if (!updatedPreferences) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update AI preference',
+      });
+    }
+
+    return res.json({
+      success: true,
+      preferences: updatedPreferences,
+      message: 'AI preference updated successfully',
+    });
+  } catch (error) {
+    logger.error('Update single AI preference error:', error);
+    return next(createError('Failed to update AI preference', 500));
+  }
+});
+
+// Update intelligence level
+router.post('/intelligence-level', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { category, intelligence_level } = req.body;
+
+    if (!category || !intelligence_level) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category and intelligence level are required',
+      });
+    }
+
+    if (!['minimal', 'helpful', 'genius'].includes(intelligence_level)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid intelligence level. Must be: minimal, helpful, or genius',
+      });
+    }
+
+    // Update the intelligence level for the category
+    const fieldName = `${category}_intelligence_level`;
+    const updates = { [fieldName]: intelligence_level };
+
+    const updatedPreferences = await AIPreferencesService.updateUserPreferences(
+      req.user!.id,
+      updates
+    );
+
+    if (!updatedPreferences) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update intelligence level',
+      });
+    }
+
+    return res.json({
+      success: true,
+      preferences: updatedPreferences,
+      message: 'Intelligence level updated successfully',
+    });
+  } catch (error) {
+    logger.error('Update intelligence level error:', error);
+    return next(createError('Failed to update intelligence level', 500));
+  }
+});
+
+// Bulk update AI preferences
+router.post('/bulk-update', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { preferences } = req.body;
+
+    if (!preferences || typeof preferences !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: 'Preferences object is required',
+      });
+    }
+
+    const updatedPreferences = await AIPreferencesService.updateUserPreferences(
+      req.user!.id,
+      preferences
+    );
+
+    if (!updatedPreferences) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to bulk update AI preferences',
+      });
+    }
+
+    return res.json({
+      success: true,
+      preferences: updatedPreferences,
+      message: 'AI preferences updated successfully',
+    });
+  } catch (error) {
+    logger.error('Bulk update AI preferences error:', error);
+    return next(createError('Failed to bulk update AI preferences', 500));
+  }
+});
+
+// Get feature usage analytics
+router.get('/usage', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          feature_name,
+          usage_count,
+          last_used,
+          user_rating as satisfaction_score,
+          usage_count as total_value_points
+        FROM ai_feature_usage
+        WHERE user_id = $1
+        ORDER BY usage_count DESC
+      `, [req.user!.id]);
+
+      return res.json({
+        success: true,
+        usage: result.rows,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Get feature usage error:', error);
+    return next(createError('Failed to get feature usage', 500));
+  }
+});
+
+// Track feature usage
+router.post('/track-usage', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { feature_name, value_points = 1 } = req.body;
+
+    if (!feature_name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Feature name is required',
+      });
+    }
+
+    await AIPreferencesService.trackFeatureUsage(
+      req.user!.id,
+      feature_name,
+      5 // Default satisfaction score
+    );
+
+    return res.json({
+      success: true,
+      message: 'Feature usage tracked',
+    });
+  } catch (error) {
+    logger.error('Track feature usage error:', error);
+    // Don't throw error for tracking - it's not critical
+    return res.json({
+      success: true,
+      message: 'Feature usage tracking skipped',
+    });
+  }
+});
+
+// Provide feature feedback
+router.post('/feedback', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const { feature_name, satisfaction_score, feedback } = req.body;
+
+    if (!feature_name || typeof satisfaction_score !== 'number') {
+      return res.status(400).json({
+        success: false,
+        message: 'Feature name and satisfaction score are required',
+      });
+    }
+
+    if (satisfaction_score < 1 || satisfaction_score > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Satisfaction score must be between 1 and 5',
+      });
+    }
+
+    await AIPreferencesService.trackFeatureUsage(
+      req.user!.id,
+      feature_name,
+      satisfaction_score
+    );
+
+    return res.json({
+      success: true,
+      message: 'Feature feedback recorded',
+    });
+  } catch (error) {
+    logger.error('Provide feature feedback error:', error);
+    return next(createError('Failed to record feature feedback', 500));
+  }
+});
+
+// Get AI recommendations
+router.get('/recommendations', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    // For now, return static recommendations
+    const recommendations = [
+      {
+        feature: 'voice_commands',
+        title: 'Try Voice Commands',
+        description: 'Update ingredients hands-free while cooking',
+        confidence: 0.8,
+        benefits: ['Hands-free cooking', 'Faster updates', 'Natural interaction']
+      },
+      {
+        feature: 'photo_analysis',
+        title: 'Enable Photo Analysis',
+        description: 'Scan receipts to automatically update your inventory',
+        confidence: 0.9,
+        benefits: ['Effortless inventory', 'Receipt scanning', 'Visual tracking']
+      }
+    ];
+
+    return res.json({
+      success: true,
+      recommendations,
+    });
+  } catch (error) {
+    logger.error('Get AI recommendations error:', error);
+    return next(createError('Failed to get AI recommendations', 500));
+  }
+});
+
+// Reset AI preferences
+router.post('/reset', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    // Reset to default preferences
+    const defaultPreferences = {
+      voice_commands: false,
+      apex_voice_intelligence: false,
+      voice_processing: 'local_only',
+      voice_intelligence_level: 'helpful',
+      photo_analysis: false,
+      receipt_scanning: false,
+      photo_intelligence_level: 'helpful',
+      nutrition_coaching: false,
+      meal_optimization: false,
+      nutrition_intelligence_level: 'helpful',
+      auto_meal_planning: false,
+      predictive_analytics: false,
+      planning_intelligence_level: 'helpful',
+      family_coordination: false,
+      family_intelligence_level: 'helpful',
+      data_sharing_consent: false,
+      analytics_consent: false,
+      personalization_consent: false,
+    };
+
+    const updatedPreferences = await AIPreferencesService.updateUserPreferences(
+      req.user!.id,
+      defaultPreferences
+    );
+
+    if (!updatedPreferences) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to reset AI preferences',
+      });
+    }
+
+    return res.json({
+      success: true,
+      preferences: updatedPreferences,
+      message: 'AI preferences reset to defaults',
+    });
+  } catch (error) {
+    logger.error('Reset AI preferences error:', error);
+    return next(createError('Failed to reset AI preferences', 500));
+  }
+});
+
 // Update user's AI preferences
 router.put('/', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
