@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import VoiceCommandButton from '../components/VoiceCommandButton';
 import voiceService from '../services/voiceService';
 

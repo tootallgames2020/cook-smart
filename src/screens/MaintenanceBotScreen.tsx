@@ -187,19 +187,19 @@ export const MaintenanceBotScreen: React.FC = () => {
 
         <View style={styles.statusDetails}>
           <View style={styles.statusItem}>
-            <Icon name="schedule" size={16} color="#666" />
+            <Icon name="time-outline" size={16} color="#666" />
             <Text style={styles.statusItemText}>
               Uptime: {botStatus.uptime_hours || 0}h
             </Text>
           </View>
           <View style={styles.statusItem}>
-            <Icon name="build" size={16} color="#666" />
+            <Icon name="construct-outline" size={16} color="#666" />
             <Text style={styles.statusItemText}>
               Actions: {botStatus.actions_performed || 0}
             </Text>
           </View>
           <View style={styles.statusItem}>
-            <Icon name="check-circle" size={16} color="#666" />
+            <Icon name="checkmark-circle-outline" size={16} color="#666" />
             <Text style={styles.statusItemText}>
               Success Rate: {botStatus.success_rate || 0}%
             </Text>
@@ -208,7 +208,7 @@ export const MaintenanceBotScreen: React.FC = () => {
 
         {!botStatus.is_running && (
           <TouchableOpacity style={styles.startButton} onPress={startBot}>
-            <Icon name="play-arrow" size={20} color="white" />
+            <Icon name="play-outline" size={20} color="white" />
             <Text style={styles.startButtonText}>Start Bot</Text>
           </TouchableOpacity>
         )}
@@ -220,7 +220,7 @@ export const MaintenanceBotScreen: React.FC = () => {
     if (currentIssues.length === 0) {
       return (
         <View style={styles.noIssuesCard}>
-          <Icon name="check-circle" size={48} color="#10B981" />
+            <Icon name="checkmark-circle-outline" size={48} color="#10B981" />
           <Text style={styles.noIssuesTitle}>All Systems Healthy</Text>
           <Text style={styles.noIssuesSubtitle}>No issues detected</Text>
         </View>
@@ -273,28 +273,28 @@ export const MaintenanceBotScreen: React.FC = () => {
         
         <View style={styles.performanceGrid}>
           <View style={styles.performanceItem}>
-            <Icon name="speed" size={24} color="#4ECDC4" />
+            <Icon name="flash-outline" size={24} color="#4ECDC4" />
             <Text style={styles.performanceValue}>
               {performanceData.avg_response_time || 0}ms
             </Text>
             <Text style={styles.performanceLabel}>Avg Response</Text>
           </View>
           <View style={styles.performanceItem}>
-            <Icon name="memory" size={24} color="#4ECDC4" />
+            <Icon name="server-outline" size={24} color="#4ECDC4" />
             <Text style={styles.performanceValue}>
               {performanceData.memory_usage || 0}%
             </Text>
             <Text style={styles.performanceLabel}>Memory Usage</Text>
           </View>
           <View style={styles.performanceItem}>
-            <Icon name="storage" size={24} color="#4ECDC4" />
+            <Icon name="server-outline" size={24} color="#4ECDC4" />
             <Text style={styles.performanceValue}>
               {performanceData.cpu_usage || 0}%
             </Text>
             <Text style={styles.performanceLabel}>CPU Usage</Text>
           </View>
           <View style={styles.performanceItem}>
-            <Icon name="cloud-done" size={24} color="#4ECDC4" />
+            <Icon name="cloud-outline" size={24} color="#4ECDC4" />
             <Text style={styles.performanceValue}>
               {performanceData.uptime || 0}%
             </Text>
@@ -351,7 +351,7 @@ export const MaintenanceBotScreen: React.FC = () => {
           {loading ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <Icon name="refresh" size={20} color="white" />
+            <Icon name="refresh-outline" size={20} color="white" />
           )}
           <Text style={styles.actionButtonText}>Run Manual Check</Text>
         </TouchableOpacity>
@@ -363,27 +363,27 @@ export const MaintenanceBotScreen: React.FC = () => {
         
         <View style={styles.capabilityList}>
           <View style={styles.capabilityItem}>
-            <Icon name="monitor-heart" size={20} color="#4ECDC4" />
+            <Icon name="heart-outline" size={20} color="#4ECDC4" />
             <Text style={styles.capabilityText}>Real-time system monitoring</Text>
           </View>
           <View style={styles.capabilityItem}>
-            <Icon name="auto-fix-high" size={20} color="#4ECDC4" />
+            <Icon name="build-outline" size={20} color="#4ECDC4" />
             <Text style={styles.capabilityText}>Automatic error detection and repair</Text>
           </View>
           <View style={styles.capabilityItem}>
-            <Icon name="tune" size={20} color="#4ECDC4" />
+            <Icon name="settings-outline" size={20} color="#4ECDC4" />
             <Text style={styles.capabilityText}>Performance optimization</Text>
           </View>
           <View style={styles.capabilityItem}>
-            <Icon name="psychology" size={20} color="#4ECDC4" />
+            <Icon name="bulb-outline" size={20} color="#4ECDC4" />
             <Text style={styles.capabilityText}>AI model updates and improvements</Text>
           </View>
           <View style={styles.capabilityItem}>
-            <Icon name="shield" size={20} color="#4ECDC4" />
+            <Icon name="shield-outline" size={20} color="#4ECDC4" />
             <Text style={styles.capabilityText}>Predictive maintenance</Text>
           </View>
           <View style={styles.capabilityItem}>
-            <Icon name="school" size={20} color="#4ECDC4" />
+            <Icon name="book-outline" size={20} color="#4ECDC4" />
             <Text style={styles.capabilityText}>Self-learning from patterns</Text>
           </View>
         </View>

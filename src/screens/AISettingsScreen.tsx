@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { aiPreferencesService } from '../services/aiPreferencesService';
 
@@ -35,58 +35,58 @@ const AISettingsScreen: React.FC = () => {
       key: 'voice_commands',
       name: 'Voice Commands',
       description: 'Control the app with voice commands',
-      icon: 'mic-outline',
+      icon: 'mic',
       category: 'voice'
     },
     {
       key: 'apex_voice_intelligence',
       name: 'Advanced Voice AI',
       description: 'Enhanced voice understanding and responses',
-      icon: 'chatbubbles-outline',
+      icon: 'chat',
       category: 'voice'
     },
     {
       key: 'photo_analysis',
       name: 'Photo Analysis',
       description: 'Analyze food photos for ingredients',
-      icon: 'camera-outline',
+      icon: 'camera-alt',
       category: 'photo'
     },
     {
       key: 'receipt_scanning',
       name: 'Receipt Scanning',
       description: 'Scan receipts to update inventory',
-      icon: 'document-text-outline',
+      icon: 'receipt',
       category: 'photo'
     },
     {
       key: 'auto_meal_planning',
       name: 'Auto Meal Planning',
       description: 'Generate meal plans automatically',
-      icon: 'calendar-outline',
+      icon: 'calendar-today',
       category: 'planning'
     },
     {
       key: 'predictive_analytics',
       name: 'Predictive Analytics',
       description: 'Predict ingredient needs and usage',
-      icon: 'analytics-outline',
+      icon: 'analytics',
       category: 'planning'
     },
     {
       key: 'family_coordination',
       name: 'Family Coordination',
       description: 'Coordinate meals with family members',
-      icon: 'people-outline',
+      icon: 'people',
       category: 'family'
     },
   ];
 
   const categories = [
-    { key: 'voice', name: 'Voice Features', icon: 'mic-outline', color: '#4ECDC4' },
-    { key: 'photo', name: 'Photo Features', icon: 'camera-outline', color: '#45B7D1' },
-    { key: 'planning', name: 'Planning Features', icon: 'calendar-outline', color: '#F59E0B' },
-    { key: 'family', name: 'Family Features', icon: 'people-outline', color: '#10B981' },
+    { key: 'voice', name: 'Voice Features', icon: 'mic', color: '#4ECDC4' },
+    { key: 'photo', name: 'Photo Features', icon: 'camera-alt', color: '#45B7D1' },
+    { key: 'planning', name: 'Planning Features', icon: 'calendar-today', color: '#F59E0B' },
+    { key: 'family', name: 'Family Features', icon: 'people', color: '#10B981' },
   ];
 
   useEffect(() => {
@@ -213,7 +213,7 @@ const AISettingsScreen: React.FC = () => {
           style: styles.aiScreenCard,
           onPress: () => (navigation as any).navigate('ApexIntelligence')
         },
-          React.createElement(Icon, { name: "psychology", size: 32, color: "#9333EA" }),
+          React.createElement(Icon, { name: "lightbulb", size: 32, color: "#9333EA" }),
           React.createElement(Text, { style: styles.aiScreenTitle }, "Apex Intelligence"),
           React.createElement(Text, { style: styles.aiScreenDescription }, "Advanced AI capabilities")
         ),
@@ -222,7 +222,7 @@ const AISettingsScreen: React.FC = () => {
           style: styles.aiScreenCard,
           onPress: () => (navigation as any).navigate('MaintenanceBot')
         },
-          React.createElement(Icon, { name: "smart-toy", size: 32, color: "#10B981" }),
+          React.createElement(Icon, { name: "build", size: 32, color: "#10B981" }),
           React.createElement(Text, { style: styles.aiScreenTitle }, "Maintenance Bot"),
           React.createElement(Text, { style: styles.aiScreenDescription }, "System monitoring & health")
         ),
@@ -240,7 +240,7 @@ const AISettingsScreen: React.FC = () => {
           style: styles.aiScreenCard,
           onPress: () => (navigation as any).navigate('AIMealPlanning')
         },
-          React.createElement(Icon, { name: "restaurant-menu", size: 32, color: "#3B82F6" }),
+          React.createElement(Icon, { name: "restaurant", size: 32, color: "#3B82F6" }),
           React.createElement(Text, { style: styles.aiScreenTitle }, "AI Meal Planning"),
           React.createElement(Text, { style: styles.aiScreenDescription }, "Automated meal plans")
         ),

@@ -21,7 +21,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       id: 'nutrition',
       name: 'Nutrition Intelligence',
       description: 'Advanced nutritional analysis and personalized recommendations',
-      icon: 'restaurant',
+      icon: 'fast-food-outline',
       color: '#10B981',
       status: 'active'
     },
@@ -29,7 +29,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       id: 'photo',
       name: 'Photo Intelligence',
       description: 'AI-powered food recognition and freshness analysis',
-      icon: 'camera-alt',
+      icon: 'camera-outline',
       color: '#3B82F6',
       status: 'active'
     },
@@ -37,7 +37,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       id: 'voice',
       name: 'Voice Intelligence',
       description: 'Natural language cooking assistance and commands',
-      icon: 'mic',
+      icon: 'mic-outline',
       color: '#8B5CF6',
       status: 'beta'
     },
@@ -45,7 +45,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       id: 'predictive',
       name: 'Predictive Analytics',
       description: 'Smart predictions for consumption, waste, and shopping',
-      icon: 'trending-up',
+      icon: 'stats-chart-outline',
       color: '#F59E0B',
       status: 'active'
     }
@@ -127,7 +127,7 @@ const ApexIntelligenceScreen: React.FC = () => {
                     {capability.status === 'coming_soon' ? 'Coming Soon' : 'Tap to explore'}
                   </Text>
                   <Icon 
-                    name="arrow-forward" 
+                    name="chevron-forward-outline" 
                     size={16} 
                     color={capability.color} 
                   />
@@ -143,25 +143,25 @@ const ApexIntelligenceScreen: React.FC = () => {
         
         <View style={styles.featuresList}>
           <View style={styles.featureItem}>
-            <Icon name="psychology" size={20} color="#10B981" />
+            <Icon name="bulb-outline" size={20} color="#10B981" />
             <Text style={styles.featureText}>
               Machine learning algorithms that adapt to your preferences
             </Text>
           </View>
           <View style={styles.featureItem}>
-            <Icon name="speed" size={20} color="#3B82F6" />
+            <Icon name="flash-outline" size={20} color="#3B82F6" />
             <Text style={styles.featureText}>
               Real-time analysis and instant recommendations
             </Text>
           </View>
           <View style={styles.featureItem}>
-            <Icon name="insights" size={20} color="#8B5CF6" />
+            <Icon name="stats-chart-outline" size={20} color="#8B5CF6" />
             <Text style={styles.featureText}>
               Predictive insights for better meal planning
             </Text>
           </View>
           <View style={styles.featureItem}>
-            <Icon name="security" size={20} color="#F59E0B" />
+            <Icon name="shield-outline" size={20} color="#F59E0B" />
             <Text style={styles.featureText}>
               Privacy-first AI that keeps your data secure
             </Text>
@@ -170,7 +170,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       </View>
 
       <View style={styles.betaNotice}>
-        <Icon name="science" size={24} color="#F59E0B" />
+        <Icon name="beaker-outline" size={24} color="#F59E0B" />
         <View style={styles.betaContent}>
           <Text style={styles.betaTitle}>Beta Technology</Text>
           <Text style={styles.betaText}>
