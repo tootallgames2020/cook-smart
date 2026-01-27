@@ -13,12 +13,12 @@ CREATE TABLE IF NOT EXISTS ingredient_usage_log (
   quantity_used DECIMAL(10,2) NOT NULL,
   unit_used VARCHAR(50) NOT NULL,
   conversion_details JSONB,
-  used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Indexes for performance
-  INDEX(user_id, used_at DESC),
-  INDEX(ingredient_name, used_at DESC)
+  used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for ingredient_usage_log
+CREATE INDEX IF NOT EXISTS idx_ingredient_usage_log_user_id ON ingredient_usage_log(user_id, used_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ingredient_usage_log_ingredient ON ingredient_usage_log(ingredient_name, used_at DESC);
 
 -- Create user ingredients history table
 CREATE TABLE IF NOT EXISTS user_ingredients_history (
@@ -29,12 +29,12 @@ CREATE TABLE IF NOT EXISTS user_ingredients_history (
   unit VARCHAR(50) NOT NULL,
   expiration_date DATE,
   storage_type VARCHAR(50),
-  added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Indexes for performance
-  INDEX(user_id, added_at DESC),
-  INDEX(ingredient_name, added_at DESC)
+  added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for user_ingredients_history
+CREATE INDEX IF NOT EXISTS idx_user_ingredients_history_user_id ON user_ingredients_history(user_id, added_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_ingredients_history_ingredient ON user_ingredients_history(ingredient_name, added_at DESC);
 
 -- Create photo analysis log table
 CREATE TABLE IF NOT EXISTS photo_analysis_log (
@@ -44,12 +44,12 @@ CREATE TABLE IF NOT EXISTS photo_analysis_log (
   confidence DECIMAL(3,2),
   processing_time_ms INTEGER,
   results JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Indexes for performance
-  INDEX(user_id, created_at DESC),
-  INDEX(analysis_type, created_at DESC)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for photo_analysis_log
+CREATE INDEX IF NOT EXISTS idx_photo_analysis_log_user_id ON photo_analysis_log(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_photo_analysis_log_type ON photo_analysis_log(analysis_type, created_at DESC);
 
 -- Create meal plans table
 CREATE TABLE IF NOT EXISTS meal_plans (
@@ -65,13 +65,13 @@ CREATE TABLE IF NOT EXISTS meal_plans (
   cost_estimate DECIMAL(10,2),
   preparation_tips JSONB,
   generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  ai_confidence DECIMAL(3,2),
-  
-  -- Indexes for performance
-  INDEX(user_id, generated_at DESC),
-  INDEX(family_id, generated_at DESC),
-  INDEX(plan_id)
+  ai_confidence DECIMAL(3,2)
 );
+
+-- Create indexes for meal_plans
+CREATE INDEX IF NOT EXISTS idx_meal_plans_user_id ON meal_plans(user_id, generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_meal_plans_family_id ON meal_plans(family_id, generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_meal_plans_plan_id ON meal_plans(plan_id);
 
 -- Create meal plan meals table
 CREATE TABLE IF NOT EXISTS meal_plan_meals (
@@ -91,13 +91,13 @@ CREATE TABLE IF NOT EXISTS meal_plan_meals (
   nutrition JSONB,
   ai_reasoning TEXT,
   confidence DECIMAL(3,2),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Indexes for performance
-  INDEX(plan_id, meal_date),
-  INDEX(user_id, meal_date DESC),
-  INDEX(meal_type)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for meal_plan_meals
+CREATE INDEX IF NOT EXISTS idx_meal_plan_meals_plan_id ON meal_plan_meals(plan_id, meal_date);
+CREATE INDEX IF NOT EXISTS idx_meal_plan_meals_user_id ON meal_plan_meals(user_id, meal_date DESC);
+CREATE INDEX IF NOT EXISTS idx_meal_plan_meals_type ON meal_plan_meals(meal_type);
 
 -- Create meal plan shopping items table
 CREATE TABLE IF NOT EXISTS meal_plan_shopping_items (
@@ -111,13 +111,13 @@ CREATE TABLE IF NOT EXISTS meal_plan_shopping_items (
   category VARCHAR(50),
   priority VARCHAR(20) CHECK (priority IN ('high', 'medium', 'low')),
   used_in_meals JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Indexes for performance
-  INDEX(plan_id),
-  INDEX(user_id, created_at DESC),
-  INDEX(category, priority)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for meal_plan_shopping_items
+CREATE INDEX IF NOT EXISTS idx_meal_plan_shopping_items_plan_id ON meal_plan_shopping_items(plan_id);
+CREATE INDEX IF NOT EXISTS idx_meal_plan_shopping_items_user_id ON meal_plan_shopping_items(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_meal_plan_shopping_items_category ON meal_plan_shopping_items(category, priority);
 
 -- Create family activity log table
 CREATE TABLE IF NOT EXISTS family_activity_log (
@@ -126,13 +126,13 @@ CREATE TABLE IF NOT EXISTS family_activity_log (
   member_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   activity_type VARCHAR(50) NOT NULL,
   activity_data JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Indexes for performance
-  INDEX(family_id, created_at DESC),
-  INDEX(member_id, created_at DESC),
-  INDEX(activity_type, created_at DESC)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for family_activity_log
+CREATE INDEX IF NOT EXISTS idx_family_activity_log_family_id ON family_activity_log(family_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_family_activity_log_member_id ON family_activity_log(member_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_family_activity_log_type ON family_activity_log(activity_type, created_at DESC);
 
 -- Add foreign key constraints
 ALTER TABLE meal_plan_meals 
@@ -154,7 +154,7 @@ COMMENT ON TABLE family_activity_log IS 'Family member activities for coordinati
 
 -- Create trigger to log ingredient usage when ingredients are updated
 CREATE OR REPLACE FUNCTION log_ingredient_usage()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
   -- Only log when quantity decreases (usage)
   IF OLD.quantity > NEW.quantity THEN
@@ -175,7 +175,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- Create trigger on user_ingredients table
 CREATE TRIGGER trigger_log_ingredient_usage
@@ -185,7 +185,7 @@ CREATE TRIGGER trigger_log_ingredient_usage
 
 -- Create trigger to log ingredient additions to history
 CREATE OR REPLACE FUNCTION log_ingredient_addition()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO user_ingredients_history (
     user_id,
@@ -207,7 +207,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- Create trigger on user_ingredients table for additions
 CREATE TRIGGER trigger_log_ingredient_addition
