@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../contexts/AuthContext';
 import { aiPreferencesService } from '../services/aiPreferencesService';
@@ -23,6 +24,7 @@ interface AIFeature {
 
 const AISettingsScreen: React.FC = () => {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<any>({});
@@ -202,6 +204,67 @@ const AISettingsScreen: React.FC = () => {
       })
     ),
 
+    React.createElement(View, { style: styles.aiScreensSection },
+      React.createElement(Text, { style: styles.sectionTitle }, "Explore AI Features"),
+      React.createElement(Text, { style: styles.sectionSubtitle }, "Test and explore individual AI capabilities"),
+      
+      React.createElement(View, { style: styles.aiScreensGrid },
+        React.createElement(TouchableOpacity, {
+          style: styles.aiScreenCard,
+          onPress: () => (navigation as any).navigate('ApexIntelligence')
+        },
+          React.createElement(Icon, { name: "psychology", size: 32, color: "#9333EA" }),
+          React.createElement(Text, { style: styles.aiScreenTitle }, "Apex Intelligence"),
+          React.createElement(Text, { style: styles.aiScreenDescription }, "Advanced AI capabilities")
+        ),
+
+        React.createElement(TouchableOpacity, {
+          style: styles.aiScreenCard,
+          onPress: () => (navigation as any).navigate('MaintenanceBot')
+        },
+          React.createElement(Icon, { name: "smart-toy", size: 32, color: "#10B981" }),
+          React.createElement(Text, { style: styles.aiScreenTitle }, "Maintenance Bot"),
+          React.createElement(Text, { style: styles.aiScreenDescription }, "System monitoring & health")
+        ),
+
+        React.createElement(TouchableOpacity, {
+          style: styles.aiScreenCard,
+          onPress: () => (navigation as any).navigate('PredictiveAnalytics')
+        },
+          React.createElement(Icon, { name: "analytics", size: 32, color: "#F59E0B" }),
+          React.createElement(Text, { style: styles.aiScreenTitle }, "Predictive Analytics"),
+          React.createElement(Text, { style: styles.aiScreenDescription }, "Smart predictions & insights")
+        ),
+
+        React.createElement(TouchableOpacity, {
+          style: styles.aiScreenCard,
+          onPress: () => (navigation as any).navigate('AIMealPlanning')
+        },
+          React.createElement(Icon, { name: "restaurant-menu", size: 32, color: "#3B82F6" }),
+          React.createElement(Text, { style: styles.aiScreenTitle }, "AI Meal Planning"),
+          React.createElement(Text, { style: styles.aiScreenDescription }, "Automated meal plans")
+        ),
+
+        React.createElement(TouchableOpacity, {
+          style: styles.aiScreenCard,
+          onPress: () => (navigation as any).navigate('VoiceDemo')
+        },
+          React.createElement(Icon, { name: "mic", size: 32, color: "#EC4899" }),
+          React.createElement(Text, { style: styles.aiScreenTitle }, "Voice Demo"),
+          React.createElement(Text, { style: styles.aiScreenDescription }, "Test voice commands")
+        ),
+
+        React.createElement(TouchableOpacity, {
+          style: styles.aiScreenCard,
+          onPress: () => (navigation as any).navigate('FamilyManagement')
+        },
+          React.createElement(Icon, { name: "people", size: 32, color: "#8B5CF6" }),
+          React.createElement(Text, { style: styles.aiScreenTitle }, "Family Management"),
+          React.createElement(Text, { style: styles.aiScreenDescription }, "Coordinate with family")
+        )
+      )
+    ),
+
     React.createElement(View, { style: styles.footer },
       React.createElement(Text, { style: styles.footerText }, "🎉 All AI features are included FREE in your Cook Smart subscription!"),
       React.createElement(TouchableOpacity, {
@@ -372,6 +435,59 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 14,
+  },
+  aiScreensSection: {
+    margin: 15,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  aiScreensGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  aiScreenCard: {
+    width: '48%',
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    minHeight: 100,
+  },
+  aiScreenTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginTop: 8,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  aiScreenDescription: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
 

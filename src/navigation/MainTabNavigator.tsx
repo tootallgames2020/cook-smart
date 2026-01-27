@@ -35,6 +35,14 @@ import CommunityFeedScreen from '../screens/CommunityFeedScreen';
 import TrendingRecipesScreen from '../screens/TrendingRecipesScreen';
 import StepByStepCookingScreen from '../screens/StepByStepCookingScreen';
 import AISettingsScreen from '../screens/AISettingsScreen';
+import AIMealPlanningScreen from '../screens/AIMealPlanningScreen';
+import PredictiveAnalyticsScreen from '../screens/PredictiveAnalyticsScreen';
+import MaintenanceBotScreen from '../screens/MaintenanceBotScreen';
+import ApexIntelligenceScreen from '../screens/ApexIntelligenceScreen';
+import VoiceDemoScreen from '../screens/VoiceDemoScreen';
+import FamilyManagementScreen from '../screens/FamilyManagementScreen';
+// import PreservationSystemScreen from '../screens/PreservationSystemScreen';
+import SeasonalRecipesScreen from '../screens/SeasonalRecipesScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -104,6 +112,13 @@ const AccountStack = () => (
       component={DietaryPreferencesScreen}
     />
     <Stack.Screen name="AISettings" component={AISettingsScreen} />
+    <Stack.Screen name="AIMealPlanning" component={AIMealPlanningScreen} />
+    <Stack.Screen name="PredictiveAnalytics" component={PredictiveAnalyticsScreen} />
+    <Stack.Screen name="MaintenanceBot" component={MaintenanceBotScreen} />
+    <Stack.Screen name="ApexIntelligence" component={ApexIntelligenceScreen} />
+    <Stack.Screen name="VoiceDemo" component={VoiceDemoScreen} />
+    <Stack.Screen name="FamilyManagement" component={FamilyManagementScreen} />
+    {/* <Stack.Screen name="PreservationSystem" component={PreservationSystemScreen} /> */}
     <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} />
     <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
     <Stack.Screen name="DataPolicy" component={DataPolicyScreen} />
