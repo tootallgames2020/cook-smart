@@ -101,9 +101,15 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
 
   const openAppSettings = () => {
     if (Platform.OS === 'android') {
-      Linking.openSettings();
+      // Try to open app-specific settings page where user can manage permissions
+      const packageName = 'com.cooksmartfresh';
+      Linking.openURL(`android-app://com.android.settings/apps/detail/${packageName}`)
+        .catch(() => {
+          // Fallback to general app settings
+          Linking.openSettings();
+        });
     } else {
-      // iOS
+      // iOS - open app-specific settings
       Linking.openURL('app-settings:');
     }
   };
