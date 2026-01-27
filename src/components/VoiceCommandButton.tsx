@@ -9,6 +9,7 @@ import {
   PermissionsAndroid,
   Platform,
   Linking,
+  NativeModules,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -101,12 +102,26 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
 
   const openAppSettings = () => {
     if (Platform.OS === 'android') {
-      // Try to open app-specific settings page where user can manage permissions
+      // Try multiple methods to open app settings
       const packageName = 'com.cooksmartfresh';
-      Linking.openURL(`android-app://com.android.settings/apps/detail/${packageName}`)
+      
+      // Method 1: Try the standard settings URL
+      Linking.openURL(`android-app://com.android.settings/apps/detail?id=${packageName}`)
         .catch(() => {
-          // Fallback to general app settings
-          Linking.openSettings();
+          // Method 2: Try the intent URL format
+          Linking.openURL(`intent://settings/application_details_settings?package=${packageName}#Intent;scheme=android-app;end`)
+            .catch(() => {
+              // Method 3: Fallback to general settings
+              Linking.openSettings()
+                .catch(() => {
+                  // Method 4: Final fallback - show alert
+                  Alert.alert(
+                    'Settings',
+                    'Please go to Settings > Apps > Cook Smart > Permissions to enable microphone access.',
+                    [{ text: 'OK' }]
+                  );
+                });
+            });
         });
     } else {
       // iOS - open app-specific settings
