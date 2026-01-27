@@ -218,7 +218,7 @@ const AISettingsScreen: React.FC = () => {
           React.createElement(Text, { style: styles.familyManagementTitle }, "Manage Family"),
           React.createElement(Text, { style: styles.familyManagementDescription }, "Create or join a family, invite members, and coordinate shopping")
         ),
-        React.createElement(Icon, { name: "chevron-forward", size: 20, color: "#666" })
+        React.createElement(Icon, { name: "chevron-right", size: 20, color: "#666" })
       )
     ),
 

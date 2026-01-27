@@ -219,7 +219,7 @@ export const FamilyManagementScreen: React.FC = () => {
     return (
       <ScrollView style={styles.container}>
         <View style={styles.noFamilyContainer}>
-          <Icon name="people-outline" size={80} color="#E0E0E0" />
+          <Icon name="people" size={80} color="#E0E0E0" />
           <Text style={styles.noFamilyTitle}>No Family Yet</Text>
           <Text style={styles.noFamilySubtitle}>
             Create a family or join an existing one to start coordinating meals and shopping together.
@@ -238,7 +238,7 @@ export const FamilyManagementScreen: React.FC = () => {
               style={[styles.actionButton, styles.joinButton]}
               onPress={() => setJoinModalVisible(true)}
             >
-              <Icon name="person-add" size={24} color="white" />
+              <Icon name="group-add" size={24} color="white" />
               <Text style={styles.actionButtonText}>Join Family</Text>
             </TouchableOpacity>
           </View>
@@ -336,7 +336,7 @@ export const FamilyManagementScreen: React.FC = () => {
           style={styles.inviteButton}
           onPress={shareInviteCode}
         >
-          <Icon name="person-add" size={20} color="#4ECDC4" />
+          <Icon name="group-add" size={20} color="#4ECDC4" />
         </TouchableOpacity>
       </View>
 
@@ -389,7 +389,7 @@ export const FamilyManagementScreen: React.FC = () => {
                   style={styles.actionIcon}
                   onPress={() => removeMember(member.id, member.name)}
                 >
-                  <Icon name="remove-circle" size={20} color="#FF6B6B" />
+                  <Icon name="cancel" size={20} color="#FF6B6B" />
                 </TouchableOpacity>
               </View>
             )}
@@ -407,7 +407,7 @@ export const FamilyManagementScreen: React.FC = () => {
             <Text style={styles.actionTitle}>Invite Members</Text>
             <Text style={styles.actionSubtitle}>Share invite code with family</Text>
           </View>
-          <Icon name="chevron-forward" size={20} color="#666" />
+          <Icon name="chevron-right" size={20} color="#666" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionCard} onPress={leaveFamily}>
@@ -416,7 +416,7 @@ export const FamilyManagementScreen: React.FC = () => {
             <Text style={[styles.actionTitle, { color: '#FF6B6B' }]}>Leave Family</Text>
             <Text style={styles.actionSubtitle}>Remove yourself from this family</Text>
           </View>
-          <Icon name="chevron-forward" size={20} color="#666" />
+          <Icon name="chevron-right" size={20} color="#666" />
         </TouchableOpacity>
       </View>
 
