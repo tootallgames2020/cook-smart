@@ -39,8 +39,8 @@ export const RecipeMatchFeedback: React.FC<Props> = ({
   const [actualSuccess, setActualSuccess] = useState<boolean | null>(null);
   const [userRating, setUserRating] = useState<number>(0);
   const [cookingOutcome, setCookingOutcome] = useState<string>('');
-  const [missingIngredients, setMissingIngredients] = useState<string[]>([]);
-  const [substitutionsMade, setSubstitutionsMade] = useState<string[]>([]);
+  const [_missingIngredients, _setMissingIngredients] = useState<string[]>([]);
+  const [_substitutionsMade, _setSubstitutionsMade] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<number>(5);
   const [submitting, setSubmitting] = useState<boolean>(false);
 

@@ -1,5 +1,5 @@
 ---
-inclusion: always
+inclusion: manual
 ---
 
 # Deployment Lessons Learned - Dec 23, 2025

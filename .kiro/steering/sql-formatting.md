@@ -7,7 +7,7 @@ tags:
   - database
   - formatting
   - queries
-inclusion: always
+inclusion: manual
 sha: 3310ea1d67ea7f46504c6db113dda35f7e14a065
 ---
 

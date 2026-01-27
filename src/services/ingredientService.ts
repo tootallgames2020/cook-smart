@@ -39,7 +39,10 @@ export interface GetIngredientsResponse {
 class IngredientService {
   private async getAuthToken(): Promise<string> {
     const token = await AsyncStorage.getItem('auth_token');
+    console.log('[IngredientService] Retrieved token from storage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN FOUND');
+    
     if (!token) {
+      console.error('[IngredientService] No auth token found in AsyncStorage');
       throw new Error('Authorization required. Please log in again.');
     }
     return token;
@@ -52,6 +55,7 @@ class IngredientService {
       '📤 Fetching ingredients with token:',
       token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
     );
+    console.log('📤 API URL:', `${API_BASE_URL}/api/v1/ingredients`);
 
     const response = await fetch(`${API_BASE_URL}/api/v1/ingredients`, {
       method: 'GET',
@@ -61,10 +65,14 @@ class IngredientService {
       },
     });
 
+    console.log('📥 Response status:', response.status);
+    
     const data = await response.json();
+    console.log('📥 Response data:', data);
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
+        console.error('🚨 Authentication failed - token may be invalid or expired');
         throw new Error('Session expired. Please log in again.');
       }
       throw new Error(data.error || 'Failed to fetch ingredients');

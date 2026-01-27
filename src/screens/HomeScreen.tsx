@@ -13,7 +13,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import {useAuth} from '../contexts/AuthContext';
 import {FeedbackModal} from '../components/FeedbackModal';
 import VoiceCommandButton from '../components/VoiceCommandButton';
-import feedbackService from '../services/feedbackService';
+import { feedbackService } from '../services/feedbackService';
 import voiceService from '../services/voiceService';
 
 const HomeScreen: React.FC = () => {
@@ -41,8 +41,12 @@ const HomeScreen: React.FC = () => {
         Alert.alert('Voice Command', response.response_text);
         
         // Handle specific actions based on the response
-        if (response.action_taken) {
-          switch (response.action_taken) {
+        const actionTaken = 'action_taken' in response ? response.action_taken : 
+                           'actions_taken' in response && response.actions_taken && response.actions_taken.length > 0 ? 
+                           response.actions_taken[0].action_type : null;
+        
+        if (actionTaken) {
+          switch (actionTaken) {
             case 'navigate_ingredients':
               navigation.navigate('Ingredients' as never);
               break;

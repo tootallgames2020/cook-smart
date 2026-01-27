@@ -423,6 +423,40 @@ class FeedbackService {
       confidenceScore: confidence,
     });
   }
+
+  // Legacy compatibility methods for existing screens
+
+  /**
+   * Legacy method for general feedback (compatibility)
+   */
+  async submitGeneralFeedback(feedback: any): Promise<{ success: boolean; message: string; pointsAwarded?: number }> {
+    // Convert legacy format to new format
+    const legacyFeedback = feedback as {
+      message: string;
+      rating?: number;
+      category?: string;
+    };
+
+    return this.submitFeedback({
+      feedbackType: 'general_feedback',
+      featureArea: legacyFeedback.category || 'general',
+      originalData: {},
+      correctedData: {
+        message: legacyFeedback.message,
+        rating: legacyFeedback.rating,
+      },
+      confidenceScore: 1.0,
+    });
+  }
+
+  /**
+   * Legacy method to get user feedback (compatibility)
+   */
+  async getMyFeedback(): Promise<any[]> {
+    const result = await this.getUserFeedbackHistory(50, 0);
+    return result?.feedback || [];
+  }
 }
 
 export const feedbackService = new FeedbackService();
+export default feedbackService;

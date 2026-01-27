@@ -16,7 +16,16 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { feedbackService, FeedbackSubmission } from '../../services/feedbackService';
+import { feedbackService } from '../../services/feedbackService';
+
+interface _FeedbackSubmission {
+  feedbackType: string;
+  featureArea: string;
+  originalData: any;
+  correctedData: any;
+  contextData?: any;
+  confidenceScore?: number;
+}
 
 interface Props {
   visible: boolean;

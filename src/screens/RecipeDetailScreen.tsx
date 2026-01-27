@@ -28,8 +28,8 @@ const RecipeDetailScreen: React.FC = () => {
   const [servings, setServings] = useState(4);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userRestrictions, setUserRestrictions] = useState<DietaryRestriction[]>([]);
-  const [userAllergies, setUserAllergies] = useState<Allergy[]>([]);
+  const [_userRestrictions, _setUserRestrictions] = useState<DietaryRestriction[]>([]);
+  const [_userAllergies, _setUserAllergies] = useState<Allergy[]>([]);
   const [conflictingIngredients, setConflictingIngredients] = useState<string[]>([]);
   const [substitutions, setSubstitutions] = useState<Array<{ original: string; substitutes: Array<{ ingredient: string; ratio: string; notes?: string }> }>>([]);
 
@@ -64,8 +64,8 @@ const RecipeDetailScreen: React.FC = () => {
               dietaryService.getUserRestrictions(user.id),
               dietaryService.getUserAllergies(user.id),
             ]);
-            setUserRestrictions(restrictions);
-            setUserAllergies(allergies);
+            _setUserRestrictions(restrictions);
+            _setUserAllergies(allergies);
 
             // Detect conflicting ingredients
             const conflicts = detectConflicts(recipeDetails.ingredients, restrictions, allergies);
@@ -159,8 +159,8 @@ const RecipeDetailScreen: React.FC = () => {
           console.log('Share tracking failed:', trackError);
         }
       }
-    } catch (error) {
-      console.error('Error sharing recipe:', error);
+    } catch (shareError) {
+      console.error('Error sharing recipe:', shareError);
       Alert.alert('Share Failed', 'Unable to share this recipe. Please try again.');
     }
   };
@@ -282,10 +282,10 @@ const RecipeDetailScreen: React.FC = () => {
   // Generate substitutions for conflicting ingredients
   const generateSubstitutions = (
     conflicts: string[],
-    restrictions: DietaryRestriction[],
-    allergies: Allergy[]
+    _restrictions: DietaryRestriction[],
+    _allergies: Allergy[]
   ): Array<{ original: string; substitutes: Array<{ ingredient: string; ratio: string; notes?: string }> }> => {
-    const substitutions: Array<{ original: string; substitutes: Array<{ ingredient: string; ratio: string; notes?: string }> }> = [];
+    const recipeSubstitutions: Array<{ original: string; substitutes: Array<{ ingredient: string; ratio: string; notes?: string }> }> = [];
 
     // Common substitution mappings
     const substitutionMap: { [key: string]: Array<{ ingredient: string; ratio: string; notes?: string }> } = {
@@ -351,7 +351,7 @@ const RecipeDetailScreen: React.FC = () => {
       Object.keys(substitutionMap).forEach(key => {
         if (conflictLower.includes(key)) {
           console.log('[Substitutions] Found match for key:', key, 'in conflict:', conflict);
-          substitutions.push({
+          recipeSubstitutions.push({
             original: conflict,
             substitutes: substitutionMap[key],
           });
@@ -359,8 +359,8 @@ const RecipeDetailScreen: React.FC = () => {
       });
     });
 
-    console.log('[Substitutions] Generated substitutions:', substitutions);
-    return substitutions;
+    console.log('[Substitutions] Generated substitutions:', recipeSubstitutions);
+    return recipeSubstitutions;
   };
 
   const handleCookedThis = async () => {
@@ -520,7 +520,7 @@ const RecipeDetailScreen: React.FC = () => {
   }
 
   const headerRecipe = getRecipeForHeader();
-  const ingredientsWithStatus = getIngredientsWithStatus();
+  const _ingredientsWithStatus = getIngredientsWithStatus();
   const instructionsArray = getInstructionsArray();
 
   return (

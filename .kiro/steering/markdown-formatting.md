@@ -7,7 +7,7 @@ tags:
   - quality
   - linting
   - formatting
-inclusion: always
+inclusion: manual
 sha: 8187d70666d7521c373e4abd3affab446569f3c7
 ---
 

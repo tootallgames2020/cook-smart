@@ -9,7 +9,7 @@ import {
   Linking,
 } from 'react-native';
 import {FeedbackModal} from '../components/FeedbackModal';
-import feedbackService from '../services/feedbackService';
+import { feedbackService } from '../services/feedbackService';
 
 interface FeedbackData {
   message: string;
@@ -44,7 +44,7 @@ export const BetaFeedbackScreen: React.FC = () => {
 
   const handleSubmitFeedback = async (feedback: FeedbackData) => {
     try {
-      await feedbackService.submitFeedback(feedback);
+      await feedbackService.submitGeneralFeedback(feedback);
       Alert.alert(
         'Thank You! 🎉',
         'Your feedback helps us improve Cook Smart. We appreciate your input during the BETA phase!',

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import VoiceCommandButton from '../components/VoiceCommandButton';
 import voiceService from '../services/voiceService';
 
@@ -42,7 +42,7 @@ export const VoiceDemoScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="mic" size={48} color="#4ECDC4" />
+        <Icon name="mic" size={48} color="#4ECDC4" />
         <Text style={styles.title}>Voice Commands Demo</Text>
         <Text style={styles.subtitle}>
           Try speaking or tap the quick commands below
@@ -95,7 +95,7 @@ export const VoiceDemoScreen: React.FC = () => {
               <Text style={styles.quickCommandLabel}>{cmd.label}</Text>
               <Text style={styles.quickCommandText}>"{cmd.command}"</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+            <Icon name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
         ))}
       </View>
@@ -105,7 +105,7 @@ export const VoiceDemoScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>Voice Command Tips</Text>
         
         <View style={styles.tipCard}>
-          <Ionicons name="bulb-outline" size={24} color="#F59E0B" />
+          <Icon name="bulb-outline" size={24} color="#F59E0B" />
           <View style={styles.tipContent}>
             <Text style={styles.tipTitle}>Speak Naturally</Text>
             <Text style={styles.tipText}>
@@ -115,7 +115,7 @@ export const VoiceDemoScreen: React.FC = () => {
         </View>
 
         <View style={styles.tipCard}>
-          <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" />
+          <Icon name="shield-checkmark-outline" size={24} color="#10B981" />
           <View style={styles.tipContent}>
             <Text style={styles.tipTitle}>Privacy First</Text>
             <Text style={styles.tipText}>
@@ -125,7 +125,7 @@ export const VoiceDemoScreen: React.FC = () => {
         </View>
 
         <View style={styles.tipCard}>
-          <Ionicons name="settings-outline" size={24} color="#6366F1" />
+          <Icon name="settings-outline" size={24} color="#6366F1" />
           <View style={styles.tipContent}>
             <Text style={styles.tipTitle}>Customize Settings</Text>
             <Text style={styles.tipText}>
@@ -135,7 +135,7 @@ export const VoiceDemoScreen: React.FC = () => {
         </View>
 
         <View style={styles.tipCard}>
-          <Ionicons name="hand-left-outline" size={24} color="#EC4899" />
+          <Icon name="hand-left-outline" size={24} color="#EC4899" />
           <View style={styles.tipContent}>
             <Text style={styles.tipTitle}>Hands-Free Cooking</Text>
             <Text style={styles.tipText}>
@@ -151,7 +151,7 @@ export const VoiceDemoScreen: React.FC = () => {
         
         <View style={styles.featureGrid}>
           <View style={styles.featureCard}>
-            <Ionicons name="restaurant-outline" size={32} color="#FF6B6B" />
+            <Icon name="restaurant-outline" size={32} color="#FF6B6B" />
             <Text style={styles.featureTitle}>Ingredient Management</Text>
             <Text style={styles.featureText}>
               "I used 2 cups flour" updates your inventory
@@ -159,7 +159,7 @@ export const VoiceDemoScreen: React.FC = () => {
           </View>
 
           <View style={styles.featureCard}>
-            <Ionicons name="list-outline" size={32} color="#4ECDC4" />
+            <Icon name="list-outline" size={32} color="#4ECDC4" />
             <Text style={styles.featureTitle}>Shopping Lists</Text>
             <Text style={styles.featureText}>
               "Add milk to shopping list" instantly adds items
@@ -167,7 +167,7 @@ export const VoiceDemoScreen: React.FC = () => {
           </View>
 
           <View style={styles.featureCard}>
-            <Ionicons name="search-outline" size={32} color="#45B7D1" />
+            <Icon name="search-outline" size={32} color="#45B7D1" />
             <Text style={styles.featureTitle}>Recipe Search</Text>
             <Text style={styles.featureText}>
               "Find chicken recipes" searches your preferences
@@ -175,7 +175,7 @@ export const VoiceDemoScreen: React.FC = () => {
           </View>
 
           <View style={styles.featureCard}>
-            <Ionicons name="timer-outline" size={32} color="#F59E0B" />
+            <Icon name="timer-outline" size={32} color="#F59E0B" />
             <Text style={styles.featureTitle}>Kitchen Timers</Text>
             <Text style={styles.featureText}>
               "Set timer for 15 minutes" manages cooking times

@@ -7,7 +7,7 @@ tags:
   - formatting
   - code-generation
   - data
-inclusion: always
+inclusion: manual
 sha: 5d06f2bf65fe056ef043f3008c45bc61ce8ec978
 ---
 

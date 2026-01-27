@@ -44,7 +44,7 @@ export const IngredientInventoryScreen: React.FC = () => {
   const [editUnit, setEditUnit] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [categories, setCategories] = useState<Array<{id: string; name: string; icon: string}>>([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, _setLoading] = useState(false);
 
   useEffect(() => {
     fetchIngredients();
@@ -55,8 +55,8 @@ export const IngredientInventoryScreen: React.FC = () => {
     try {
       const result = await ingredientService.getCategories();
       setCategories(result);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
+    } catch (fetchError) {
+      console.error('Error fetching categories:', fetchError);
     }
   };
 
@@ -89,7 +89,7 @@ export const IngredientInventoryScreen: React.FC = () => {
 
   const handleFixCategories = async () => {
     try {
-      setLoading(true);
+      _setLoading(true);
       const result = await ingredientService.fixUncategorizedIngredients();
       
       // Check if any items were actually fixed
@@ -111,7 +111,7 @@ export const IngredientInventoryScreen: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fix categories. Please try again.';
       Alert.alert('Error', errorMessage);
     } finally {
-      setLoading(false);
+      _setLoading(false);
     }
   };
 

@@ -6,7 +6,7 @@ tags:
   - javascript
   - formatting
   - code-generation
-inclusion: always
+inclusion: manual
 sha: e331b5dfcda3335592ce5142220bbba010a31d9b
 ---
 

@@ -76,6 +76,12 @@ class AuthService {
       await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
 
       console.log('[AuthService] Login successful');
+      console.log('[AuthService] Token stored:', data.token ? `${data.token.substring(0, 20)}...` : 'NO TOKEN');
+      
+      // Verify token was stored correctly
+      const storedToken = await AsyncStorage.getItem('auth_token');
+      console.log('[AuthService] Token verification:', storedToken ? `${storedToken.substring(0, 20)}...` : 'STORAGE FAILED');
+      
       return data;
     } catch (error) {
       console.error('[AuthService] Login error:', error);
@@ -159,6 +165,10 @@ class AuthService {
     return storedToken;
   }
 
+  async getAuthToken(): Promise<string | null> {
+    return this.getStoredToken();
+  }
+
   async getStoredUser(): Promise<User | null> {
     const userData = await AsyncStorage.getItem('user_data');
     return userData ? JSON.parse(userData) : null;
@@ -190,3 +200,9 @@ class AuthService {
 }
 
 export default new AuthService();
+
+// Export getAuthToken as a named export for convenience
+export const getAuthToken = async (): Promise<string | null> => {
+  const authService = new AuthService();
+  return authService.getAuthToken();
+};
