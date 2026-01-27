@@ -714,7 +714,7 @@ export class AutoMealPlanningService {
 
       // Save main meal plan
       await client.query(`
-        INSERT INTO meal_plans 
+        INSERT INTO ai_meal_plans 
         (plan_id, user_id, family_id, plan_name, start_date, end_date, total_days, 
          nutrition_summary, cost_estimate, preparation_tips, generated_at, ai_confidence)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -810,7 +810,7 @@ export class AutoMealPlanningService {
         SELECT 
           plan_id, user_id, family_id, plan_name, start_date, end_date, total_days,
           nutrition_summary, cost_estimate, preparation_tips, generated_at, ai_confidence
-        FROM meal_plans
+        FROM ai_meal_plans
         WHERE user_id = $1
         ORDER BY generated_at DESC
         LIMIT $2
