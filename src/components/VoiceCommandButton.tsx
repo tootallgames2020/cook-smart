@@ -108,7 +108,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
           // If that fails, show manual instructions
           Alert.alert(
             'Open Settings',
-            'Please go to:\nSettings > Apps > Cook Smart > Permissions > Microphone\n\nThen enable microphone access.',
+            'To enable microphone for voice commands:\n\n1. Go to Settings > Apps > Cook Smart > Permissions\n2. Enable Microphone permission\n\nNote: Microphone will only appear after the app requests it. Try using the voice feature first.',
             [{ text: 'OK' }]
           );
         });
@@ -125,7 +125,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
       if (!permissionGranted) {
         Alert.alert(
           'Microphone Permission Required',
-          'Please enable microphone access in settings to use voice commands.',
+          'To enable voice commands:\n\n1. Tap "Allow" when the app asks for microphone access\n2. If you previously denied it, go to Settings > Apps > Cook Smart > Permissions and enable Microphone\n\nNote: The microphone permission will only appear in settings after the app requests it.',
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Settings', onPress: openAppSettings },
