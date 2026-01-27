@@ -43,6 +43,17 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
   const checkMicrophonePermission = async () => {
     if (Platform.OS === 'android') {
       try {
+        // First check if we already have permission
+        const hasPermission = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+        );
+        
+        if (hasPermission) {
+          setHasPermission(true);
+          return true;
+        }
+
+        // If we don't have permission, request it
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
           {
@@ -53,9 +64,10 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
             buttonPositive: 'OK',
           }
         );
-        const hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
-        setHasPermission(hasPermission);
-        return hasPermission;
+        
+        const permissionGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+        setHasPermission(permissionGranted);
+        return permissionGranted;
       } catch (err) {
         console.warn('Permission request error:', err);
         setHasPermission(false);
@@ -119,20 +131,18 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
   };
 
   const handleVoicePress = async () => {
-    // First, try to get permission if we don't have it
-    if (!hasPermission) {
-      const permissionGranted = await checkMicrophonePermission();
-      if (!permissionGranted) {
-        Alert.alert(
-          'Microphone Permission Required',
-          'To enable voice commands:\n\n1. Tap "Allow" when the app asks for microphone access\n2. If you previously denied it, go to Settings > Apps > Cook Smart > Permissions and enable Microphone\n\nNote: The microphone permission will only appear in settings after the app requests it.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Settings', onPress: openAppSettings },
-          ]
-        );
-        return;
-      }
+    // Always check/request permission when user taps the button
+    const permissionGranted = await checkMicrophonePermission();
+    if (!permissionGranted) {
+      Alert.alert(
+        'Microphone Permission Required',
+        'To enable voice commands:\n\n1. Tap "Allow" when the app asks for microphone access\n2. If you previously denied it, go to Settings > Apps > Cook Smart > Permissions and enable Microphone\n\nNote: The microphone permission will only appear in settings after the app requests it.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Settings', onPress: openAppSettings },
+        ]
+      );
+      return;
     }
 
     try {
