@@ -102,26 +102,15 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
 
   const openAppSettings = () => {
     if (Platform.OS === 'android') {
-      // Try multiple methods to open app settings
-      const packageName = 'com.cooksmartfresh';
-      
-      // Method 1: Try the standard settings URL
-      Linking.openURL(`android-app://com.android.settings/apps/detail?id=${packageName}`)
+      // Use the most reliable method for Android
+      Linking.openSettings()
         .catch(() => {
-          // Method 2: Try the intent URL format
-          Linking.openURL(`intent://settings/application_details_settings?package=${packageName}#Intent;scheme=android-app;end`)
-            .catch(() => {
-              // Method 3: Fallback to general settings
-              Linking.openSettings()
-                .catch(() => {
-                  // Method 4: Final fallback - show alert
-                  Alert.alert(
-                    'Settings',
-                    'Please go to Settings > Apps > Cook Smart > Permissions to enable microphone access.',
-                    [{ text: 'OK' }]
-                  );
-                });
-            });
+          // If that fails, show manual instructions
+          Alert.alert(
+            'Open Settings',
+            'Please go to:\nSettings > Apps > Cook Smart > Permissions > Microphone\n\nThen enable microphone access.',
+            [{ text: 'OK' }]
+          );
         });
     } else {
       // iOS - open app-specific settings
@@ -207,7 +196,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
           activeOpacity={0.8}
         >
           <Icon
-            name={isListening ? 'mic' : 'mic-outline'}
+            name={isListening ? 'mic' : 'mic'}
             size={iconSize}
             color="white"
           />
