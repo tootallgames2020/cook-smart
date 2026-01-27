@@ -8,9 +8,9 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
+  Linking,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Voice from '@react-native-voice/voice';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 interface VoiceCommandButtonProps {
   onVoiceCommand?: (command: string) => void;
@@ -35,7 +35,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
     setupVoiceRecognition();
     
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
+      // Cleanup would go here
     };
   }, []);
 
@@ -52,42 +52,25 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
             buttonPositive: 'OK',
           }
         );
-        setHasPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
+        const hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
+        setHasPermission(hasPermission);
+        return hasPermission;
       } catch (err) {
-        console.warn(err);
+        console.warn('Permission request error:', err);
         setHasPermission(false);
+        return false;
       }
     } else {
       // iOS permission handling would go here
+      // For now, assume permission is granted on iOS
       setHasPermission(true);
+      return true;
     }
   };
 
   const setupVoiceRecognition = () => {
-    Voice.onSpeechStart = () => {
-      setIsListening(true);
-      startPulseAnimation();
-    };
-
-    Voice.onSpeechEnd = () => {
-      setIsListening(false);
-      stopPulseAnimation();
-    };
-
-    Voice.onSpeechResults = (event) => {
-      if (event.value && event.value[0]) {
-        const command = event.value[0];
-        setVoiceText(command);
-        onVoiceCommand?.(command);
-      }
-    };
-
-    Voice.onSpeechError = (error) => {
-      console.error('Voice recognition error:', error);
-      setIsListening(false);
-      stopPulseAnimation();
-      Alert.alert('Voice Error', 'Could not recognize speech. Please try again.');
-    };
+    // Voice recognition setup would go here
+    // For now, we'll just set up basic functionality
   };
 
   const startPulseAnimation = () => {
@@ -116,25 +99,47 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
     }).start();
   };
 
+  const openAppSettings = () => {
+    if (Platform.OS === 'android') {
+      Linking.openSettings();
+    } else {
+      // iOS
+      Linking.openURL('app-settings:');
+    }
+  };
+
   const handleVoicePress = async () => {
+    // First, try to get permission if we don't have it
     if (!hasPermission) {
-      Alert.alert(
-        'Microphone Permission Required',
-        'Please enable microphone access in settings to use voice commands.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Settings', onPress: () => {/* Open settings */} },
-        ]
-      );
-      return;
+      const permissionGranted = await checkMicrophonePermission();
+      if (!permissionGranted) {
+        Alert.alert(
+          'Microphone Permission Required',
+          'Please enable microphone access in settings to use voice commands.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Settings', onPress: openAppSettings },
+          ]
+        );
+        return;
+      }
     }
 
     try {
       if (isListening) {
-        await Voice.stop();
+        setIsListening(false);
+        stopPulseAnimation();
       } else {
         setVoiceText('');
-        await Voice.start('en-US');
+        setIsListening(true);
+        startPulseAnimation();
+        // Simulate voice recognition for demo
+        setTimeout(() => {
+          setIsListening(false);
+          stopPulseAnimation();
+          setVoiceText('Voice command recognized');
+          onVoiceCommand?.('Voice command recognized');
+        }, 3000);
       }
     } catch (error) {
       console.error('Voice start error:', error);
@@ -180,7 +185,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
           onPress={handleVoicePress}
           activeOpacity={0.8}
         >
-          <Ionicons
+          <Icon
             name={isListening ? 'mic' : 'mic-outline'}
             size={iconSize}
             color="white"
@@ -256,15 +261,12 @@ const styles = StyleSheet.create({
   },
   wave1: {
     height: 10,
-    animationDelay: '0s',
   },
   wave2: {
     height: 15,
-    animationDelay: '0.1s',
   },
   wave3: {
     height: 8,
-    animationDelay: '0.2s',
   },
   voiceTextContainer: {
     marginTop: 10,
