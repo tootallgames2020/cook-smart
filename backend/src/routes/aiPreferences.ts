@@ -19,9 +19,16 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
       });
     }
 
+    // Map database columns to frontend expected names
+    const mappedPreferences = {
+      ...preferences,
+      receipt_scanning: preferences.photo_analysis, // Map photo_analysis to receipt_scanning for frontend
+      apex_voice_intelligence: preferences.voice_commands, // Map voice_commands to apex_voice_intelligence
+    };
+
     return res.json({
       success: true,
-      preferences,
+      preferences: mappedPreferences,
       message: 'All AI features included free in your current plan',
     });
   } catch (error) {
@@ -30,7 +37,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res, next) => {
   }
 });
 
-// Update single AI preference
+  // Update single AI preference
 router.post('/update', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
     const { feature_name, enabled } = req.body;
@@ -42,8 +49,22 @@ router.post('/update', authenticateToken, async (req: AuthRequest, res, next) =>
       });
     }
 
-    // Create update object with the specific feature
-    const updates = { [feature_name]: enabled };
+    // Map frontend feature names to backend database columns
+    const featureMapping: { [key: string]: string } = {
+      'receipt_scanning': 'photo_analysis', // Receipt scanning is part of photo analysis
+      'voice_commands': 'voice_commands',
+      'photo_analysis': 'photo_analysis',
+      'auto_meal_planning': 'auto_meal_planning',
+      'predictive_analytics': 'predictive_analytics',
+      'family_coordination': 'family_coordination',
+      'apex_voice_intelligence': 'voice_commands', // Map to voice_commands for now
+    };
+
+    // Get the actual database column name
+    const dbColumnName = featureMapping[feature_name] || feature_name;
+
+    // Create update object with the mapped column name
+    const updates = { [dbColumnName]: enabled };
 
     const updatedPreferences = await AIPreferencesService.updateUserPreferences(
       req.user!.id,
