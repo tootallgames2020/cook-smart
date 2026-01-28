@@ -429,6 +429,30 @@ router.delete('/completed/clear', authenticateToken, async (req: AuthRequest, re
   }
 });
 
+// Alternative route for clearing completed items (matches frontend call)
+router.delete('/clear-completed', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        'DELETE FROM shopping_list_items WHERE user_id = $1 AND completed = true',
+        [req.user!.id]
+      );
+
+      return res.json({
+        success: true,
+        message: `Cleared ${result.rowCount} completed items from shopping list`,
+        itemsCleared: result.rowCount,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Clear completed items error:', error);
+    return next(createError('Failed to clear completed items', 500));
+  }
+});
+
 // Delete all shopping list items
 router.delete('/all/items', authenticateToken, async (req: AuthRequest, res, next) => {
   try {

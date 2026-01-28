@@ -552,8 +552,7 @@ router.post('/feedback', authenticateToken, async (req: AuthRequest, res: Respon
 router.post('/analyze-meal', async (req: Request, res: Response) => {
   try {
     // Temporary: Skip authentication for testing
-    const userId = 'test-user-id';
-    const { image_data, analysis_options } = req.body;
+    const { image_data } = req.body;
 
     if (!image_data) {
       res.status(400).json({
@@ -675,7 +674,7 @@ router.post('/scan-receipt', authenticateToken, async (req: AuthRequest, res: Re
 router.post('/analyze-pantry', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { image_data, analysis_options } = req.body;
+    const { image_data } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -699,7 +698,6 @@ router.post('/analyze-pantry', authenticateToken, async (req: AuthRequest, res: 
       analysis_type: 'pantry',
       context: {
         timestamp: new Date().toISOString(),
-        // analysis_options stored separately, not in context
       },
     };
 
@@ -738,8 +736,7 @@ router.post('/analyze-pantry', authenticateToken, async (req: AuthRequest, res: 
 router.post('/identify-ingredient', async (req: Request, res: Response) => {
   try {
     // Temporary: Skip authentication for testing
-    const userId = 'test-user-id';
-    const { image_data, identification_options } = req.body;
+    const { image_data } = req.body;
 
     if (!image_data) {
       res.status(400).json({
