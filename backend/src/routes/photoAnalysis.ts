@@ -8,13 +8,28 @@
  * - Enhanced barcode scanning with AI insights
  */
 
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { PhotoAnalysisService, PhotoAnalysisRequest, PhotoAnalysisResult } from '../services/PhotoAnalysisService';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import multer from 'multer';
 
 const router = Router();
+
+// Test endpoint to verify photo analysis routes are working
+router.get('/test', async (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'Photo analysis routes are working',
+    timestamp: new Date().toISOString(),
+    available_endpoints: [
+      'POST /analyze-meal',
+      'POST /scan-receipt', 
+      'POST /analyze-pantry',
+      'POST /identify-ingredient'
+    ]
+  });
+});
 
 // Configure multer for photo uploads
 const upload = multer({
