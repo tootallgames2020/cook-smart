@@ -148,7 +148,14 @@ export const PhotoAnalysisButton: React.FC<PhotoAnalysisButtonProps> = ({
       onAnalysisComplete?.(results);
     } catch (error) {
       console.error('Photo analysis error:', error);
-      Alert.alert('Analysis Failed', 'Could not analyze photo. Please try again.');
+      
+      // Show more detailed error information
+      let errorMessage = 'Could not analyze photo. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = `Analysis failed: ${error.message}`;
+      }
+      
+      Alert.alert('Analysis Failed', errorMessage);
     } finally {
       setAnalyzing(false);
     }

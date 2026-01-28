@@ -62,7 +62,10 @@ class PhotoAnalysisService {
    */
   async analyzeMealPhoto(base64Image: string): Promise<PhotoAnalysisResult> {
     try {
+      console.log('🔍 Starting meal photo analysis...');
       const token = await getAuthToken();
+      console.log('🔑 Auth token:', token ? 'Found' : 'Missing');
+      
       const response = await fetch(`${this.baseUrl}/analyze-meal`, {
         method: 'POST',
         headers: {
@@ -79,11 +82,17 @@ class PhotoAnalysisService {
         }),
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response URL:', response.url);
+
       if (!response.ok) {
-        throw new Error(`Meal analysis failed: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error(`Meal analysis failed: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('✅ Analysis result:', data);
       return data;
     } catch (error) {
       console.error('Meal photo analysis error:', error);
