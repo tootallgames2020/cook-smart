@@ -10,7 +10,7 @@
  * - Family behavior insights
  */
 
-import { pool } from '../server';
+import pool from '../config/database';
 import { AIPreferencesService } from './AIPreferencesService';
 import { logger } from '../utils/logger';
 
