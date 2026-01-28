@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { RecipeDetailHeader } from '../components/RecipeDetailHeader';
 import { IngredientsList } from '../components/IngredientsList';
 import { CookingInstructions } from '../components/CookingInstructions';
+import { NutritionFacts } from '../components/NutritionFacts';
 import { useRecipes } from '../contexts/RecipeContext';
 import { RecipeDetails } from '../services/recipeService';
 import recipeService from '../services/recipeService';
@@ -562,6 +563,20 @@ const RecipeDetailScreen: React.FC = () => {
           substitutions={substitutions}
           servings={servings}
           onServingsChange={handleServingsChange}
+        />
+        
+        {/* Nutrition Facts */}
+        <NutritionFacts
+          servings={servings}
+          calories={recipe.calories}
+          protein={recipe.protein}
+          carbs={recipe.carbs}
+          fat={recipe.fat}
+          fiber={recipe.fiber}
+          sugar={recipe.sugar}
+          sodium={recipe.sodium}
+          saturatedFat={recipe.saturatedFat}
+          cholesterol={recipe.cholesterol}
         />
         
         {instructionsArray.length > 0 && (
