@@ -87,7 +87,9 @@ export const PhotoAnalysisButton: React.FC<PhotoAnalysisButtonProps> = ({
     launchCamera(
       {
         mediaType: 'photo',
-        quality: 0.8,
+        quality: 0.6, // Reduced quality to decrease file size
+        maxWidth: 1024, // Limit image width
+        maxHeight: 1024, // Limit image height
         includeBase64: true,
       },
       handleImageResponse
@@ -98,7 +100,9 @@ export const PhotoAnalysisButton: React.FC<PhotoAnalysisButtonProps> = ({
     launchImageLibrary(
       {
         mediaType: 'photo',
-        quality: 0.8,
+        quality: 0.6, // Reduced quality to decrease file size
+        maxWidth: 1024, // Limit image width
+        maxHeight: 1024, // Limit image height
         includeBase64: true,
       },
       handleImageResponse

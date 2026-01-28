@@ -34,7 +34,7 @@ router.get('/test', async (req: Request, res: Response) => {
 // Configure multer for photo uploads
 const upload = multer({
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 50 * 1024 * 1024, // 50MB limit
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
@@ -562,6 +562,15 @@ router.post('/analyze-meal', async (req: Request, res: Response) => {
       return;
     }
 
+    // Check if image_data is too large (rough estimate)
+    if (image_data.length > 50 * 1024 * 1024) { // 50MB
+      res.status(413).json({
+        success: false,
+        error: 'Image file too large. Please use a smaller image (max 50MB).',
+      });
+      return;
+    }
+
     // Return mock data for now since the PhotoAnalysisService might not be fully implemented
     res.json({
       success: true,
@@ -582,6 +591,24 @@ router.post('/analyze-meal', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Meal analysis error:', error);
+    
+    // Handle specific error types
+    if (error instanceof SyntaxError && error.message.includes('JSON')) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid JSON format in request',
+      });
+      return;
+    }
+    
+    if (error instanceof Error && error.message.includes('PayloadTooLargeError')) {
+      res.status(413).json({
+        success: false,
+        error: 'Image file too large. Please use a smaller image.',
+      });
+      return;
+    }
+
     res.status(500).json({
       success: false,
       error: 'Meal analysis failed',
@@ -746,6 +773,15 @@ router.post('/identify-ingredient', async (req: Request, res: Response) => {
       return;
     }
 
+    // Check if image_data is too large (rough estimate)
+    if (image_data.length > 50 * 1024 * 1024) { // 50MB
+      res.status(413).json({
+        success: false,
+        error: 'Image file too large. Please use a smaller image (max 50MB).',
+      });
+      return;
+    }
+
     // Return mock data for now
     res.json({
       success: true,
@@ -763,6 +799,24 @@ router.post('/identify-ingredient', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Ingredient identification error:', error);
+    
+    // Handle specific error types
+    if (error instanceof SyntaxError && error.message.includes('JSON')) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid JSON format in request',
+      });
+      return;
+    }
+    
+    if (error instanceof Error && error.message.includes('PayloadTooLargeError')) {
+      res.status(413).json({
+        success: false,
+        error: 'Image file too large. Please use a smaller image.',
+      });
+      return;
+    }
+
     res.status(500).json({
       success: false,
       error: 'Ingredient identification failed',
