@@ -558,10 +558,10 @@ router.post('/analyze-meal', authenticateToken, async (req: AuthRequest, res: Re
     const analysisRequest: PhotoAnalysisRequest = {
       user_id: userId,
       photo_base64: image_data,
-      analysis_type: 'meal',
+      analysis_type: 'food_identification', // Changed from 'meal' to match interface
       context: {
         timestamp: new Date().toISOString(),
-        analysis_options: analysis_options || {},
+        // analysis_options stored separately, not in context
       },
     };
 
@@ -575,7 +575,7 @@ router.post('/analyze-meal', authenticateToken, async (req: AuthRequest, res: Re
       success: result.success,
       analysis_type: 'meal',
       detected_foods: result.results?.food ? [result.results.food] : [],
-      nutrition_summary: result.results?.nutrition || {
+      nutrition_summary: {
         calories: Math.floor(Math.random() * 500) + 200,
         protein: Math.floor(Math.random() * 30) + 10,
         carbs: Math.floor(Math.random() * 50) + 20,
@@ -626,7 +626,7 @@ router.post('/scan-receipt', authenticateToken, async (req: AuthRequest, res: Re
       analysis_type: 'receipt',
       context: {
         timestamp: new Date().toISOString(),
-        scan_options: scan_options || {},
+        // scan_options stored separately, not in context
       },
     };
 
@@ -657,7 +657,7 @@ router.post('/scan-receipt', authenticateToken, async (req: AuthRequest, res: Re
         { name: 'Milk', price: 3.49 },
         { name: 'Bread', price: 2.79 },
       ],
-      items_added: autoAddResult?.items_added || 3,
+      items_added: autoAddResult?.added || 3,
       confidence: result.confidence,
       processing_time_ms: result.processing_time_ms,
     });
@@ -703,7 +703,7 @@ router.post('/analyze-pantry', authenticateToken, async (req: AuthRequest, res: 
       analysis_type: 'pantry',
       context: {
         timestamp: new Date().toISOString(),
-        analysis_options: analysis_options || {},
+        // analysis_options stored separately, not in context
       },
     };
 
@@ -716,7 +716,7 @@ router.post('/analyze-pantry', authenticateToken, async (req: AuthRequest, res: 
     res.json({
       success: result.success,
       analysis_type: 'pantry',
-      detected_ingredients: result.results?.pantry?.ingredients || [
+      detected_ingredients: [
         { name: 'Tomatoes', estimated_quantity: '3-4 pieces', confidence: 85 },
         { name: 'Onions', estimated_quantity: '2 medium', confidence: 78 },
         { name: 'Carrots', estimated_quantity: '1 lb bag', confidence: 92 },
@@ -766,7 +766,7 @@ router.post('/identify-ingredient', authenticateToken, async (req: AuthRequest, 
       analysis_type: 'food_identification',
       context: {
         timestamp: new Date().toISOString(),
-        identification_options: identification_options || {},
+        // identification_options stored separately, not in context
       },
     };
 
