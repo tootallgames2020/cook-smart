@@ -1,32 +1,15 @@
-import winston from 'winston';
-
-const logLevel = process.env.LOG_LEVEL || 'info';
-
-export const logger = winston.createLogger({
-  level: logLevel,
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'cook-smart-backend' },
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
-    }),
-  ],
-});
-
-// Add file transport in production
-if (process.env.NODE_ENV === 'production') {
-  logger.add(
-    new winston.transports.File({
-      filename: process.env.LOG_FILE || 'logs/app.log',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    })
-  );
-}
+// Simple console logger to avoid winston dependency issues
+export const logger = {
+  info: (message: string, meta?: any) => {
+    console.log(`[INFO] ${message}`, meta ? JSON.stringify(meta) : '');
+  },
+  error: (message: string, error?: any) => {
+    console.error(`[ERROR] ${message}`, error);
+  },
+  warn: (message: string, meta?: any) => {
+    console.warn(`[WARN] ${message}`, meta ? JSON.stringify(meta) : '');
+  },
+  debug: (message: string, meta?: any) => {
+    console.log(`[DEBUG] ${message}`, meta ? JSON.stringify(meta) : '');
+  },
+};
