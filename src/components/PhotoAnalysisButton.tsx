@@ -9,7 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { launchImageLibrary, launchCamera, ImagePickerResponse } from 'react-native-image-picker';
 import { photoAnalysisService } from '../services/photoAnalysisService';
 
@@ -33,7 +33,7 @@ export const PhotoAnalysisButton: React.FC<PhotoAnalysisButtonProps> = ({
     switch (analysisType) {
       case 'meal':
         return {
-          icon: 'camera',
+          icon: 'camera-alt',
           title: 'Analyze Meal',
           subtitle: 'Get nutrition info from photo',
           color: '#FF6B6B',
@@ -61,7 +61,7 @@ export const PhotoAnalysisButton: React.FC<PhotoAnalysisButtonProps> = ({
         };
       default:
         return {
-          icon: 'camera',
+          icon: 'camera-alt',
           title: 'Analyze Photo',
           subtitle: 'AI photo analysis',
           color: '#6366F1',

@@ -9,9 +9,9 @@ import {
   PermissionsAndroid,
   Platform,
   Linking,
-  NativeModules,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import Voice from '@react-native-voice/voice';
 
 interface VoiceCommandButtonProps {
   onVoiceCommand?: (command: string) => void;
@@ -36,7 +36,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
     setupVoiceRecognition();
     
     return () => {
-      // Cleanup would go here
+      Voice.destroy().then(Voice.removeAllListeners);
     };
   }, []);
 
@@ -82,8 +82,30 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
   };
 
   const setupVoiceRecognition = () => {
-    // Voice recognition setup would go here
-    // For now, we'll just set up basic functionality
+    Voice.onSpeechStart = () => {
+      console.log('Speech started');
+    };
+
+    Voice.onSpeechEnd = () => {
+      console.log('Speech ended');
+      setIsListening(false);
+      stopPulseAnimation();
+    };
+
+    Voice.onSpeechResults = (e: any) => {
+      if (e.value && e.value.length > 0) {
+        const recognizedText = e.value[0];
+        setVoiceText(recognizedText);
+        onVoiceCommand?.(recognizedText);
+      }
+    };
+
+    Voice.onSpeechError = (e: any) => {
+      console.error('Speech error:', e);
+      setIsListening(false);
+      stopPulseAnimation();
+      Alert.alert('Voice Error', 'Could not recognize speech. Please try again.');
+    };
   };
 
   const startPulseAnimation = () => {
@@ -147,23 +169,20 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
 
     try {
       if (isListening) {
+        await Voice.stop();
         setIsListening(false);
         stopPulseAnimation();
       } else {
         setVoiceText('');
         setIsListening(true);
         startPulseAnimation();
-        // Simulate voice recognition for demo
-        setTimeout(() => {
-          setIsListening(false);
-          stopPulseAnimation();
-          setVoiceText('Voice command recognized');
-          onVoiceCommand?.('Voice command recognized');
-        }, 3000);
+        await Voice.start('en-US');
       }
     } catch (error) {
       console.error('Voice start error:', error);
-      Alert.alert('Voice Error', 'Could not start voice recognition.');
+      setIsListening(false);
+      stopPulseAnimation();
+      Alert.alert('Voice Error', 'Could not start voice recognition. Please try again.');
     }
   };
 
@@ -186,14 +205,21 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
   const buttonSize = getButtonSize();
   const iconSize = getIconSize();
 
-  return (
-    <View style={[
-      position === 'floating' ? styles.floatingContainer : styles.inlineContainer,
-      style
-    ]}>
-      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-        <TouchableOpacity
-          style={[
+  return React.createElement(
+    View,
+    {
+      style: [
+        position === 'floating' ? styles.floatingContainer : styles.inlineContainer,
+        style
+      ]
+    },
+    React.createElement(
+      Animated.View,
+      { style: { transform: [{ scale: pulseAnim }] } },
+      React.createElement(
+        TouchableOpacity,
+        {
+          style: [
             styles.voiceButton,
             {
               width: buttonSize,
@@ -201,35 +227,36 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
               borderRadius: buttonSize / 2,
               backgroundColor: isListening ? '#FF6B6B' : '#4ECDC4',
             }
-          ]}
-          onPress={handleVoicePress}
-          activeOpacity={0.8}
-        >
-          <Icon
-            name={isListening ? 'mic' : 'mic'}
-            size={iconSize}
-            color="white"
-          />
-        </TouchableOpacity>
-      </Animated.View>
-      
-      {isListening && (
-        <View style={styles.listeningIndicator}>
-          <Text style={styles.listeningText}>Listening...</Text>
-          <View style={styles.waveform}>
-            <View style={[styles.wave, styles.wave1]} />
-            <View style={[styles.wave, styles.wave2]} />
-            <View style={[styles.wave, styles.wave3]} />
-          </View>
-        </View>
-      )}
+          ],
+          onPress: handleVoicePress,
+          activeOpacity: 0.8
+        },
+        React.createElement(Icon, {
+          name: 'mic',
+          size: iconSize,
+          color: 'white'
+        })
+      )
+    ),
+    
+    isListening && React.createElement(
+      View,
+      { style: styles.listeningIndicator },
+      React.createElement(Text, { style: styles.listeningText }, 'Listening...'),
+      React.createElement(
+        View,
+        { style: styles.waveform },
+        React.createElement(View, { style: [styles.wave, styles.wave1] }),
+        React.createElement(View, { style: [styles.wave, styles.wave2] }),
+        React.createElement(View, { style: [styles.wave, styles.wave3] })
+      )
+    ),
 
-      {voiceText && !isListening && (
-        <View style={styles.voiceTextContainer}>
-          <Text style={styles.voiceText}>"{voiceText}"</Text>
-        </View>
-      )}
-    </View>
+    voiceText && !isListening && React.createElement(
+      View,
+      { style: styles.voiceTextContainer },
+      React.createElement(Text, { style: styles.voiceText }, `"${voiceText}"`)
+    )
   );
 };
 

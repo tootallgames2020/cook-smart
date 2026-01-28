@@ -270,14 +270,14 @@ router.patch('/:id/toggle', authenticateToken, async (req: AuthRequest, res, nex
         // Check if ingredient already exists in inventory
         const existingInventory = await client.query(
           'SELECT * FROM user_ingredients WHERE user_id = $1 AND ingredient_name = $2',
-          [req.user!.id, item.ingredient]
+          [req.user!.id, updatedItem.ingredient]
         );
 
         if (existingInventory.rows.length > 0) {
           // Update existing inventory item
           await client.query(
             'UPDATE user_ingredients SET quantity = COALESCE(quantity, 0) + $1, updated_at = NOW() WHERE user_id = $2 AND ingredient_name = $3',
-            [parseFloat(item.quantity) || 1, req.user!.id, item.ingredient]
+            [parseFloat(updatedItem.quantity) || 1, req.user!.id, updatedItem.ingredient]
           );
         } else {
           // Insert new inventory item
@@ -287,11 +287,11 @@ router.patch('/:id/toggle', authenticateToken, async (req: AuthRequest, res, nex
              VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
             [
               req.user!.id,
-              item.ingredient.toLowerCase().replace(/\s+/g, '_'),
-              item.ingredient,
-              parseFloat(item.quantity) || 1,
-              item.unit || 'piece',
-              item.category || 'other',
+              updatedItem.ingredient.toLowerCase().replace(/\s+/g, '_'),
+              updatedItem.ingredient,
+              parseFloat(updatedItem.quantity) || 1,
+              updatedItem.unit || 'piece',
+              updatedItem.category || 'other',
             ]
           );
         }
@@ -302,7 +302,7 @@ router.patch('/:id/toggle', authenticateToken, async (req: AuthRequest, res, nex
           [req.user!.id]
         );
 
-        logger.info(`Item ${item.ingredient} marked as bought and added to inventory for user ${req.user!.id}`);
+        logger.info(`Item ${updatedItem.ingredient} marked as bought and added to inventory for user ${req.user!.id}`);
       }
 
       // Map to mobile app format

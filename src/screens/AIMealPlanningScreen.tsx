@@ -83,7 +83,8 @@ export const AIMealPlanningScreen: React.FC = () => {
       setMealPlans(plans);
     } catch (error) {
       console.error('Error loading meal plans:', error);
-      Alert.alert('Error', 'Could not load meal plans. Please try again.');
+      // Don't show error alert, just set empty array
+      setMealPlans([]);
     } finally {
       setLoading(false);
     }

@@ -84,18 +84,23 @@ class MealPlanningService {
 
   async generateMealPlan(request: MealPlanRequest): Promise<MealPlan> {
     try {
+      console.log('Generate meal plan request:', JSON.stringify(request, null, 2));
+      
       const response = await fetch(`${API_BASE_URL}/api/v1/meal-planning/generate`, {
         method: 'POST',
         headers: await this.getAuthHeaders(),
         body: JSON.stringify(request),
       });
 
+      console.log('Generate meal plan response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Generate meal plan response data:', JSON.stringify(data, null, 2));
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to generate meal plan');
+        throw new Error(data.message || data.error || data.details || 'Failed to generate meal plan');
       }
 
-      const data = await response.json();
       return data.meal_plan;
     } catch (error) {
       console.error('Generate meal plan error:', error);
@@ -111,15 +116,17 @@ class MealPlanningService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get meal plans');
+        // Return empty array instead of throwing error
+        console.warn('Failed to get meal plans, returning empty array');
+        return [];
       }
 
       const data = await response.json();
       return data.meal_plans || [];
     } catch (error) {
       console.error('Get meal plans error:', error);
-      throw error;
+      // Return empty array instead of throwing
+      return [];
     }
   }
 

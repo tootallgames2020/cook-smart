@@ -11,6 +11,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { apexIntelligenceService } from '../services/apexIntelligenceService';
+import { PhotoAnalysisButton } from '../components/PhotoAnalysisButton';
 
 const ApexIntelligenceScreen: React.FC = () => {
   const { user } = useAuth();
@@ -21,7 +22,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       id: 'nutrition',
       name: 'Nutrition Intelligence',
       description: 'Advanced nutritional analysis and personalized recommendations',
-      icon: 'fast-food-outline',
+      icon: 'restaurant',
       color: '#10B981',
       status: 'active'
     },
@@ -29,7 +30,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       id: 'photo',
       name: 'Photo Intelligence',
       description: 'AI-powered food recognition and freshness analysis',
-      icon: 'camera-outline',
+      icon: 'camera-alt',
       color: '#3B82F6',
       status: 'active'
     },
@@ -37,7 +38,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       id: 'voice',
       name: 'Voice Intelligence',
       description: 'Natural language cooking assistance and commands',
-      icon: 'mic-outline',
+      icon: 'mic',
       color: '#8B5CF6',
       status: 'beta'
     },
@@ -45,7 +46,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       id: 'predictive',
       name: 'Predictive Analytics',
       description: 'Smart predictions for consumption, waste, and shopping',
-      icon: 'stats-chart-outline',
+      icon: 'analytics',
       color: '#F59E0B',
       status: 'active'
     }
@@ -127,7 +128,7 @@ const ApexIntelligenceScreen: React.FC = () => {
                     {capability.status === 'coming_soon' ? 'Coming Soon' : 'Tap to explore'}
                   </Text>
                   <Icon 
-                    name="chevron-forward-outline" 
+                    name="chevron-right" 
                     size={16} 
                     color={capability.color} 
                   />
@@ -139,29 +140,73 @@ const ApexIntelligenceScreen: React.FC = () => {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Photo Analysis Tools</Text>
+        
+        <PhotoAnalysisButton
+          analysisType="meal"
+          onAnalysisComplete={(results) => {
+            console.log('Meal analysis:', results);
+          }}
+        />
+        
+        <PhotoAnalysisButton
+          analysisType="ingredient"
+          onAnalysisComplete={(results) => {
+            console.log('Ingredient identification:', results);
+          }}
+        />
+        
+        <PhotoAnalysisButton
+          analysisType="pantry"
+          onAnalysisComplete={(results) => {
+            console.log('Pantry analysis:', results);
+          }}
+        />
+        
+        <PhotoAnalysisButton
+          analysisType="receipt"
+          onAnalysisComplete={(results) => {
+            console.log('Receipt scan:', results);
+          }}
+        />
+        
+        <View style={styles.accuracyNotice}>
+          <Icon name="info" size={20} color="#F59E0B" />
+          <Text style={styles.accuracyText}>
+            <Text style={styles.accuracyBold}>Accuracy Note: </Text>
+            Photo analysis works best with clear, well-lit images. Results may be less accurate for:
+            {"\n"}• Plated meals with mixed/overlapping ingredients
+            {"\n"}• Crowded pantry/fridge shelves with items stacked or hidden
+            {"\n"}• Blurry or poorly lit photos
+            {"\n\n"}For best results, photograph items individually or organize shelves before scanning.
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>What Makes It Apex?</Text>
         
         <View style={styles.featuresList}>
           <View style={styles.featureItem}>
-            <Icon name="bulb-outline" size={20} color="#10B981" />
+            <Icon name="lightbulb" size={20} color="#10B981" />
             <Text style={styles.featureText}>
               Machine learning algorithms that adapt to your preferences
             </Text>
           </View>
           <View style={styles.featureItem}>
-            <Icon name="flash-outline" size={20} color="#3B82F6" />
+            <Icon name="flash-on" size={20} color="#3B82F6" />
             <Text style={styles.featureText}>
               Real-time analysis and instant recommendations
             </Text>
           </View>
           <View style={styles.featureItem}>
-            <Icon name="stats-chart-outline" size={20} color="#8B5CF6" />
+            <Icon name="analytics" size={20} color="#8B5CF6" />
             <Text style={styles.featureText}>
               Predictive insights for better meal planning
             </Text>
           </View>
           <View style={styles.featureItem}>
-            <Icon name="shield-outline" size={20} color="#F59E0B" />
+            <Icon name="security" size={20} color="#F59E0B" />
             <Text style={styles.featureText}>
               Privacy-first AI that keeps your data secure
             </Text>
@@ -170,7 +215,7 @@ const ApexIntelligenceScreen: React.FC = () => {
       </View>
 
       <View style={styles.betaNotice}>
-        <Icon name="beaker-outline" size={24} color="#F59E0B" />
+        <Icon name="science" size={24} color="#F59E0B" />
         <View style={styles.betaContent}>
           <Text style={styles.betaTitle}>Beta Technology</Text>
           <Text style={styles.betaText}>
@@ -309,6 +354,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#92400E',
     lineHeight: 20,
+  },
+  accuracyNotice: {
+    flexDirection: 'row',
+    backgroundColor: '#FEF3C7',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 15,
+    alignItems: 'flex-start',
+  },
+  accuracyText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 18,
+    marginLeft: 10,
+  },
+  accuracyBold: {
+    fontWeight: 'bold',
   },
 });
 
