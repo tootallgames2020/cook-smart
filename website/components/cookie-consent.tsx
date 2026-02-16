@@ -36,11 +36,9 @@ export function CookieConsent(): React.ReactElement | null {
     // Apply preferences (in production, this would enable/disable tracking)
     if (prefs.analytics) {
       // Enable Google Analytics
-      console.log('Analytics enabled');
     }
     if (prefs.marketing) {
       // Enable marketing cookies
-      console.log('Marketing enabled');
     }
     
     setShowBanner(false);

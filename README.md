@@ -129,10 +129,25 @@ pm2 restart cook-smart-backend
 ## 📚 Documentation
 
 ### For Developers
-- [**API Documentation**](docs/api/) - Complete REST API reference
-- [**Database Schema**](docs/database/) - Entity relationships and migrations
+
+**Getting Started:**
+- [**Contributing Guide**](CONTRIBUTING.md) - Development workflow, branch strategy, and coding standards
+- [**Build Instructions**](docs/deployment/BUILD_INSTRUCTIONS.md) - Build and deployment procedures
+- [**SSH Access Guide**](docs/deployment/SSH_ACCESS_SOLUTION.md) - Server access and deployment
+
+**Code Quality:**
+- [**Code Audit Report**](docs/development/CODE_AUDIT_REPORT.md) - Comprehensive 6-week audit plan
+- [**Week 1 Summary**](docs/development/WEEK1_COMPLETE_SUMMARY.md) - File hygiene, console logging, type safety
+- [**Week 2 Summary**](docs/development/WEEK2_DOCUMENTATION_COMPLETE.md) - JSDoc documentation completion
+- [**Audit Progress**](docs/development/AUDIT_PROGRESS.md) - Overall progress tracking
+
+**Troubleshooting:**
+- [**Voice Command Issues**](docs/troubleshooting/VOICE_COMMAND_ISSUES.md) - Voice feature troubleshooting
+- [**Voice Fix Instructions**](docs/troubleshooting/VOICE_FIX_INSTRUCTIONS.md) - Voice feature fixes
+
+**Infrastructure:**
 - [**Security Guide**](SECURITY_IMPLEMENTATION.md) - Security practices and compliance
-- [**Deployment Guide**](docs/deployment/) - Production deployment procedures
+- [**Security Audit**](SECURITY_AUDIT_REPORT.md) - Security assessment report
 
 ### For Users
 - [**User Guide**](docs/user-guide/) - Application usage instructions

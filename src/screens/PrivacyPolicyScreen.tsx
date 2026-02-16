@@ -16,7 +16,6 @@ interface PrivacyPolicyScreenProps {
 export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({
   navigation,
 }) => {
-  console.log('🟢 PrivacyPolicyScreen rendered');
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>

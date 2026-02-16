@@ -12,7 +12,26 @@ export interface Achievement {
   target?: number;
 }
 
+/**
+ * Service for managing user achievements and badges
+ * Tracks progress and earned achievements across the app
+ */
 class AchievementService {
+  /**
+   * Get all achievements earned by the user
+   * Returns list of badges and their earn dates
+   * 
+   * @returns Promise<Achievement[]> - Array of earned achievements or empty array if none
+   * 
+   * @example
+   * ```typescript
+   * const achievements = await achievementService.getUserAchievements();
+   * achievements.forEach(achievement => {
+   *   console.log(`${achievement.badge_name}: ${achievement.badge_description}`);
+   *   console.log(`Earned: ${achievement.earned_at}`);
+   * });
+   * ```
+   */
   async getUserAchievements(): Promise<Achievement[]> {
     try {
       const authToken = await AsyncStorage.getItem('auth_token');
@@ -29,6 +48,24 @@ class AchievementService {
     }
   }
 
+  /**
+   * Get progress towards unearned achievements
+   * Shows how close user is to earning each badge
+   * 
+   * @returns Promise<any> - Progress data for all achievements or null if not authenticated
+   * 
+   * @example
+   * ```typescript
+   * const progress = await achievementService.getAchievementProgress();
+   * if (progress) {
+   *   progress.inProgress.forEach(item => {
+   *     console.log(`${item.badge_name}: ${item.progress}/${item.target}`);
+   *     const percent = (item.progress / item.target * 100).toFixed(0);
+   *     console.log(`${percent}% complete`);
+   *   });
+   * }
+   * ```
+   */
   async getAchievementProgress(): Promise<any> {
     try {
       const authToken = await AsyncStorage.getItem('auth_token');

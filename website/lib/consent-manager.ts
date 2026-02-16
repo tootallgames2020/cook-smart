@@ -235,7 +235,6 @@ export class AnalyticsConsentManager {
     }
 
     // Initialize analytics here (Google Analytics, etc.)
-    console.log('Analytics initialized with user consent');
   }
 
   /**
@@ -247,7 +246,6 @@ export class AnalyticsConsentManager {
     }
 
     // Track event here
-    console.log('Event tracked:', eventName, properties);
   }
 }
 
@@ -271,6 +269,5 @@ export class MarketingConsentManager {
     }
 
     // Initialize marketing tools here (Facebook Pixel, etc.)
-    console.log('Marketing tools initialized with user consent');
   }
 }

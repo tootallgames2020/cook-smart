@@ -8,8 +8,6 @@ interface Props {
   navigation: any;
 }
 
-
-
 export const PricingScreen: React.FC<Props> = ({ navigation }) => {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
 

@@ -10,44 +10,45 @@ export interface NotificationPreferences {
   daily_reminders: boolean;
 }
 
+/**
+ * Service for managing push notifications and user notification preferences
+ * Handles Firebase Cloud Messaging integration and notification settings
+ */
 class NotificationService {
   /**
-   * Request notification permissions and register token
+   * Request notification permissions from the user and register FCM token
+   * Must be called before sending push notifications
+   * 
+   * @returns Promise<string | null> - FCM token if successful, null if permission denied
+   * 
+   * @example
+   * ```typescript
+   * const token = await notificationService.registerForPushNotifications();
+   * if (token) {
+   *   console.log('Notifications enabled with token:', token);
+   * } else {
+   *   console.log('User denied notification permission');
+   * }
+   * ```
    */
   async registerForPushNotifications(): Promise<string | null> {
     try {
-      console.log('🔔 Step 1: Requesting permission...');
-
       // Request permission
       const authStatus = await messaging().requestPermission();
-      console.log('🔔 Step 2: Auth status received:', authStatus);
-
       const enabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
         authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-      console.log('🔔 Step 3: Enabled?', enabled);
-
       if (!enabled) {
-        console.log('🔔 Permission denied');
         return null;
       }
-
-      console.log('🔔 Step 4: Getting FCM token...');
       // Get FCM token
       const token = await messaging().getToken();
-      console.log('🔔 Step 5: Token received:', token ? 'YES' : 'NO');
-
       if (!token) {
-        console.log('🔔 Failed to get token');
         return null;
       }
 
       // Register token with backend
-      console.log('🔔 Step 6: Registering with backend...');
       await this.registerToken(token);
-      console.log('🔔 Step 7: Complete!');
-
       return token;
     } catch (error) {
       console.error('🔔 ERROR:', error);
@@ -56,7 +57,17 @@ class NotificationService {
   }
 
   /**
-   * Register token with backend
+   * Register FCM token with the backend server
+   * Associates the device token with the user's account
+   * 
+   * @param token - Firebase Cloud Messaging token
+   * @returns Promise<void>
+   * @private
+   * 
+   * @example
+   * ```typescript
+   * await notificationService.registerToken(fcmToken);
+   * ```
    */
   async registerToken(token: string): Promise<void> {
     try {
@@ -77,7 +88,19 @@ class NotificationService {
   }
 
   /**
-   * Get notification preferences
+   * Get the user's notification preferences
+   * Returns settings for different notification types
+   * 
+   * @returns Promise<NotificationPreferences | null> - User's notification settings or null if not authenticated
+   * 
+   * @example
+   * ```typescript
+   * const prefs = await notificationService.getPreferences();
+   * if (prefs) {
+   *   console.log('Expiry alerts:', prefs.expiry_alerts);
+   *   console.log('Recipe suggestions:', prefs.recipe_suggestions);
+   * }
+   * ```
    */
   async getPreferences(): Promise<NotificationPreferences | null> {
     try {
@@ -98,7 +121,27 @@ class NotificationService {
   }
 
   /**
-   * Update notification preferences
+   * Update the user's notification preferences
+   * Can update one or more notification settings
+   * 
+   * @param preferences - Partial preferences object with settings to update
+   * @param preferences.expiry_alerts - Enable/disable expiration alerts
+   * @param preferences.recipe_suggestions - Enable/disable recipe suggestions
+   * @param preferences.achievement_notifications - Enable/disable achievement notifications
+   * @param preferences.daily_reminders - Enable/disable daily reminders
+   * @returns Promise<boolean> - True if update successful, false otherwise
+   * 
+   * @example
+   * ```typescript
+   * const success = await notificationService.updatePreferences({
+   *   expiry_alerts: true,
+   *   recipe_suggestions: false,
+   *   daily_reminders: true
+   * });
+   * if (success) {
+   *   console.log('Preferences updated');
+   * }
+   * ```
    */
   async updatePreferences(
     preferences: Partial<NotificationPreferences>,
@@ -123,38 +166,39 @@ class NotificationService {
   }
 
   /**
-   * Check if notifications are enabled
+   * Check if notifications are currently enabled for the app
+   * Attempts to get FCM token and checks permission status
+   * 
+   * @returns Promise<boolean> - True if notifications are enabled, false otherwise
+   * 
+   * @example
+   * ```typescript
+   * const enabled = await notificationService.areNotificationsEnabled();
+   * if (enabled) {
+   *   console.log('Notifications are enabled');
+   * } else {
+   *   console.log('Notifications are disabled - prompt user to enable');
+   * }
+   * ```
    */
   async areNotificationsEnabled(): Promise<boolean> {
     try {
-      console.log('🔍 Checking notification permissions...');
-
       // Try to get a token - if we can get one, notifications are enabled
       try {
         const token = await messaging().getToken();
-        console.log(
-          '🔑 FCM Token check:',
-          token ? 'GOT TOKEN - ENABLED' : 'NO TOKEN - DISABLED',
-        );
-
         if (token) {
           // We have a token, so notifications ARE enabled
           await this.registerToken(token);
           return true;
         }
       } catch (tokenError) {
-        console.log('❌ Cannot get token:', tokenError);
       }
 
       // If we couldn't get a token, check permission status
       const authStatus = await messaging().hasPermission();
-      console.log('📱 Firebase auth status:', authStatus);
-
       const isEnabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
         authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-      console.log('✅ Final result - Notifications enabled:', isEnabled);
       return isEnabled;
     } catch (error) {
       console.error('Failed to check notification status:', error);

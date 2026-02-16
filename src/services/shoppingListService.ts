@@ -22,8 +22,25 @@ export interface AddShoppingListItemRequest {
   recipeId?: string;
 }
 
+/**
+ * Service for managing the user's shopping list
+ * Handles CRUD operations for shopping list items and bulk operations
+ */
 class ShoppingListService {
-  // Get all shopping list items for the user
+  /**
+   * Get all shopping list items for the current user
+   * Returns items sorted by category and completion status
+   * 
+   * @returns Promise<ShoppingListItem[]> - Array of shopping list items
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const items = await shoppingListService.getShoppingList();
+   * const pending = items.filter(item => !item.isCompleted);
+   * console.log(`You have ${pending.length} items to buy`);
+   * ```
+   */
   async getShoppingList(): Promise<ShoppingListItem[]> {
     try {
       const token = await getAuthToken();
@@ -49,7 +66,29 @@ class ShoppingListService {
     }
   }
 
-  // Add a single item to shopping list
+  /**
+   * Add a single item to the shopping list
+   * 
+   * @param item - The item to add
+   * @param item.ingredient - Name of the ingredient
+   * @param item.quantity - Amount needed
+   * @param item.unit - Unit of measurement
+   * @param item.category - Category for organization (optional)
+   * @param item.recipeId - Associated recipe ID (optional)
+   * @returns Promise<ShoppingListItem> - The created shopping list item
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const item = await shoppingListService.addItem({
+   *   ingredient: 'Milk',
+   *   quantity: '1',
+   *   unit: 'gallon',
+   *   category: 'Dairy'
+   * });
+   * console.log('Added:', item.ingredient);
+   * ```
+   */
   async addItem(item: AddShoppingListItemRequest): Promise<ShoppingListItem> {
     try {
       const token = await getAuthToken();
@@ -76,7 +115,24 @@ class ShoppingListService {
     }
   }
 
-  // Add multiple items to shopping list
+  /**
+   * Add multiple items to the shopping list in a single request
+   * More efficient than adding items one by one
+   * 
+   * @param items - Array of items to add
+   * @returns Promise<ShoppingListItem[]> - Array of created shopping list items
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const items = await shoppingListService.addItems([
+   *   { ingredient: 'Eggs', quantity: '12', unit: 'count', category: 'Dairy' },
+   *   { ingredient: 'Bread', quantity: '1', unit: 'loaf', category: 'Bakery' },
+   *   { ingredient: 'Apples', quantity: '6', unit: 'count', category: 'Produce' }
+   * ]);
+   * console.log(`Added ${items.length} items`);
+   * ```
+   */
   async addItems(
     items: AddShoppingListItemRequest[],
   ): Promise<ShoppingListItem[]> {
@@ -108,7 +164,24 @@ class ShoppingListService {
     }
   }
 
-  // Update an item
+  /**
+   * Update an existing shopping list item
+   * Can modify quantity, unit, category, or ingredient name
+   * 
+   * @param itemId - The unique identifier of the item to update
+   * @param updates - Partial item object with fields to update
+   * @returns Promise<ShoppingListItem> - The updated shopping list item
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const updated = await shoppingListService.updateItem('item-123', {
+   *   quantity: '2',
+   *   unit: 'pounds'
+   * });
+   * console.log('Updated:', updated.ingredient);
+   * ```
+   */
   async updateItem(
     itemId: string,
     updates: Partial<AddShoppingListItemRequest>,
@@ -141,7 +214,20 @@ class ShoppingListService {
     }
   }
 
-  // Toggle item completion status
+  /**
+   * Toggle the completion status of a shopping list item
+   * Marks item as completed if pending, or pending if completed
+   * 
+   * @param itemId - The unique identifier of the item to toggle
+   * @returns Promise<ShoppingListItem> - The updated shopping list item
+   * @throws Error if API request fails or item not found
+   * 
+   * @example
+   * ```typescript
+   * const item = await shoppingListService.toggleCompleted('item-123');
+   * console.log(`Item is now ${item.isCompleted ? 'completed' : 'pending'}`);
+   * ```
+   */
   async toggleCompleted(itemId: string): Promise<ShoppingListItem> {
     try {
       if (!itemId) {
@@ -183,7 +269,19 @@ class ShoppingListService {
     }
   }
 
-  // Delete an item
+  /**
+   * Delete a single item from the shopping list
+   * 
+   * @param itemId - The unique identifier of the item to delete
+   * @returns Promise<void>
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * await shoppingListService.deleteItem('item-123');
+   * console.log('Item deleted');
+   * ```
+   */
   async deleteItem(itemId: string): Promise<void> {
     try {
       const token = await getAuthToken();
@@ -209,16 +307,23 @@ class ShoppingListService {
     }
   }
 
-  // Clear all completed items
+  /**
+   * Remove all completed items from the shopping list
+   * Useful for cleaning up after a shopping trip
+   * 
+   * @returns Promise<void>
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * await shoppingListService.clearCompleted();
+   * console.log('All completed items removed');
+   * ```
+   */
   async clearCompleted(): Promise<void> {
     try {
       const token = await getAuthToken();
       const url = `${API_BASE_URL}/api/v1/shopping-list/clear-completed`;
-
-      console.log('🗑️ Clearing completed items...');
-      console.log('URL:', url);
-      console.log('Token:', token ? 'Present' : 'Missing');
-
       const response = await fetch(url, {
         method: 'DELETE',
         headers: {
@@ -226,10 +331,6 @@ class ShoppingListService {
           'Content-Type': 'application/json',
         },
       });
-
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         console.error('Clear completed failed:', data);
@@ -237,14 +338,25 @@ class ShoppingListService {
       }
 
       const data = await response.json().catch(() => ({}));
-      console.log('Clear completed success:', data);
     } catch (error) {
       console.error('Error clearing completed items:', error);
       throw error;
     }
   }
 
-  // Delete all items
+  /**
+   * Delete all items from the shopping list
+   * Removes both completed and pending items
+   * 
+   * @returns Promise<void>
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * await shoppingListService.deleteAll();
+   * console.log('Shopping list cleared');
+   * ```
+   */
   async deleteAll(): Promise<void> {
     try {
       const token = await getAuthToken();
@@ -269,7 +381,30 @@ class ShoppingListService {
       throw error;
     }
   }
-  // Add recipe ingredients to shopping list
+  /**
+   * Add all ingredients from a recipe to the shopping list
+   * Automatically parses ingredient strings to extract quantities and units
+   * 
+   * @param recipeId - The unique identifier of the recipe
+   * @param ingredients - Array of ingredient strings from the recipe
+   * @param _servings - Number of servings (currently unused, default: 1)
+   * @returns Promise<ShoppingListItem[]> - Array of created shopping list items
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const items = await shoppingListService.addRecipeToShoppingList(
+   *   12345,
+   *   [
+   *     '2 cups flour',
+   *     '1 tablespoon olive oil',
+   *     '3 eggs'
+   *   ],
+   *   4
+   * );
+   * console.log(`Added ${items.length} ingredients to shopping list`);
+   * ```
+   */
   async addRecipeToShoppingList(
     recipeId: number,
     ingredients: string[],

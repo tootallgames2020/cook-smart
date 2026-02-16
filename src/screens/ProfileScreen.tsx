@@ -192,12 +192,10 @@ export const ProfileScreen: React.FC<Props> = ({userId}) => {
 
   const handleEditProfile = () => {
     // Navigate to edit profile screen
-    console.log('Edit profile pressed');
   };
 
   const handlePointsPress = () => {
     // Navigate to detailed points screen
-    console.log('Points pressed');
   };
 
   if (loading && !profile) {

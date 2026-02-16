@@ -35,22 +35,14 @@ export const PrivacySecurityScreen: React.FC<Props> = ({navigation}) => {
 
   const loadPrivacySettings = async () => {
     try {
-      console.log('🔄 Loading privacy settings...');
       const token = await getAuthToken();
-      console.log('✅ Got auth token:', token ? 'exists' : 'missing');
-      console.log('📡 Calling:', API_ENDPOINTS.settings.privacy);
-      
       const response = await fetch(API_ENDPOINTS.settings.privacy, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      console.log('📥 Response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Privacy settings loaded:', data);
         setDataSharing(data.data_sharing || false);
         setAnalytics(data.analytics_enabled !== false);
         setNotifications(data.push_notifications !== false);
@@ -69,10 +61,7 @@ export const PrivacySecurityScreen: React.FC<Props> = ({navigation}) => {
   const updatePrivacySetting = async (setting: string, value: boolean) => {
     setUpdating(true);
     try {
-      console.log('🔄 Updating setting:', setting, '=', value);
       const token = await getAuthToken();
-      console.log('📡 Calling PATCH:', API_ENDPOINTS.settings.privacy);
-      
       const response = await fetch(API_ENDPOINTS.settings.privacy, {
         method: 'PATCH',
         headers: {
@@ -81,16 +70,11 @@ export const PrivacySecurityScreen: React.FC<Props> = ({navigation}) => {
         },
         body: JSON.stringify({[setting]: value}),
       });
-
-      console.log('📥 Update response:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Update failed:', response.status, errorText);
         throw new Error('Failed to update setting');
       }
-      
-      console.log('✅ Setting updated successfully');
     } catch (error) {
       console.error('❌ Error updating privacy setting:', error);
       Alert.alert('Error', 'Failed to update setting. Please try again.');
@@ -127,8 +111,6 @@ export const PrivacySecurityScreen: React.FC<Props> = ({navigation}) => {
             try {
               setUpdating(true);
               const token = await getAuthToken();
-              console.log('🗑️ Deleting account...');
-              
               const response = await fetch(
                 API_ENDPOINTS.settings.deleteAccount,
                 {
@@ -140,9 +122,6 @@ export const PrivacySecurityScreen: React.FC<Props> = ({navigation}) => {
                   body: JSON.stringify({confirmation: 'DELETE'}),
                 },
               );
-
-              console.log('📥 Delete response:', response.status);
-
               if (response.ok) {
                 // Clear auth state
                 await logout();
@@ -195,7 +174,6 @@ export const PrivacySecurityScreen: React.FC<Props> = ({navigation}) => {
           'Your data has been exported. In production, this would be sent to your email.',
           [{text: 'OK'}],
         );
-        console.log('Exported data:', data);
       } else {
         throw new Error('Failed to export data');
       }

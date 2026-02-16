@@ -48,13 +48,7 @@ export default function HolidayRecipeSection({
       const results = await recipeService.searchByIngredients([
         holiday.searchTerms[0],
       ]);
-      console.log('[HolidayRecipeSection] Search results:', results.length);
       if (results.length > 0) {
-        console.log('[HolidayRecipeSection] First recipe:', {
-          id: results[0].id,
-          idType: typeof results[0].id,
-          title: results[0].title,
-        });
       }
       setRecipes(results.slice(0, 4));
     } catch (error) {
@@ -89,11 +83,6 @@ export default function HolidayRecipeSection({
             key={recipe.id}
             style={styles.recipeCard}
             onPress={() => {
-              console.log('[HolidayRecipeSection] Recipe clicked:', {
-                id: recipe.id,
-                idType: typeof recipe.id,
-                title: recipe.title,
-              });
               onRecipePress(recipe.id);
             }}>
             <Image source={{uri: recipe.image}} style={styles.recipeImage} />

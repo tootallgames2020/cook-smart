@@ -82,11 +82,8 @@ export const RecipeProvider: React.FC<RecipeProviderProps> = ({children}) => {
           ingredients,
           filters,
         );
-        console.log('Recipe service response:', response);
-
         // Handle both array response and object with recipes property
         if (!response) {
-          console.log('No response from recipe service');
           setRecipes([]);
           return;
         }
@@ -98,7 +95,6 @@ export const RecipeProvider: React.FC<RecipeProviderProps> = ({children}) => {
           setRecipes(response.recipes || []);
           setProvider(response.provider || null);
         } else {
-          console.log('Unexpected response format:', response);
           setRecipes([]);
         }
       } catch (err) {
@@ -122,13 +118,7 @@ export const RecipeProvider: React.FC<RecipeProviderProps> = ({children}) => {
       setIsLoading(true);
       setError(null);
       try {
-        console.log('[RecipeContext] Fetching recipe details:', recipeId);
         const details = await recipeService.getRecipeDetails(recipeId);
-        console.log('[RecipeContext] Recipe details fetched:', {
-          id: details?.id,
-          title: details?.title,
-          hasIngredients: !!details?.ingredients,
-        });
         return details;
       } catch (err) {
         const errorMessage =

@@ -101,7 +101,6 @@ export const RecipeSearchScreen: React.FC = () => {
 
   const handleRecipePress = (recipe: Recipe) => {
     // Navigate to recipe detail
-    console.log('Recipe pressed:', recipe.title);
   };
 
   const conflictData = recipes.reduce(

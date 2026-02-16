@@ -54,12 +54,28 @@ Before contributing, ensure you have:
 
 ### Branch Strategy
 
-We use **Git Flow** with the following branches:
-- `main` - Production-ready code
-- `develop` - Integration branch for features
-- `feature/*` - Feature development branches
-- `hotfix/*` - Critical production fixes
-- `release/*` - Release preparation branches
+We use a **simplified Git Flow** with the following branches:
+
+**Permanent Branches:**
+- `main` - Production releases only (protected)
+- `fresh-project-migration` - Active development branch (current working branch)
+
+**Temporary Branches:**
+- `feature/*` - Feature development branches (merge to `fresh-project-migration`)
+- `hotfix/*` - Critical production fixes (merge to both `main` and `fresh-project-migration`)
+- `bugfix/*` - Bug fixes (merge to `fresh-project-migration`)
+
+**Branch Workflow:**
+1. Create feature branches from `fresh-project-migration`
+2. Develop and test your feature
+3. Create PR to merge back into `fresh-project-migration`
+4. When ready for production, merge `fresh-project-migration` into `main`
+5. Delete feature branches after successful merge
+
+**Branch Protection:**
+- `main` branch requires PR approval
+- Direct commits to `main` are not allowed
+- All changes must go through `fresh-project-migration` first
 
 ### Commit Standards
 
@@ -89,8 +105,8 @@ test(auth): add unit tests for login flow
 
 1. **Create Feature Branch**
    ```bash
-   git checkout develop
-   git pull origin develop
+   git checkout fresh-project-migration
+   git pull origin fresh-project-migration
    git checkout -b feature/your-feature-name
    ```
 
@@ -113,13 +129,66 @@ test(auth): add unit tests for login flow
    
    # Security audit
    npm audit
+   
+   # Run verification scan
+   node .kiro/verify-and-scan.js
    ```
 
 4. **Submit Pull Request**
-   - Create PR against `develop` branch
+   - Create PR against `fresh-project-migration` branch
    - Use descriptive title and description
    - Link related issues
    - Request review from team members
+   - Ensure all checks pass (tests, linting, type-checking)
+
+### Pull Request Template
+
+When creating a PR, use this template:
+
+```markdown
+## Description
+Brief description of what this PR does.
+
+## Type of Change
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation update
+- [ ] Code refactoring
+- [ ] Performance improvement
+
+## Related Issues
+Closes #[issue number]
+
+## Changes Made
+- Change 1
+- Change 2
+- Change 3
+
+## Testing
+- [ ] Unit tests added/updated
+- [ ] Integration tests added/updated
+- [ ] Manual testing completed
+- [ ] All tests passing
+
+## Checklist
+- [ ] Code follows project style guidelines
+- [ ] Self-review completed
+- [ ] Comments added for complex code
+- [ ] Documentation updated
+- [ ] No console.log statements in production code
+- [ ] No `any` types used
+- [ ] All TypeScript errors resolved
+- [ ] All ESLint errors resolved
+- [ ] Verification scan passed (`node .kiro/verify-and-scan.js`)
+- [ ] No breaking changes (or documented if necessary)
+
+## Screenshots (if applicable)
+Add screenshots or GIFs demonstrating the changes.
+
+## Additional Notes
+Any additional information reviewers should know.
+```
 
 ## 🧪 Testing Standards
 
@@ -160,7 +229,73 @@ describe('RecipeService', () => {
 
 ## 📝 Code Style Guide
 
+### File Naming Conventions
+- **Components**: PascalCase.tsx (e.g., `RecipeCard.tsx`, `VoiceCommandButton.tsx`)
+- **Services**: PascalCase.ts (e.g., `RecipeService.ts`, `AuthService.ts`)
+- **Utilities**: camelCase.ts (e.g., `formatDate.ts`, `validateEmail.ts`)
+- **Types**: PascalCase.types.ts (e.g., `Recipe.types.ts`, `User.types.ts`)
+- **Constants**: UPPER_SNAKE.ts (e.g., `API_ENDPOINTS.ts`, `ERROR_MESSAGES.ts`)
+
+### Import Organization
+```typescript
+// 1. External dependencies (React, React Native, third-party)
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import axios from 'axios';
+
+// 2. Internal dependencies (absolute imports using path aliases)
+import { RecipeService } from '@/services/RecipeService';
+import { Recipe } from '@/types/Recipe.types';
+import { API_ENDPOINTS } from '@/constants/API_ENDPOINTS';
+
+// 3. Relative imports (only for co-located files)
+import { RecipeCard } from './RecipeCard';
+import styles from './styles';
+```
+
+### Export Pattern
+```typescript
+// ✅ Preferred: Named exports
+export class RecipeService { ... }
+export function formatRecipe() { ... }
+export const API_URL = '...';
+
+// ❌ Avoid: Default exports (except for React components in some cases)
+export default RecipeService;
+```
+
 ### TypeScript Standards
+- Use **strict mode** TypeScript configuration
+- Provide explicit type annotations for public APIs
+- Use interfaces for object shapes
+- Prefer `const` assertions for immutable data
+- **NEVER use `any` type** - use `unknown` or proper types
+- Add JSDoc comments to all public methods and classes
+
+### Logging Standards
+```typescript
+// ✅ Development only
+if (__DEV__) {
+  console.log('Debug info:', data);
+}
+
+// ✅ Use logger service (backend)
+logger.info('Recipe search', { ingredients, count });
+logger.error('API error', { error, endpoint });
+
+// ❌ NEVER in production code
+console.log('Recipe search:', ingredients);  // ❌ Will fail CI/CD
+```
+
+### Zero Tolerance Policy
+- **0 console.log statements** in production code (except logger service)
+- **0 `any` types** (use proper types or `unknown`)
+- **0 backup files** (*.backup, *_backup.ts, *.old)
+- **0 temporary files** (temp-*, *.tmp)
+- **0 ESLint errors** (warnings are acceptable with justification)
+- **0 TypeScript errors** (must compile successfully)
+
+### React Native Standards
 - Use **strict mode** TypeScript configuration
 - Provide explicit type annotations for public APIs
 - Use interfaces for object shapes

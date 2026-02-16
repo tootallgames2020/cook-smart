@@ -17,7 +17,6 @@ export const API_BASE_URL = API_BASE_URLS[buildConfig.environment];
 
 // Log current environment for debugging
 if (buildConfig.enableDebugLogging) {
-  console.log(`[API Config] Environment: ${buildConfig.environment}, URL: ${API_BASE_URL}`);
 }
 
 // API Endpoints

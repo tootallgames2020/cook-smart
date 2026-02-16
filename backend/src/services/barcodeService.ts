@@ -3,6 +3,9 @@ import FatSecretService from './FatSecretService';
 
 const fatSecretService = new FatSecretService();
 
+/**
+ * Barcode lookup result interface
+ */
 interface BarcodeResult {
   found: boolean;
   product?: {
@@ -29,10 +32,66 @@ interface BarcodeResult {
   suggestions?: any[];
 }
 
+/**
+ * Barcode Service - Multi-source barcode lookup with intelligent fallback
+ * 
+ * Searches multiple barcode databases to find product information.
+ * Implements cascading fallback strategy to maximize success rate.
+ * 
+ * Data Sources (in priority order):
+ * 1. Open Food Facts (FREE, reliable, no IP restrictions)
+ * 2. Barcode Spider (FREE backup)
+ * 3. UPC Database (FREE backup)
+ * 4. Nutritionix (500 free + 1000 paid/month)
+ * 5. FatSecret (may be blocked by IP restrictions)
+ * 6. USDA enhancement (nutrition data)
+ * 
+ * Features:
+ * - Automatic source fallback
+ * - Quality scoring for results
+ * - Smart suggestions for manual entry
+ * - Usage tracking for paid APIs
+ * - Metric to US unit conversion
+ * 
+ * @example
+ * ```typescript
+ * const service = new BarcodeService();
+ * const result = await service.lookupBarcode('012345678901');
+ * if (result.found) {
+ *   console.log(`Found: ${result.product.name}`);
+ *   console.log(`Calories: ${result.product.nutrition_per_100g.calories}`);
+ * }
+ * ```
+ */
 class BarcodeService {
   private nutritionixUsageCount = 0;
   private readonly NUTRITIONIX_LIMIT = 1500; // 500 free + 1000 paid per month
 
+  /**
+   * Look up product information by barcode
+   * Tries multiple data sources with intelligent fallback
+   * 
+   * @param barcode - UPC/EAN barcode number (8-13 digits)
+   * @returns Promise<BarcodeResult> - Product information or manual entry requirement
+   * 
+   * @example
+   * ```typescript
+   * // Successful lookup
+   * const result = await service.lookupBarcode('012345678901');
+   * if (result.found) {
+   *   console.log(`Product: ${result.product.name}`);
+   *   console.log(`Brand: ${result.product.brand}`);
+   *   console.log(`Category: ${result.product.category}`);
+   *   console.log(`Source: ${result.product.source}`);
+   * }
+   * 
+   * // Manual entry required
+   * if (result.manualEntryRequired) {
+   *   console.log('Product not found in databases');
+   *   console.log('Suggestions:', result.suggestions);
+   * }
+   * ```
+   */
   async lookupBarcode(barcode: string): Promise<BarcodeResult> {
     try {
       console.log(`[Barcode] Starting lookup for: ${barcode}`);
@@ -755,6 +814,22 @@ class BarcodeService {
   }
 
   // Usage tracking methods
+  /**
+   * Get Nutritionix API usage statistics
+   * Tracks monthly API call usage against limit
+   * 
+   * @returns Object with used, limit, and remaining call counts
+   * 
+   * @example
+   * ```typescript
+   * const usage = service.getNutritionixUsage();
+   * console.log(`Used: ${usage.used}/${usage.limit}`);
+   * console.log(`Remaining: ${usage.remaining}`);
+   * if (usage.remaining < 100) {
+   *   console.warn('Approaching Nutritionix API limit');
+   * }
+   * ```
+   */
   getNutritionixUsage(): {used: number; limit: number; remaining: number} {
     return {
       used: this.nutritionixUsageCount,
@@ -763,6 +838,17 @@ class BarcodeService {
     };
   }
 
+  /**
+   * Reset monthly Nutritionix usage counter
+   * Should be called at the start of each billing month
+   * 
+   * @example
+   * ```typescript
+   * // Reset at start of month
+   * service.resetMonthlyUsage();
+   * console.log('Nutritionix usage counter reset');
+   * ```
+   */
   resetMonthlyUsage(): void {
     this.nutritionixUsageCount = 0;
   }

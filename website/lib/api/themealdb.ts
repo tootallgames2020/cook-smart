@@ -37,7 +37,12 @@ interface Recipe {
 }
 
 // In-memory cache with TTL
-const cache = new Map<string, { data: any; timestamp: number }>();
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheEntry<unknown>>();
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
 function getCached<T>(key: string): T | null {
@@ -53,7 +58,7 @@ function getCached<T>(key: string): T | null {
   return cached.data as T;
 }
 
-function setCache(key: string, data: any): void {
+function setCache<T>(key: string, data: T): void {
   cache.set(key, { data, timestamp: Date.now() });
 }
 
@@ -220,7 +225,7 @@ export const themealdb = {
       if (!data.meals) return [];
 
       // Filter endpoint returns limited data, need to fetch full details
-      const detailPromises = data.meals.slice(0, 20).map((meal: any) =>
+      const detailPromises = data.meals.slice(0, 20).map((meal: { idMeal: string }) =>
         this.getById(meal.idMeal)
       );
 
@@ -251,7 +256,7 @@ export const themealdb = {
 
       if (!data.categories) return [];
 
-      const categories = data.categories.map((cat: any) => cat.strCategory);
+      const categories = data.categories.map((cat: { strCategory: string }) => cat.strCategory);
       setCache(cacheKey, categories);
       return categories;
     } catch (error) {

@@ -94,14 +94,18 @@ export default function CreateRecipeScreen({navigation}: any) {
       await createUserRecipe({
         title,
         description,
-        prep_time: parseInt(prepTime) || 0,
-        cook_time: parseInt(cookTime) || 0,
+        prepTime: parseInt(prepTime) || 0,
+        cookTime: parseInt(cookTime) || 0,
         servings: parseInt(servings) || 4,
         difficulty,
-        is_public: isPublic,
-        ingredients: validIngredients,
-        instructions: validInstructions,
-        photos: photoUrl ? [photoUrl] : [],
+        isPublic,
+        ingredients: validIngredients.map(ing => ({
+          name: ing.name,
+          quantity: ing.quantity,
+          unit: ing.unit
+        })),
+        instructions: validInstructions.map(inst => inst.instruction),
+        imageUrl: photoUrl || undefined,
       });
 
       Alert.alert('Success', 'Recipe created successfully!', [

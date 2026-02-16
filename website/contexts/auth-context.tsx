@@ -67,11 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     const loadAuth = async (): Promise<void> => {
       try {
         const token = apiClient.getAuthToken();
-        console.log('[AUTH] Loading auth state, token exists:', !!token);
-
         if (token) {
-          console.log('[AUTH] Token found, attempting to validate...');
-
           try {
             // Always try admin endpoint first for admin pages
             const isAdminPage =
@@ -80,19 +76,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
             let userData;
 
             if (isAdminPage) {
-              console.log('[AUTH] Admin page detected, using admin me endpoint...');
               try {
                 const adminResponse = await apiClient.get<{ admin: any }>('/api/v1/admin/auth/me');
-                console.log('[AUTH] Admin info fetched successfully:', adminResponse.admin);
-
                 userData = {
                   id: adminResponse.admin.id.toString(),
                   email: adminResponse.admin.email,
                   name: adminResponse.admin.name || 'Admin User',
                   role: 'admin',
                 };
-
-                console.log('[AUTH] Admin user data prepared:', userData);
               } catch (adminError) {
                 console.error('[AUTH] Admin endpoint failed:', adminError);
                 // Don't fallback for admin pages - if admin endpoint fails, they shouldn't access admin
@@ -101,8 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
             } else {
               // Regular user endpoint for non-admin pages
               const response = await apiClient.get<{ user: any }>('/api/v1/auth/me');
-              console.log('[AUTH] User info fetched:', response.user);
-
               userData = {
                 id: response.user.id,
                 email: response.user.email,
@@ -115,10 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
                     : 'user',
               };
             }
-
-            console.log('[AUTH] About to set user state:', userData);
             setUser(userData);
-            console.log('[AUTH] User state set successfully');
           } catch (error) {
             console.error('[AUTH] Failed to validate token:', error);
             // Token is invalid, clear it
@@ -126,7 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
             setUser(null);
           }
         } else {
-          console.log('[AUTH] No token found, user not authenticated');
           setUser(null);
         }
       } catch (error) {
@@ -134,7 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
         apiClient.clearAuth();
         setUser(null);
       } finally {
-        console.log('[AUTH] Setting isLoading to false');
         setIsLoading(false);
       }
     };
@@ -144,15 +128,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
   const login = useCallback(async (email: string, password: string): Promise<void> => {
     try {
-      console.log('[AUTH] Starting login process...');
-
       // Check if we're on admin pages - use admin login endpoint
       const isAdminPage =
         typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
 
       let response;
       if (isAdminPage) {
-        console.log('[AUTH] Using admin login endpoint...');
         response = await apiClient.post<{ token: string; admin: any }>('/api/v1/admin/auth/login', {
           email,
           password,
@@ -165,30 +146,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       } else {
         response = await authApi.login(email, password);
       }
-      console.log('[AUTH] Login API response received');
-
       // Check if user has admin access
       const userData = response.user as any;
-      console.log('[AUTH] User data:', userData);
-
       if (isAdminPage) {
         // For admin login, we already validated they're an admin by successful login
-        console.log('[AUTH] Admin login successful, user has admin access');
       } else {
-        console.log('[AUTH] Admin check:', {
-          is_admin: userData.is_admin,
-          is_co_founder: userData.is_co_founder,
-          is_creator: userData.is_creator,
-          hasAccess: userData.is_admin || userData.is_co_founder || userData.is_creator,
-        });
-
         if (!userData.is_admin && !userData.is_co_founder && !userData.is_creator) {
           console.error('[AUTH] User does not have admin access');
           throw new Error('You do not have admin access');
         }
       }
-
-      console.log('[AUTH] Setting auth token...');
       apiClient.setAuthToken(response.token);
 
       let newUser;
@@ -207,17 +174,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
           role: 'admin',
         };
       }
-      console.log('[AUTH] About to set user state:', newUser);
       setUser(newUser);
-      console.log('[AUTH] User state set in login function');
-
       setLastActivity(Date.now());
-      console.log('[AUTH] Login complete!');
-
       // Return a promise that resolves after state is set
       return new Promise((resolve) => {
         setTimeout(() => {
-          console.log('[AUTH] Login promise resolving');
           resolve();
         }, 100);
       });
@@ -245,7 +206,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
-        console.log('[AUTH] No token to refresh');
         return;
       }
 
@@ -262,10 +222,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
         const data = await response.json();
         if (data.token) {
           localStorage.setItem('auth_token', data.token);
-          console.log('[AUTH] Token refreshed successfully');
         }
       } else {
-        console.log('[AUTH] Token refresh failed, logging out');
         await logout();
       }
       

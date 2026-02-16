@@ -39,18 +39,7 @@ const RecipeDetailScreen: React.FC = () => {
       try {
         setIsLoading(true);
         setError(null);
-        console.log('[RecipeDetailScreen] Loading recipe:', recipeId);
-        
         const recipeDetails = await getRecipeDetails(recipeId);
-        console.log('[RecipeDetailScreen] Recipe loaded:', {
-          id: recipeDetails?.id,
-          title: recipeDetails?.title,
-          hasIngredients: !!recipeDetails?.ingredients,
-          ingredientsCount: recipeDetails?.ingredients?.length || 0,
-          hasIngredientsWithStatus: !!recipeDetails?.ingredientsWithStatus,
-          ingredientsWithStatusCount: recipeDetails?.ingredientsWithStatus?.length || 0,
-        });
-        
         setRecipe(recipeDetails);
         setServings(recipeDetails.servings || 4);
         
@@ -137,8 +126,6 @@ const RecipeDetailScreen: React.FC = () => {
 
       if (result.action === Share.sharedAction) {
         // User shared successfully
-        console.log('Recipe shared successfully');
-        
         // Optional: Track share analytics
         try {
           const token = await AsyncStorage.getItem('auth_token');
@@ -157,7 +144,6 @@ const RecipeDetailScreen: React.FC = () => {
           }
         } catch (trackError) {
           // Don't fail if tracking fails
-          console.log('Share tracking failed:', trackError);
         }
       }
     } catch (shareError) {
@@ -341,17 +327,11 @@ const RecipeDetailScreen: React.FC = () => {
         { ingredient: 'almond yogurt', ratio: '1:1', notes: 'Light dairy-free option' },
       ],
     };
-
-    console.log('[Substitutions] Processing conflicts:', conflicts);
-
     conflicts.forEach(conflict => {
       const conflictLower = conflict.toLowerCase();
-      console.log('[Substitutions] Checking conflict:', conflict, 'lowercase:', conflictLower);
-      
       // Find matching substitutions
       Object.keys(substitutionMap).forEach(key => {
         if (conflictLower.includes(key)) {
-          console.log('[Substitutions] Found match for key:', key, 'in conflict:', conflict);
           recipeSubstitutions.push({
             original: conflict,
             substitutes: substitutionMap[key],
@@ -359,8 +339,6 @@ const RecipeDetailScreen: React.FC = () => {
         }
       });
     });
-
-    console.log('[Substitutions] Generated substitutions:', recipeSubstitutions);
     return recipeSubstitutions;
   };
 

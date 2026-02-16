@@ -1,31 +1,48 @@
 /**
- * Recipe Provider Service (Orchestrator)
- *
- * Manages recipe API providers with automatic fallback.
- * Implements cache-first strategy to minimize API calls.
- *
+ * Recipe Provider Service - Orchestrator for multiple recipe API providers
+ * 
+ * Manages recipe API providers with automatic fallback and intelligent caching.
+ * Implements cache-first strategy to minimize API calls and costs.
+ * 
+ * Architecture:
+ * - Primary provider: FatSecret (500K calls/month free)
+ * - Fallback providers: Additional providers if configured
+ * - Cache layer: PostgreSQL for result caching
+ * - Rate limiting: Automatic provider switching on limits
+ * 
  * Flow:
- * 1. Check cache
- * 2. Try primary provider (FatSecret - 500K calls/month free)
- * 3. Try fallback providers (if configured)
- * 4. Return cached results if all fail
+ * 1. Check cache for existing results
+ * 2. Try primary provider (FatSecret)
+ * 3. Try fallback providers if primary fails
+ * 4. Return cached results if all providers fail
+ * 
+ * @example
+ * ```typescript
+ * const service = new RecipeProviderService([fatSecretProvider, themealdbProvider]);
+ * const recipes = await service.searchByIngredients(['chicken', 'rice'], 10);
+ * ```
  */
-
-import {
-  IRecipeProvider,
-  Recipe,
-  RecipeDetails,
-} from '../interfaces/IRecipeProvider';
-import {RecipeCacheModel} from '../models/RecipeCache';
-import {APIUsageLogModel} from '../models/APIUsageLog';
-import crypto from 'crypto';
-
 export class RecipeProviderService {
   private providers: IRecipeProvider[];
   private primaryProvider: IRecipeProvider;
   private fallbackProviders: IRecipeProvider[];
   private lastUsedProvider: string = '';
 
+  /**
+   * Initialize the recipe provider service with configured providers
+   * First provider in array becomes the primary provider
+   * 
+   * @param providers - Array of recipe providers (at least one required)
+   * @throws Error if no providers are configured
+   * 
+   * @example
+   * ```typescript
+   * const service = new RecipeProviderService([
+   *   new FatSecretService(),
+   *   new TheMealDBService()
+   * ]);
+   * ```
+   */
   constructor(providers: IRecipeProvider[]) {
     if (providers.length === 0) {
       throw new Error('At least one recipe provider must be configured');
@@ -37,7 +54,29 @@ export class RecipeProviderService {
   }
 
   /**
-   * Search for recipes by ingredients with cache-first strategy
+   * Search for recipes by ingredients with intelligent provider fallback
+   * Uses cache-first strategy for non-ingredient searches
+   * Forces fresh API calls for ingredient searches to ensure accurate matching
+   * 
+   * @param ingredients - Array of ingredient names to search for
+   * @param limit - Maximum number of recipes to return (default: 10)
+   * @param options - Optional search filters
+   * @param options.maxCalories - Maximum calories per serving
+   * @param options.mealType - Type of meal (breakfast, lunch, dinner, snack)
+   * @returns Promise<Recipe[]> - Array of matching recipes or empty array if all providers fail
+   * 
+   * @example
+   * ```typescript
+   * // Basic search
+   * const recipes = await service.searchByIngredients(['chicken', 'rice'], 10);
+   * 
+   * // With filters
+   * const healthyRecipes = await service.searchByIngredients(
+   *   ['chicken', 'broccoli'],
+   *   20,
+   *   { maxCalories: 500, mealType: 'dinner' }
+   * );
+   * ```
    */
   async searchByIngredients(
     ingredients: string[],
@@ -242,7 +281,24 @@ export class RecipeProviderService {
   }
 
   /**
-   * Get detailed recipe information
+   * Get detailed recipe information by ID
+   * Tries all providers until one succeeds
+   * 
+   * @param recipeId - Unique recipe identifier
+   * @param skipCache - If true, bypasses cache and forces fresh API call (default: false)
+   * @returns Promise<RecipeDetails> - Detailed recipe information
+   * @throws Error if all providers fail to retrieve recipe details
+   * 
+   * @example
+   * ```typescript
+   * // Get from cache or API
+   * const details = await service.getRecipeDetails('recipe_123');
+   * 
+   * // Force fresh data
+   * const freshDetails = await service.getRecipeDetails('recipe_123', true);
+   * console.log(details.instructions);
+   * console.log(details.ingredients);
+   * ```
    */
   async getRecipeDetails(
     recipeId: string,
@@ -303,7 +359,18 @@ export class RecipeProviderService {
   }
 
   /**
-   * Get cache statistics
+   * Get cache statistics and performance metrics
+   * Returns information about cache hits, misses, and storage usage
+   * 
+   * @returns Promise with cache statistics
+   * 
+   * @example
+   * ```typescript
+   * const stats = await service.getCacheStats();
+   * console.log(`Cache hit rate: ${stats.hitRate}%`);
+   * console.log(`Total cached recipes: ${stats.totalRecipes}`);
+   * console.log(`Cache size: ${stats.sizeInMB}MB`);
+   * ```
    */
   async getCacheStats() {
     return await RecipeCacheModel.getCacheStats();
@@ -311,6 +378,11 @@ export class RecipeProviderService {
 
   /**
    * Generate MD5 hash from ingredient list for cache key
+   * Sorts ingredients to ensure consistent hashing
+   * 
+   * @param ingredients - Array of ingredient names
+   * @returns MD5 hash string
+   * @private
    */
   private generateIngredientHash(ingredients: string[]): string {
     const sorted = ingredients.sort().join(',').toLowerCase();
@@ -318,7 +390,13 @@ export class RecipeProviderService {
   }
 
   /**
-   * Generate cache key including filters
+   * Generate cache key including search filters
+   * Combines ingredients and options into a unique cache key
+   * 
+   * @param ingredients - Array of ingredient names
+   * @param options - Optional search filters
+   * @returns MD5 hash string for cache lookup
+   * @private
    */
   private generateCacheKey(
     ingredients: string[],
@@ -339,7 +417,12 @@ export class RecipeProviderService {
   }
 
   /**
-   * Check cache for search results
+   * Check cache for previously searched results
+   * Retrieves full recipe data for cached search results
+   * 
+   * @param ingredientHash - MD5 hash of ingredient list
+   * @returns Promise<Recipe[]> - Array of cached recipes or empty array
+   * @private
    */
   private async checkCache(ingredientHash: string): Promise<Recipe[]> {
     const cached = await RecipeCacheModel.getCachedSearch(ingredientHash);
@@ -362,6 +445,12 @@ export class RecipeProviderService {
 
   /**
    * Cache search results and individual recipes
+   * Stores both the search result and individual recipe details
+   * 
+   * @param ingredientHash - MD5 hash of ingredient list
+   * @param recipes - Array of recipes to cache
+   * @returns Promise<void>
+   * @private
    */
   private async cacheResults(
     ingredientHash: string,
@@ -428,6 +517,19 @@ export class RecipeProviderService {
 
   /**
    * Get the name of the provider that was last used
+   */
+  /**
+   * Get the name of the last successfully used provider
+   * Useful for debugging and monitoring which provider is being used
+   * 
+   * @returns Name of the last provider that successfully returned results
+   * 
+   * @example
+   * ```typescript
+   * const recipes = await service.searchByIngredients(['chicken'], 10);
+   * console.log(`Results from: ${service.getLastUsedProvider()}`);
+   * // Output: "Results from: FatSecret"
+   * ```
    */
   getLastUsedProvider(): string {
     return this.lastUsedProvider || this.primaryProvider.getProviderName();

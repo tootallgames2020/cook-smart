@@ -57,7 +57,6 @@ export const RecipeSearchScreen: React.FC<RecipeSearchScreenProps> = ({
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       // Refresh recipes when returning to this screen
-      console.log('🔄 Recipe screen focused - refreshing...');
       handleSearch();
     });
 
@@ -66,15 +65,11 @@ export const RecipeSearchScreen: React.FC<RecipeSearchScreenProps> = ({
 
   const handleSearch = async () => {
     try {
-      console.log('🔍 Starting recipe search...');
       setHasSearched(true);
 
       // Get user's ingredients
       const response = await ingredientService.getUserIngredients();
-      console.log('📦 Got ingredients:', response);
-
       if (!response || (!response.ingredients && !response.customIngredients)) {
-        console.log('⚠️  No ingredients response');
         return;
       }
 
@@ -84,7 +79,6 @@ export const RecipeSearchScreen: React.FC<RecipeSearchScreenProps> = ({
       ];
 
       if (allIngredients.length === 0) {
-        console.log('⚠️  No ingredients found');
         return;
       }
 
@@ -92,11 +86,7 @@ export const RecipeSearchScreen: React.FC<RecipeSearchScreenProps> = ({
       const ingredientNames = allIngredients
         .map(ing => ing?.ingredient_name || ing?.name || '')
         .filter(name => name && name.length > 0);
-
-      console.log('🥘 Ingredient names:', ingredientNames);
-
       if (ingredientNames.length === 0) {
-        console.log('⚠️  No valid ingredient names');
         return;
       }
 
@@ -110,10 +100,8 @@ export const RecipeSearchScreen: React.FC<RecipeSearchScreenProps> = ({
       }
 
       // Search recipes with filters
-      console.log('🚀 Calling searchRecipes with:', ingredientNames, filters);
       const hasFilters = Object.keys(filters).length > 0;
       await searchRecipes(ingredientNames, hasFilters ? filters : undefined);
-      console.log('✅ Search complete');
     } catch (err) {
       const errorMsg =
         err && typeof err === 'object' && 'message' in err

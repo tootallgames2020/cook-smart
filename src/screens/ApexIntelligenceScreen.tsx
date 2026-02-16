@@ -225,28 +225,24 @@ const ApexIntelligenceScreen: React.FC = () => {
         <PhotoAnalysisButton
           analysisType="meal"
           onAnalysisComplete={(results) => {
-            console.log('Meal analysis:', results);
           }}
         />
         
         <PhotoAnalysisButton
           analysisType="ingredient"
           onAnalysisComplete={(results) => {
-            console.log('Ingredient identification:', results);
           }}
         />
         
         <PhotoAnalysisButton
           analysisType="pantry"
           onAnalysisComplete={(results) => {
-            console.log('Pantry analysis:', results);
           }}
         />
         
         <PhotoAnalysisButton
           analysisType="receipt"
           onAnalysisComplete={(results) => {
-            console.log('Receipt scan:', results);
           }}
         />
         

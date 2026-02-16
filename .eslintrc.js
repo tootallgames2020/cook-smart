@@ -10,8 +10,13 @@ module.exports = {
         '@typescript-eslint/no-shadow': ['error'],
         'no-shadow': 'off',
         'no-undef': 'off',
-        '@typescript-eslint/no-unused-vars': ['error'],
-        'react-native/no-inline-styles': 'off',
+        '@typescript-eslint/no-unused-vars': ['error', {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_'
+        }],
+        '@typescript-eslint/no-explicit-any': 'error',
+        'no-console': ['error', { allow: ['error'] }],
+        'react-native/no-inline-styles': 'warn',
       },
     },
   ],

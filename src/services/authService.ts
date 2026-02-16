@@ -27,16 +27,30 @@ export interface AuthResponse {
   lifetime_access?: boolean;
 }
 
+/**
+ * Service for handling user authentication and session management
+ * Manages login, registration, logout, and token storage
+ */
 class AuthService {
   private token: string | null = null;
 
+  /**
+   * Authenticate a user with email and password
+   * Stores the authentication token and user data in AsyncStorage
+   * 
+   * @param email - User's email address
+   * @param password - User's password
+   * @returns Promise<AuthResponse> - Authentication response with token and user data
+   * @throws Error if login fails or network error occurs
+   * 
+   * @example
+   * ```typescript
+   * const response = await authService.login('user@example.com', 'password123');
+   * console.log('Welcome', response.user.first_name);
+   * ```
+   */
   async login(email: string, password: string): Promise<AuthResponse> {
     try {
-      console.log('[AuthService] Login attempt:', {
-        email,
-        apiUrl: API_ENDPOINTS.auth.login,
-      });
-
       const response = await fetch(API_ENDPOINTS.auth.login, {
         method: 'POST',
         headers: {
@@ -45,46 +59,28 @@ class AuthService {
         body: JSON.stringify({email, password}),
       });
 
-      console.log('[AuthService] Response status:', response.status);
-
       // Try to parse JSON response
-      let data;
+      let data: AuthResponse;
       try {
         data = await response.json();
-        console.log('[AuthService] Response data:', {
-          hasToken: !!data.token,
-          hasUser: !!data.user,
-          message: data.message,
-        });
       } catch (parseError) {
-        console.error('[AuthService] JSON parse error:', parseError);
         throw new Error('Invalid response from server. Please try again.');
       }
 
       if (!response.ok) {
-        console.error('[AuthService] Login failed:', data);
-        throw new Error(data.message || data.error || 'Login failed');
+        throw new Error(data.message || 'Login failed');
       }
 
       if (!data.token || !data.user) {
-        console.error('[AuthService] Missing token or user in response');
         throw new Error('Invalid response from server');
       }
 
       this.token = data.token;
       await AsyncStorage.setItem('auth_token', data.token);
       await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
-
-      console.log('[AuthService] Login successful');
-      console.log('[AuthService] Token stored:', data.token ? `${data.token.substring(0, 20)}...` : 'NO TOKEN');
-      
-      // Verify token was stored correctly
-      const storedToken = await AsyncStorage.getItem('auth_token');
-      console.log('[AuthService] Token verification:', storedToken ? `${storedToken.substring(0, 20)}...` : 'STORAGE FAILED');
       
       return data;
     } catch (error) {
-      console.error('[AuthService] Login error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -92,6 +88,30 @@ class AuthService {
     }
   }
 
+  /**
+   * Register a new user account
+   * Stores the authentication token and user data in AsyncStorage upon success
+   * 
+   * @param userData - User registration information
+   * @param userData.email - User's email address
+   * @param userData.password - User's password
+   * @param userData.first_name - User's first name (optional)
+   * @param userData.last_name - User's last name (optional)
+   * @param userData.age_verified - Confirmation that user meets age requirements
+   * @returns Promise<AuthResponse> - Authentication response with token and user data
+   * @throws Error if registration fails or network error occurs
+   * 
+   * @example
+   * ```typescript
+   * const response = await authService.register({
+   *   email: 'newuser@example.com',
+   *   password: 'securePassword123',
+   *   first_name: 'John',
+   *   last_name: 'Doe',
+   *   age_verified: true
+   * });
+   * ```
+   */
   async register(userData: {
     email: string;
     password: string;
@@ -100,8 +120,6 @@ class AuthService {
     age_verified: boolean;
   }): Promise<AuthResponse> {
     try {
-      console.log('[AuthService] Register attempt:', {email: userData.email});
-
       const response = await fetch(API_ENDPOINTS.auth.register, {
         method: 'POST',
         headers: {
@@ -110,29 +128,19 @@ class AuthService {
         body: JSON.stringify(userData),
       });
 
-      console.log('[AuthService] Register response status:', response.status);
-
       // Try to parse JSON response
-      let data;
+      let data: AuthResponse;
       try {
         data = await response.json();
-        console.log('[AuthService] Register response data:', {
-          hasToken: !!data.token,
-          hasUser: !!data.user,
-          message: data.message,
-        });
       } catch (parseError) {
-        console.error('[AuthService] JSON parse error:', parseError);
         throw new Error('Invalid response from server. Please try again.');
       }
 
       if (!response.ok) {
-        console.error('[AuthService] Registration failed:', data);
-        throw new Error(data.message || data.error || 'Registration failed');
+        throw new Error(data.message || 'Registration failed');
       }
 
       if (!data.token || !data.user) {
-        console.error('[AuthService] Missing token or user in response');
         throw new Error('Invalid response from server');
       }
 
@@ -140,10 +148,8 @@ class AuthService {
       await AsyncStorage.setItem('auth_token', data.token);
       await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
 
-      console.log('[AuthService] Registration successful');
       return data;
     } catch (error) {
-      console.error('[AuthService] Registration error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -151,12 +157,31 @@ class AuthService {
     }
   }
 
+  /**
+   * Log out the current user
+   * Clears authentication token and user data from AsyncStorage
+   * 
+   * @returns Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * await authService.logout();
+   * navigation.navigate('Login');
+   * ```
+   */
   async logout(): Promise<void> {
     this.token = null;
     await AsyncStorage.removeItem('auth_token');
     await AsyncStorage.removeItem('user_data');
   }
 
+  /**
+   * Retrieve the stored authentication token
+   * Checks memory cache first, then AsyncStorage
+   * 
+   * @returns Promise<string | null> - The authentication token or null if not found
+   * @private
+   */
   async getStoredToken(): Promise<string | null> {
     if (this.token) return this.token;
 
@@ -165,15 +190,59 @@ class AuthService {
     return storedToken;
   }
 
+  /**
+   * Get the current authentication token
+   * Alias for getStoredToken()
+   * 
+   * @returns Promise<string | null> - The authentication token or null if not found
+   * 
+   * @example
+   * ```typescript
+   * const token = await authService.getAuthToken();
+   * if (token) {
+   *   // User is authenticated
+   * }
+   * ```
+   */
   async getAuthToken(): Promise<string | null> {
     return this.getStoredToken();
   }
 
+  /**
+   * Retrieve the stored user data from AsyncStorage
+   * 
+   * @returns Promise<User | null> - The user data or null if not found
+   * 
+   * @example
+   * ```typescript
+   * const user = await authService.getStoredUser();
+   * if (user) {
+   *   console.log('User email:', user.email);
+   * }
+   * ```
+   */
   async getStoredUser(): Promise<User | null> {
     const userData = await AsyncStorage.getItem('user_data');
     return userData ? JSON.parse(userData) : null;
   }
 
+  /**
+   * Fetch the current user's data from the API
+   * Requires valid authentication token
+   * 
+   * @returns Promise<User> - The current user's data
+   * @throws Error if not authenticated or API request fails
+   * 
+   * @example
+   * ```typescript
+   * try {
+   *   const user = await authService.getCurrentUser();
+   *   console.log('Current user:', user.email);
+   * } catch (error) {
+   *   console.error('Not authenticated');
+   * }
+   * ```
+   */
   async getCurrentUser(): Promise<User> {
     const token = await this.getStoredToken();
     if (!token) {
@@ -193,6 +262,19 @@ class AuthService {
     return data.user;
   }
 
+  /**
+   * Check if a user is currently authenticated
+   * 
+   * @returns Promise<boolean> - True if user has a valid token, false otherwise
+   * 
+   * @example
+   * ```typescript
+   * const isAuth = await authService.isAuthenticated();
+   * if (!isAuth) {
+   *   navigation.navigate('Login');
+   * }
+   * ```
+   */
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getStoredToken();
     return !!token;

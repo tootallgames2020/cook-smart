@@ -254,7 +254,6 @@ export const IngredientsList: React.FC<Props> = ({
           
           if (convertedQuantity !== null) {
             quantityToDeduct = convertedQuantity;
-            console.log(`🔄 Converted ${parsed.quantity} ${recipeUnit} to ${convertedQuantity} ${inventoryUnit} for ${parsed.name}`);
           } else {
             // If conversion fails, show a helpful message but still allow the action
             Alert.alert(
@@ -262,7 +261,6 @@ export const IngredientsList: React.FC<Props> = ({
               `Cannot convert ${recipeUnit} to ${inventoryUnit} for ${parsed.name}. The ingredient will be marked as used but inventory won't be updated.`,
               [{ text: 'OK' }]
             );
-            console.log(`⚠️ Cannot convert ${recipeUnit} to ${inventoryUnit} for ${parsed.name}`);
             return; // Don't update inventory but allow checking
           }
         }
@@ -274,9 +272,7 @@ export const IngredientsList: React.FC<Props> = ({
           quantity: newQuantity,
           unit: inventoryUnit // Keep original unit
         });
-        
-        console.log(`✅ Deducted ${quantityToDeduct} ${inventoryUnit} of ${parsed.name} from inventory (${currentQuantity} → ${newQuantity})`);
-        
+
         // Show success message with conversion info if applicable
         if (inventoryUnit !== recipeUnit) {
           Alert.alert(
@@ -286,7 +282,6 @@ export const IngredientsList: React.FC<Props> = ({
           );
         }
       } else {
-        console.log(`⚠️ Ingredient "${parsed.name}" not found in user's inventory`);
         Alert.alert(
           'Ingredient Not Found', 
           `"${parsed.name}" is not in your inventory. The ingredient will be marked as used for tracking.`,
@@ -321,9 +316,8 @@ export const IngredientsList: React.FC<Props> = ({
     }
     
     if (substitution) {
-      console.log('[IngredientsList] Found substitution for:', ingredient, '→', substitution);
     } else {
-      console.log('[IngredientsList] No substitution found for:', ingredient, 'Available substitutions:', substitutions.map(s => s.original));
+      
     }
     
     return substitution;

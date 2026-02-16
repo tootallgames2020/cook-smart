@@ -105,6 +105,26 @@ backend/.env.production
 # Backup files
 *.backup
 *.backup.*
+*_backup.*
 *.old
 *.bak
 *~
+
+# Temporary files
+temp-*
+*.tmp
+*.temp
+
+# Temporary documentation patterns
+*_PROGRESS.md
+DAILY_*.md
+TEMP_*.md
+*_COMPLETE.md
+*_STATUS.md
+
+# Deployment archives (keep in separate archive location)
+*.tar.gz
+!node_modules.tar.gz
+
+# SSH keys (except in secrets/ folder which is already ignored)
+*.pem

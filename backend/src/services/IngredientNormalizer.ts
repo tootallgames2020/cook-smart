@@ -1,9 +1,6 @@
 /**
- * Ingredient Normalizer Service
- * Intelligently normalizes ingredient names while preserving important type information
- * (e.g., "cheddar cheese" vs "swiss cheese", "whole milk" vs "skim milk")
+ * Normalized ingredient result interface
  */
-
 interface NormalizedIngredient {
   base: string; // Base ingredient (e.g., "cheese", "milk")
   type: string | undefined; // Type/variety (e.g., "cheddar", "whole")
@@ -11,6 +8,45 @@ interface NormalizedIngredient {
   original: string; // Original input
 }
 
+/**
+ * Ingredient Normalizer Service
+ * 
+ * Intelligently normalizes ingredient names while preserving important type information.
+ * Removes brand names, packaging details, and preparation methods while keeping
+ * meaningful variety information (e.g., "cheddar cheese" vs "swiss cheese").
+ * 
+ * Features:
+ * - Brand name removal (Kroger, Walmart, etc.)
+ * - Type preservation (cheese varieties, milk types, meat cuts)
+ * - Preparation method removal (sliced, diced, chopped)
+ * - Packaging detail removal (can, box, package)
+ * - Intelligent matching algorithm
+ * 
+ * Use Cases:
+ * - Ingredient deduplication in shopping lists
+ * - Recipe ingredient matching
+ * - Inventory management
+ * - Search optimization
+ * 
+ * @example
+ * ```typescript
+ * const normalizer = new IngredientNormalizer();
+ * 
+ * // Normalize ingredient
+ * const result = normalizer.normalize('Kraft Cheddar Cheese Sliced');
+ * console.log(result.normalized); // "cheddar cheese"
+ * console.log(result.type); // "cheddar"
+ * console.log(result.base); // "cheese"
+ * 
+ * // Check if ingredients match
+ * const matches = normalizer.matches('cheddar cheese', 'Kraft Cheddar Cheese');
+ * console.log(matches); // true
+ * 
+ * // Get display name
+ * const display = normalizer.getDisplayName('Organic Whole Milk 2%');
+ * console.log(display); // "2% milk"
+ * ```
+ */
 class IngredientNormalizer {
   // Common brand names to remove
   private readonly BRANDS = [
@@ -220,6 +256,30 @@ class IngredientNormalizer {
 
   /**
    * Normalize an ingredient name
+   * Removes brands, packaging, and preparation methods while preserving type information
+   * 
+   * @param ingredient - Raw ingredient name to normalize
+   * @returns NormalizedIngredient - Object with base, type, normalized name, and original
+   * 
+   * @example
+   * ```typescript
+   * // Brand removal
+   * const result1 = normalizer.normalize('Kraft Cheddar Cheese Sliced');
+   * console.log(result1.normalized); // "cheddar cheese"
+   * console.log(result1.type); // "cheddar"
+   * console.log(result1.base); // "cheese"
+   * 
+   * // Milk type preservation
+   * const result2 = normalizer.normalize('Organic Whole Milk 2%');
+   * console.log(result2.normalized); // "2% milk"
+   * console.log(result2.type); // "2%"
+   * 
+   * // Meat cut preservation
+   * const result3 = normalizer.normalize('Fresh Chicken Breast Boneless');
+   * console.log(result3.normalized); // "chicken breast"
+   * console.log(result3.type); // "breast"
+   * console.log(result3.base); // "chicken"
+   * ```
    */
   normalize(ingredient: string): NormalizedIngredient {
     const original = ingredient;
@@ -380,7 +440,26 @@ class IngredientNormalizer {
 
   /**
    * Check if two ingredients match
-   * Returns true if they're the same ingredient (considering type)
+   * Considers type information for accurate matching
+   * 
+   * @param ingredient1 - First ingredient name
+   * @param ingredient2 - Second ingredient name
+   * @returns True if ingredients are the same (considering type)
+   * 
+   * @example
+   * ```typescript
+   * // Exact match
+   * normalizer.matches('cheddar cheese', 'Kraft Cheddar Cheese'); // true
+   * 
+   * // Different types = no match
+   * normalizer.matches('cheddar cheese', 'swiss cheese'); // false
+   * 
+   * // Generic matches specific
+   * normalizer.matches('cheese', 'cheddar cheese'); // true
+   * 
+   * // Brand doesn't matter
+   * normalizer.matches('Kroger Milk', 'Walmart Milk'); // true
+   * ```
    */
   matches(ingredient1: string, ingredient2: string): boolean {
     const norm1 = this.normalize(ingredient1);
@@ -412,6 +491,17 @@ class IngredientNormalizer {
 
   /**
    * Get a user-friendly display name
+   * Returns the normalized name suitable for UI display
+   * 
+   * @param ingredient - Raw ingredient name
+   * @returns Normalized display name
+   * 
+   * @example
+   * ```typescript
+   * normalizer.getDisplayName('Kraft Cheddar Cheese Sliced'); // "cheddar cheese"
+   * normalizer.getDisplayName('Organic Whole Milk 2%'); // "2% milk"
+   * normalizer.getDisplayName('Fresh Chicken Breast'); // "chicken breast"
+   * ```
    */
   getDisplayName(ingredient: string): string {
     const norm = this.normalize(ingredient);

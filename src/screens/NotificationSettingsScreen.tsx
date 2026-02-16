@@ -40,7 +40,6 @@ export default function NotificationSettingsScreen() {
     try {
       setLoading(true);
       const isEnabled = await notificationService.areNotificationsEnabled();
-      console.log('📱 Notification status:', isEnabled);
       setEnabled(isEnabled);
 
       if (isEnabled) {
@@ -58,9 +57,7 @@ export default function NotificationSettingsScreen() {
 
   const handleEnableNotifications = async () => {
     try {
-      console.log('🔔 Requesting notification permissions...');
       const token = await notificationService.registerForPushNotifications();
-      console.log('🔔 Token received:', token ? 'Yes' : 'No');
       if (token) {
         setEnabled(true);
         Alert.alert('Success', 'Notifications enabled!');

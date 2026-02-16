@@ -9,13 +9,14 @@ import {
   PermissionsAndroid,
   Platform,
   Linking,
+  ViewStyle,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Voice from '@react-native-voice/voice';
+import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
 
 interface VoiceCommandButtonProps {
   onVoiceCommand?: (command: string) => void;
-  style?: any;
+  style?: ViewStyle;
   size?: 'small' | 'medium' | 'large';
   position?: 'floating' | 'inline';
 }
@@ -40,15 +41,15 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
     };
   }, []);
 
-  const checkMicrophonePermission = async () => {
+  const checkMicrophonePermission = async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
       try {
         // First check if we already have permission
-        const hasPermission = await PermissionsAndroid.check(
+        const alreadyGranted = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
         );
         
-        if (hasPermission) {
+        if (alreadyGranted) {
           setHasPermission(true);
           return true;
         }
@@ -69,7 +70,6 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
         setHasPermission(permissionGranted);
         return permissionGranted;
       } catch (err) {
-        console.warn('Permission request error:', err);
         setHasPermission(false);
         return false;
       }
@@ -81,18 +81,17 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
     }
   };
 
-  const setupVoiceRecognition = () => {
+  const setupVoiceRecognition = (): void => {
     Voice.onSpeechStart = () => {
-      console.log('Speech started');
+      // Speech recognition started
     };
 
     Voice.onSpeechEnd = () => {
-      console.log('Speech ended');
       setIsListening(false);
       stopPulseAnimation();
     };
 
-    Voice.onSpeechResults = (e: any) => {
+    Voice.onSpeechResults = (e: SpeechResultsEvent) => {
       if (e.value && e.value.length > 0) {
         const recognizedText = e.value[0];
         setVoiceText(recognizedText);
@@ -100,8 +99,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
       }
     };
 
-    Voice.onSpeechError = (e: any) => {
-      console.error('Speech error:', e);
+    Voice.onSpeechError = (e: SpeechErrorEvent) => {
       setIsListening(false);
       stopPulseAnimation();
       Alert.alert('Voice Error', 'Could not recognize speech. Please try again.');
@@ -134,7 +132,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
     }).start();
   };
 
-  const openAppSettings = () => {
+  const openAppSettings = (): void => {
     if (Platform.OS === 'android') {
       // Use the most reliable method for Android
       Linking.openSettings()
@@ -179,14 +177,29 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
         await Voice.start('en-US');
       }
     } catch (error) {
-      console.error('Voice start error:', error);
       setIsListening(false);
       stopPulseAnimation();
-      Alert.alert('Voice Error', 'Could not start voice recognition. Please try again.');
+      
+      // More specific error handling
+      let errorMessage = 'Could not start voice recognition. ';
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMsg = (error as Error).message;
+        if (errorMsg.includes('not available')) {
+          errorMessage += 'Voice recognition is not available on this device.';
+        } else if (errorMsg.includes('permission')) {
+          errorMessage += 'Microphone permission is required.';
+        } else {
+          errorMessage += 'Please check your microphone settings and try again.';
+        }
+      } else {
+        errorMessage += 'Please try again or check your device settings.';
+      }
+      
+      Alert.alert('Voice Recognition Error', errorMessage);
     }
   };
 
-  const getButtonSize = () => {
+  const getButtonSize = (): number => {
     switch (size) {
       case 'small': return 40;
       case 'large': return 80;
@@ -194,7 +207,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
     }
   };
 
-  const getIconSize = () => {
+  const getIconSize = (): number => {
     switch (size) {
       case 'small': return 20;
       case 'large': return 40;
@@ -205,21 +218,16 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
   const buttonSize = getButtonSize();
   const iconSize = getIconSize();
 
-  return React.createElement(
-    View,
-    {
-      style: [
+  return (
+    <View
+      style={[
         position === 'floating' ? styles.floatingContainer : styles.inlineContainer,
         style
-      ]
-    },
-    React.createElement(
-      Animated.View,
-      { style: { transform: [{ scale: pulseAnim }] } },
-      React.createElement(
-        TouchableOpacity,
-        {
-          style: [
+      ]}
+    >
+      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        <TouchableOpacity
+          style={[
             styles.voiceButton,
             {
               width: buttonSize,
@@ -227,36 +235,31 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
               borderRadius: buttonSize / 2,
               backgroundColor: isListening ? '#FF6B6B' : '#4ECDC4',
             }
-          ],
-          onPress: handleVoicePress,
-          activeOpacity: 0.8
-        },
-        React.createElement(Icon, {
-          name: 'mic',
-          size: iconSize,
-          color: 'white'
-        })
-      )
-    ),
-    
-    isListening && React.createElement(
-      View,
-      { style: styles.listeningIndicator },
-      React.createElement(Text, { style: styles.listeningText }, 'Listening...'),
-      React.createElement(
-        View,
-        { style: styles.waveform },
-        React.createElement(View, { style: [styles.wave, styles.wave1] }),
-        React.createElement(View, { style: [styles.wave, styles.wave2] }),
-        React.createElement(View, { style: [styles.wave, styles.wave3] })
-      )
-    ),
+          ]}
+          onPress={handleVoicePress}
+          activeOpacity={0.8}
+        >
+          <Icon name="mic" size={iconSize} color="white" />
+        </TouchableOpacity>
+      </Animated.View>
+      
+      {isListening && (
+        <View style={styles.listeningIndicator}>
+          <Text style={styles.listeningText}>Listening...</Text>
+          <View style={styles.waveform}>
+            <View style={[styles.wave, styles.wave1]} />
+            <View style={[styles.wave, styles.wave2]} />
+            <View style={[styles.wave, styles.wave3]} />
+          </View>
+        </View>
+      )}
 
-    voiceText && !isListening && React.createElement(
-      View,
-      { style: styles.voiceTextContainer },
-      React.createElement(Text, { style: styles.voiceText }, `"${voiceText}"`)
-    )
+      {voiceText && !isListening && (
+        <View style={styles.voiceTextContainer}>
+          <Text style={styles.voiceText}>"{voiceText}"</Text>
+        </View>
+      )}
+    </View>
   );
 };
 

@@ -90,7 +90,7 @@ const DietaryPreferencesScreen: React.FC<DietaryPreferencesScreenProps> = ({
     const name = dietKeyToName[key];
     const found = availableRestrictions.find(r => r.name === name);
     if (!found) {
-      console.log('Diet not found:', {key, name, available: availableRestrictions.map(r => r.name)});
+      
     }
     return found?.id;
   };
@@ -99,7 +99,7 @@ const DietaryPreferencesScreen: React.FC<DietaryPreferencesScreenProps> = ({
     const name = allergyKeyToName[key];
     const found = availableAllergies.find(a => a.name === name);
     if (!found) {
-      console.log('Allergy not found:', {key, name, available: availableAllergies.map(a => a.name)});
+      
     }
     return found?.id;
   };
@@ -122,15 +122,11 @@ const DietaryPreferencesScreen: React.FC<DietaryPreferencesScreenProps> = ({
         dietaryService.getUserAllergies(user.id),
       ]);
 
-      console.log('Loaded restrictions:', allRestrictions.map(r => ({id: r.id, name: r.name})));
-      console.log('User selected restrictions:', userRestrictions.map(r => ({id: r.id, name: r.name})));
-
       setAvailableRestrictions(allRestrictions);
       setAvailableAllergies(allAllergies);
       setSelectedDiets(userRestrictions.map(r => r.id));
       setSelectedAllergies(userAllergies.map(a => a.id));
-      
-      console.log('Selected diet IDs:', userRestrictions.map(r => r.id));
+
     } catch (error) {
       console.error('Error loading preferences:', error);
     } finally {
@@ -141,7 +137,6 @@ const DietaryPreferencesScreen: React.FC<DietaryPreferencesScreenProps> = ({
   const toggleDiet = (dietKey: string) => {
     const dietId = getDietIdFromKey(dietKey);
     if (!dietId) {
-      console.warn('Diet ID not found for key:', dietKey);
       return;
     }
 
@@ -155,7 +150,6 @@ const DietaryPreferencesScreen: React.FC<DietaryPreferencesScreenProps> = ({
   const toggleAllergy = (allergyKey: string) => {
     const allergyId = getAllergyIdFromKey(allergyKey);
     if (!allergyId) {
-      console.warn('Allergy ID not found for key:', allergyKey);
       return;
     }
 
@@ -289,13 +283,6 @@ const DietaryPreferencesScreen: React.FC<DietaryPreferencesScreenProps> = ({
               
               // Debug logging
               if (diet.id === 'dairy-free' || diet.id === 'vegetarian') {
-                console.log(`Rendering ${diet.label}:`, {
-                  key: diet.id,
-                  dietId,
-                  selectedDiets,
-                  isSelected,
-                  availableCount: availableRestrictions.length
-                });
               }
               
               return (

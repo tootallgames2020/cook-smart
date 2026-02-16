@@ -78,14 +78,4 @@ export const {
 } = buildConfig;
 
 // Log build configuration
-console.log('[Build Config]', {
-  environment,
-  isTestBuild,
-  isDevelopment,
-  isProduction,
-  packageName,
-  appName,
-  enableDebugLogging,
-});
-
 export default buildConfig;

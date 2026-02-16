@@ -49,11 +49,6 @@ export const RecipeImage: React.FC<RecipeImageProps> = ({
         setImageError(false);
       }}
       onError={error => {
-        console.log(
-          'Recipe image failed to load:',
-          imageUrl,
-          error.nativeEvent.error,
-        );
         setImageLoading(false);
         setImageError(true);
       }}

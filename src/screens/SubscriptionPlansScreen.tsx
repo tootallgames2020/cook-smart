@@ -84,9 +84,6 @@ export default function SubscriptionPlansScreen() {
         planName as 'yearly' | 'monthly' | 'weekly',
         referralCode || undefined,
       );
-
-      console.log('Checkout URL received:', checkoutUrl);
-
       // Open Stripe Checkout in browser
       // Note: Linking.canOpenURL may return false for HTTPS URLs on Android
       // but Linking.openURL will still work, so we try to open it directly

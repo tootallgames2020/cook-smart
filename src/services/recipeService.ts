@@ -79,7 +79,17 @@ export interface SavedRecipe {
   savedAt: string;
 }
 
+/**
+ * Service for managing recipe search, retrieval, and local storage
+ * Handles communication with the backend API and local AsyncStorage
+ */
 class RecipeService {
+  /**
+   * Retrieves the authentication token from AsyncStorage
+   * @returns Promise<string> - The authentication token
+   * @throws Error if no token is found
+   * @private
+   */
   private async getAuthToken(): Promise<string> {
     const token = await AsyncStorage.getItem('auth_token');
     if (!token) {
@@ -88,7 +98,26 @@ class RecipeService {
     return token;
   }
 
-  // Search recipes by ingredients
+  /**
+   * Search for recipes based on available ingredients
+   * If no ingredients provided, uses user's inventory from database
+   * Results are sorted by match percentage (highest first)
+   * 
+   * @param ingredients - Array of ingredient names to search with
+   * @param filters - Optional filters for the search
+   * @param filters.maxCalories - Maximum calories per serving
+   * @param filters.mealType - Type of meal (breakfast, lunch, dinner, etc.)
+   * @returns Promise<Recipe[]> - Array of matching recipes sorted by match percentage
+   * @throws Error if authentication fails or API request fails
+   * 
+   * @example
+   * ```typescript
+   * const recipes = await recipeService.searchByIngredients(
+   *   ['chicken', 'rice', 'broccoli'],
+   *   { maxCalories: 500, mealType: 'dinner' }
+   * );
+   * ```
+   */
   async searchByIngredients(
     ingredients: string[],
     filters?: {maxCalories?: number; mealType?: string},
@@ -103,12 +132,8 @@ class RecipeService {
         searchIngredients = userIngredients.ingredients
           .map(ing => ing.ingredient_name || ing.name || '')
           .filter(name => name.length > 0);
-        console.log(
-          'Using user ingredients for search:',
-          searchIngredients.slice(0, 5),
-        );
+        
       } catch (error) {
-        console.error('Failed to get user ingredients:', error);
         searchIngredients = [];
       }
     }
@@ -144,29 +169,22 @@ class RecipeService {
     }
 
     // Map recipe_image to image for consistency and calculate match percentage
-    const recipes = (data.recipes || []).map((recipe: any) => {
+    const recipes = (data.recipes || []).map((recipe: Recipe) => {
       const totalIngredients = searchIngredients.length;
       const usedCount = recipe.usedIngredientCount || 0;
       const matchPercentage =
         totalIngredients > 0
           ? Math.round((usedCount / totalIngredients) * 100)
           : 0;
-
-      console.log(
-        `Recipe "${recipe.title}" - Used: ${usedCount}/${totalIngredients} = ${matchPercentage}%`,
-      );
-
       return {
         ...recipe,
-        image: recipe.recipe_image || recipe.image_url || recipe.image || '',
-        imageUrl:
-          recipe.recipe_image || recipe.image_url || recipe.imageUrl || '',
+        image: recipe.image || '',
         matchPercentage,
       };
     });
 
     // Sort recipes by match percentage (highest first) for Recipe tab
-    const sortedRecipes = recipes.sort((a: any, b: any) => {
+    const sortedRecipes = recipes.sort((a: Recipe, b: Recipe) => {
       // Primary sort: match percentage (higher is better)
       const aMatch = a.matchPercentage || 0;
       const bMatch = b.matchPercentage || 0;
@@ -180,34 +198,27 @@ class RecipeService {
       return aMissed - bMissed;
     });
 
-    console.log(
-      'Recipe search results sorted by match percentage:',
-      sortedRecipes.slice(0, 5).map((r: any) => ({
-        title: r.title,
-        matchPercentage: r.matchPercentage,
-        used: r.usedIngredientCount,
-        missed: r.missedIngredientCount,
-        totalUserIngredients: searchIngredients.length,
-      })),
-    );
-
-    console.log('Search ingredients used:', searchIngredients.slice(0, 10));
-
-    return sortedRecipes.map((recipe: Recipe) => ({
-      ...recipe,
-      searchIngredients, // Include for debugging
-    }));
+    return sortedRecipes;
   }
 
-  // Get recipe details
+  /**
+   * Get detailed information about a specific recipe
+   * 
+   * @param recipeId - The unique identifier of the recipe (number or string)
+   * @returns Promise<RecipeDetails> - Complete recipe information including ingredients and instructions
+   * @throws Error if recipe not found or API request fails
+   * 
+   * @example
+   * ```typescript
+   * const recipe = await recipeService.getRecipeDetails(12345);
+   * console.log(recipe.title, recipe.ingredients);
+   * ```
+   */
   async getRecipeDetails(recipeId: number | string): Promise<RecipeDetails> {
     try {
-      console.log('[RecipeService] Getting recipe details:', recipeId);
       const token = await this.getAuthToken();
 
       const url = `${API_BASE_URL}/api/v1/recipes/${recipeId}`;
-      console.log('[RecipeService] Fetching from:', url);
-
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -215,68 +226,42 @@ class RecipeService {
           'Content-Type': 'application/json',
         },
       });
-
-      console.log('[RecipeService] Response status:', response.status);
-
       // Try to parse JSON response
-      let data;
+      let data: { recipe?: RecipeDetails; error?: string; message?: string };
       try {
         data = await response.json();
-        console.log('[RecipeService] Response data:', {
-          hasRecipe: !!data.recipe,
-          recipeId: data.recipe?.id,
-          recipeTitle: data.recipe?.title,
-        });
       } catch (parseError) {
-        console.error('[RecipeService] JSON parse error:', parseError);
         throw new Error('Invalid response from server');
       }
 
       if (!response.ok) {
-        console.error('[RecipeService] Error response:', data);
         throw new Error(
           data.error || data.message || 'Failed to fetch recipe details',
         );
       }
 
       if (!data.recipe) {
-        console.error('[RecipeService] No recipe in response');
         throw new Error('Recipe not found');
       }
 
-      // Map recipe_image to image for consistency
-      const recipe = {
-        ...data.recipe,
-        image:
-          data.recipe.recipe_image ||
-          data.recipe.image_url ||
-          data.recipe.image ||
-          '',
-        imageUrl:
-          data.recipe.recipe_image ||
-          data.recipe.image_url ||
-          data.recipe.imageUrl ||
-          '',
-      };
-
-      console.log('[RecipeService] Recipe details received:', {
-        id: recipe.id,
-        title: recipe.title,
-        hasIngredientsWithStatus: !!recipe.ingredientsWithStatus,
-        ingredientsWithStatusCount: recipe.ingredientsWithStatus?.length || 0,
-        matchPercentage: recipe.matchPercentage,
-        matchedCount: recipe.matchedCount,
-        totalIngredients: recipe.totalIngredients,
-      });
-
-      return recipe;
+      return data.recipe;
     } catch (error) {
-      console.error('[RecipeService] Error in getRecipeDetails:', error);
       throw error;
     }
   }
 
-  // Save recipe locally
+  /**
+   * Save a recipe to local storage for offline access
+   * 
+   * @param recipe - The complete recipe details to save
+   * @returns Promise<void>
+   * @throws Error if recipe is already saved
+   * 
+   * @example
+   * ```typescript
+   * await recipeService.saveRecipe(recipeDetails);
+   * ```
+   */
   async saveRecipe(recipe: RecipeDetails): Promise<void> {
     const savedRecipes = await this.getSavedRecipes();
 
@@ -294,31 +279,77 @@ class RecipeService {
     await AsyncStorage.setItem('saved_recipes', JSON.stringify(savedRecipes));
   }
 
-  // Get all saved recipes
+  /**
+   * Retrieve all recipes saved in local storage
+   * 
+   * @returns Promise<SavedRecipe[]> - Array of saved recipes with timestamps
+   * 
+   * @example
+   * ```typescript
+   * const saved = await recipeService.getSavedRecipes();
+   * console.log(`You have ${saved.length} saved recipes`);
+   * ```
+   */
   async getSavedRecipes(): Promise<SavedRecipe[]> {
     const data = await AsyncStorage.getItem('saved_recipes');
     return data ? JSON.parse(data) : [];
   }
 
-  // Delete saved recipe
+  /**
+   * Remove a recipe from local storage
+   * 
+   * @param recipeId - The unique identifier of the recipe to delete
+   * @returns Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * await recipeService.deleteSavedRecipe(12345);
+   * ```
+   */
   async deleteSavedRecipe(recipeId: number): Promise<void> {
     const savedRecipes = await this.getSavedRecipes();
     const filtered = savedRecipes.filter(r => r.recipe.id !== recipeId);
     await AsyncStorage.setItem('saved_recipes', JSON.stringify(filtered));
   }
 
-  // Check if recipe is saved
+  /**
+   * Check if a recipe is currently saved in local storage
+   * 
+   * @param recipeId - The unique identifier of the recipe
+   * @returns Promise<boolean> - True if recipe is saved, false otherwise
+   * 
+   * @example
+   * ```typescript
+   * const isSaved = await recipeService.isRecipeSaved(12345);
+   * if (isSaved) {
+   *   console.log('Recipe is already saved');
+   * }
+   * ```
+   */
   async isRecipeSaved(recipeId: number): Promise<boolean> {
     const savedRecipes = await this.getSavedRecipes();
     return savedRecipes.some(r => r.recipe.id === recipeId);
   }
 
-  // Get recipe by ID (for trending/seasonal)
+  /**
+   * Get recipe details by ID (convenience method for trending/seasonal recipes)
+   * Returns null if recipe not found instead of throwing error
+   * 
+   * @param recipeId - The unique identifier of the recipe as a string
+   * @returns Promise<RecipeDetails | null> - Recipe details or null if not found
+   * 
+   * @example
+   * ```typescript
+   * const recipe = await recipeService.getRecipeById('12345');
+   * if (recipe) {
+   *   console.log('Found recipe:', recipe.title);
+   * }
+   * ```
+   */
   async getRecipeById(recipeId: string): Promise<RecipeDetails | null> {
     try {
       return await this.getRecipeDetails(parseInt(recipeId));
     } catch (error) {
-      console.error('Error getting recipe:', error);
       return null;
     }
   }

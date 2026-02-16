@@ -69,7 +69,6 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               onClick={(e) => {
                 e.preventDefault();
                 // Implement favorite functionality
-                console.log('Add to favorites:', recipe.title);
                 // TODO: Integrate with backend favorites API when available
               }}
             >

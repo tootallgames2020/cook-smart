@@ -16,7 +16,6 @@ interface TermsOfServiceScreenProps {
 export const TermsOfServiceScreen: React.FC<TermsOfServiceScreenProps> = ({
   navigation,
 }) => {
-  console.log('🟢 TermsOfServiceScreen rendered');
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>

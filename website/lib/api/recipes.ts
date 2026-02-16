@@ -53,8 +53,48 @@ interface PaginatedRecipes {
 // Cook Smart API base URL - same backend as mobile app
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.cooksmartapp.com';
 
+// Backend recipe response type
+interface BackendRecipe {
+  id: string;
+  title?: string;
+  name?: string;
+  description?: string;
+  category?: string;
+  servings?: number;
+  cookingTime?: number;
+  cooking_time?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  dietaryTags?: string[];
+  dietary_tags?: string[];
+  featured?: boolean;
+  imageUrl?: string;
+  image_url?: string;
+  image?: string;
+  cuisine?: string;
+  instructions?: string[];
+  ingredients?: Array<{ name: string; amount: string }>;
+  youtubeUrl?: string;
+  youtube_url?: string;
+  provider?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+  matchPercentage?: number;
+  matchingIngredients?: string[];
+  missingIngredients?: string[];
+}
+
 // Cache for recipes
-const recipeCache = new Map<string, { data: any; timestamp: number }>();
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const recipeCache = new Map<string, CacheEntry<unknown>>();
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
 
 function getCached<T>(key: string): T | null {
@@ -70,7 +110,7 @@ function getCached<T>(key: string): T | null {
   return cached.data as T;
 }
 
-function setCache(key: string, data: any): void {
+function setCache<T>(key: string, data: T): void {
   recipeCache.set(key, { data, timestamp: Date.now() });
 }
 
@@ -102,12 +142,11 @@ async function fetchRecipesFromBackend(filters: RecipeFilters = {}): Promise<Rec
     });
 
     if (!response.ok) {
-      console.warn('Backend API failed:', response.status, response.statusText);
       return [];
     }
 
     const data = await response.json();
-    const recipes = (data.recipes || []).map((r: any) => ({
+    const recipes = (data.recipes || []).map((r: BackendRecipe) => ({
       id: r.id,
       title: r.title || r.name,
       description: r.description || `${r.category || 'Recipe'} with ${r.servings || 4} servings`,
@@ -162,12 +201,11 @@ async function fetchTrendingRecipes(limit: number = 20): Promise<Recipe[]> {
     });
 
     if (!response.ok) {
-      console.warn('Trending recipes API failed');
       return [];
     }
 
     const data = await response.json();
-    const recipes = (data.recipes || []).slice(0, limit).map((r: any) => ({
+    const recipes = (data.recipes || []).slice(0, limit).map((r: BackendRecipe) => ({
       id: r.id,
       title: r.title || r.name,
       description: r.description || `${r.category || 'Recipe'} with ${r.servings || 4} servings`,

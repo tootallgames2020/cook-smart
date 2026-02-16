@@ -29,6 +29,35 @@ export interface Recipe {
   matchedCount?: number;
 }
 
+/**
+ * FatSecret Service - Recipe and food database API integration
+ * 
+ * Integrates with FatSecret Premier API for recipe search and food data.
+ * Provides access to 1M+ recipes with nutritional information.
+ * 
+ * API Details:
+ * - Plan: Premier (500,000 calls/month free)
+ * - Authentication: OAuth 2.0 client credentials
+ * - Rate Limiting: Automatic token refresh
+ * - Coverage: Global food database
+ * 
+ * Features:
+ * - Recipe search by ingredients
+ * - Detailed recipe information
+ * - Barcode food lookup
+ * - Nutritional data
+ * - Automatic token management
+ * - Fallback recipes for errors
+ * 
+ * @example
+ * ```typescript
+ * const service = new FatSecretService();
+ * const recipes = await service.searchRecipesByIngredients(['chicken', 'rice'], 20);
+ * recipes.forEach(recipe => {
+ *   console.log(`${recipe.title}: ${recipe.calories} calories`);
+ * });
+ * ```
+ */
 export class FatSecretService {
   private clientId: string;
   private clientSecret: string;
@@ -36,6 +65,19 @@ export class FatSecretService {
   private accessToken: string | null = null;
   private tokenExpiry: number = 0;
 
+  /**
+   * Initialize FatSecret service with API credentials
+   * Credentials are loaded from environment variables
+   * 
+   * @example
+   * ```typescript
+   * // Requires environment variables:
+   * // FATSECRET_CLIENT_ID
+   * // FATSECRET_CLIENT_SECRET
+   * // FATSECRET_BASE_URL (optional)
+   * const service = new FatSecretService();
+   * ```
+   */
   constructor() {
     this.clientId = process.env.FATSECRET_CLIENT_ID || '';
     this.clientSecret = process.env.FATSECRET_CLIENT_SECRET || '';
@@ -99,6 +141,29 @@ export class FatSecretService {
     }
   }
 
+  /**
+   * Search for recipes by ingredients
+   * Returns recipes that match the provided ingredients
+   * 
+   * @param ingredients - Array of ingredient names to search for
+   * @param maxResults - Maximum number of recipes to return (default: 20)
+   * @returns Promise<Recipe[]> - Array of matching recipes with nutritional info
+   * 
+   * @example
+   * ```typescript
+   * // Basic search
+   * const recipes = await service.searchRecipesByIngredients(['chicken', 'rice'], 10);
+   * 
+   * // Process results
+   * recipes.forEach(recipe => {
+   *   console.log(`${recipe.title}`);
+   *   console.log(`Servings: ${recipe.servings}`);
+   *   console.log(`Time: ${recipe.readyInMinutes} minutes`);
+   *   console.log(`Calories: ${recipe.calories}`);
+   *   console.log(`Match: ${recipe.matchPercentage}%`);
+   * });
+   * ```
+   */
   async searchRecipesByIngredients(ingredients: string[], maxResults: number = 20): Promise<Recipe[]> {
     try {
       const searchQuery = ingredients.join(' ');
@@ -150,6 +215,22 @@ export class FatSecretService {
     }
   }
 
+  /**
+   * Get detailed recipe information by ID
+   * Retrieves full recipe details including instructions and ingredients
+   * 
+   * @param recipeId - FatSecret recipe ID
+   * @returns Promise<any> - Detailed recipe information
+   * 
+   * @example
+   * ```typescript
+   * const details = await service.getRecipeDetails('12345');
+   * console.log(`Title: ${details.recipe_name}`);
+   * console.log(`Instructions: ${details.directions}`);
+   * console.log(`Ingredients: ${details.ingredients.join(', ')}`);
+   * console.log(`Nutrition: ${details.calories} calories`);
+   * ```
+   */
   async getRecipeDetails(recipeId: string): Promise<any> {
     try {
       const data = await this.makeRequest('recipe.get', {
@@ -344,6 +425,23 @@ export class FatSecretService {
     return { direction: [] };
   }
 
+  /**
+   * Search for food product by barcode
+   * Looks up product information using UPC/EAN barcode
+   * 
+   * @param barcode - UPC/EAN barcode number
+   * @returns Promise<any> - Food product information with nutrition data
+   * 
+   * @example
+   * ```typescript
+   * const food = await service.searchFoodByBarcode('012345678901');
+   * if (food) {
+   *   console.log(`Product: ${food.food_name}`);
+   *   console.log(`Brand: ${food.brand_name}`);
+   *   console.log(`Calories: ${food.servings.serving.calories}`);
+   * }
+   * ```
+   */
   async searchFoodByBarcode(barcode: string): Promise<any> {
     try {
       const data = await this.makeRequest('food.find_id_for_barcode', {

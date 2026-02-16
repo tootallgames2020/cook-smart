@@ -89,22 +89,15 @@ const CoFounderWelcomeScreen: React.FC = () => {
     // Load the music file
     const music = new Sound(welcomeData.musicFile, Sound.MAIN_BUNDLE, error => {
       if (error) {
-        console.log(
-          'Failed to load the sound - file may not exist yet:',
-          error,
-        );
         setMusicLoaded(false);
         return;
       }
-      console.log(`Music loaded successfully: ${welcomeData.musicFile}`);
       setMusicLoaded(true);
       setSound(music);
       // Auto-play when loaded
       music.play(success => {
         if (success) {
-          console.log('Music playing!');
         } else {
-          console.log('Music playback failed');
         }
       });
       setIsPlaying(true);

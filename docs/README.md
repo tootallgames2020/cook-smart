@@ -1,52 +1,42 @@
 # Cook Smart Documentation
 
-Welcome to the comprehensive documentation for Cook Smart, an intelligent recipe generation platform.
+This directory contains organized documentation for the Cook Smart project.
 
-## 📚 Documentation Structure
+## Directory Structure
 
-### For Developers
-- [**API Reference**](api/) - Complete REST API documentation
-- [**Database Schema**](database/) - Data models and relationships
-- [**Architecture Guide**](architecture/) - System design and patterns
-- [**Security Documentation**](../SECURITY_IMPLEMENTATION.md) - Security practices and compliance
-- [**Deployment Guide**](deployment/) - Production deployment procedures
-- [**Contributing Guide**](../CONTRIBUTING.md) - Development workflow and standards
+### `/architecture`
+System architecture, design patterns, and technical decisions.
 
-### For Users
-- [**User Guide**](user-guide/) - Application usage instructions
-- [**FAQ**](faq.md) - Frequently asked questions
-- [**Troubleshooting**](troubleshooting.md) - Common issues and solutions
+### `/deployment`
+Deployment guides, infrastructure setup, and operational procedures.
+- `SSH_ACCESS_SOLUTION.md` - SSH access and EC2 connection guide
+- `BUILD_INSTRUCTIONS.md` - Build and deployment instructions
 
-### Legal & Compliance
-- [**Privacy Policy**](legal/PRIVACY_POLICY.md) - Data handling practices
-- [**Terms of Service**](legal/TERMS_OF_SERVICE.md) - Usage terms and conditions
-- [**Cookie Policy**](legal/COOKIE_POLICY.md) - Cookie usage and preferences
-- [**Accessibility Statement**](legal/ACCESSIBILITY_STATEMENT.md) - Accessibility compliance
+### `/development`
+Development guides, coding standards, and audit reports.
+- `CODE_AUDIT_REPORT.md` - Comprehensive 6-week code audit plan
+- `WEEK1_COMPLETE_SUMMARY.md` - Week 1 audit results (file hygiene, console logging, type safety)
+- `WEEK2_DOCUMENTATION_COMPLETE.md` - Week 2 audit results (JSDoc documentation)
+- `AUDIT_PROGRESS.md` - Overall audit progress tracking
 
-## 🚀 Quick Navigation
+### `/troubleshooting`
+Common issues and their solutions.
+- `VOICE_COMMAND_ISSUES.md` - Voice command troubleshooting
+- `VOICE_FIX_INSTRUCTIONS.md` - Voice feature fix instructions
 
-### Getting Started
-1. [Installation Guide](installation.md)
-2. [Configuration](configuration.md)
-3. [First Steps](getting-started.md)
+## Contributing
 
-### Development
-1. [Local Development Setup](development/setup.md)
-2. [API Integration](development/api-integration.md)
-3. [Testing Guidelines](development/testing.md)
-4. [Code Style Guide](development/code-style.md)
+When adding new documentation:
+1. Place it in the appropriate subdirectory
+2. Use clear, descriptive filenames
+3. Include a date in the filename if it's time-sensitive
+4. Update this README with a brief description
+5. Link to it from the main README if it's important
 
-### Deployment
-1. [Environment Setup](deployment/environment.md)
-2. [Production Deployment](deployment/production.md)
-3. [Monitoring & Maintenance](deployment/monitoring.md)
+## Documentation Standards
 
-## 📞 Support
-
-For documentation issues or suggestions:
-- **Email**: services.cooksmart@gmail.com
-- **GitHub**: [Documentation Issues](https://github.com/tootallgames2020/cook-smart/issues?label=documentation)
-
----
-
-*Last updated: December 14, 2025*
+- Use Markdown format (`.md`)
+- Include a title and date at the top
+- Use clear headings and sections
+- Include code examples where appropriate
+- Keep documentation up-to-date with code changes

@@ -3,8 +3,6 @@ import { View, Text, ScrollView, StyleSheet, Alert, RefreshControl } from 'react
 import { SubscriptionCard } from '../components/SubscriptionCard';
 import { paymentService, Subscription } from '../services/paymentService';
 
-
-
 export const SubscriptionScreen: React.FC = () => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);

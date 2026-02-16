@@ -55,6 +55,55 @@ interface HealthStats {
 type ErrorSeverity = 'critical' | 'high' | 'medium' | 'low';
 type ActivityType = 'signup' | 'purchase' | 'referral';
 
+/**
+ * Notification Service - Discord webhook integration for system notifications
+ * 
+ * Sends real-time notifications to Discord channels for monitoring and alerts.
+ * Implements fail-safe error handling to prevent notification cascades.
+ * 
+ * Notification Types:
+ * - Error notifications (critical system errors)
+ * - Feedback notifications (user feedback submissions)
+ * - Activity notifications (signups, purchases, referrals)
+ * - Health summaries (system health metrics)
+ * - Achievement notifications (user achievements)
+ * 
+ * Features:
+ * - Discord webhook integration
+ * - Rich embed formatting
+ * - Screenshot attachments
+ * - Severity-based coloring
+ * - Notification logging
+ * - Fail-safe error handling
+ * 
+ * Configuration:
+ * - DISCORD_ERROR_WEBHOOK - Error notifications channel
+ * - DISCORD_FEEDBACK_WEBHOOK - Feedback channel
+ * - DISCORD_ACTIVITY_WEBHOOK - Activity channel
+ * 
+ * @example
+ * ```typescript
+ * const service = new NotificationService();
+ * 
+ * // Send error notification
+ * await service.sendErrorNotification(
+ *   new Error('Database connection failed'),
+ *   'critical',
+ *   { endpoint: '/api/recipes', affectedUsers: 150 }
+ * );
+ * 
+ * // Send feedback notification
+ * await service.sendFeedbackNotification({
+ *   userId: 'user_123',
+ *   userName: 'John Doe',
+ *   userEmail: 'john@example.com',
+ *   rating: 5,
+ *   category: 'feature-request',
+ *   message: 'Love the new recipe search!',
+ *   timestamp: new Date()
+ * });
+ * ```
+ */
 class NotificationService {
   private errorWebhook: string | null = null;
   private feedbackWebhook: string | null = null;
@@ -116,6 +165,34 @@ class NotificationService {
 
   /**
    * Send error notification to Discord
+   * Formats and sends error details with severity-based coloring
+   * Never throws errors to prevent notification cascades
+   * 
+   * @param error - Error object to report
+   * @param severity - Error severity level ('critical', 'high', 'medium', 'low')
+   * @param context - Optional context information
+   * @param context.userId - User ID if error is user-specific
+   * @param context.endpoint - API endpoint where error occurred
+   * @param context.affectedUsers - Number of users affected
+   * @param context.requestBody - Request body that caused error
+   * @returns Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * // Critical database error
+   * await service.sendErrorNotification(
+   *   new Error('Database connection lost'),
+   *   'critical',
+   *   { endpoint: '/api/recipes', affectedUsers: 500 }
+   * );
+   * 
+   * // User-specific error
+   * await service.sendErrorNotification(
+   *   new Error('Payment processing failed'),
+   *   'high',
+   *   { userId: 'user_123', endpoint: '/api/payments' }
+   * );
+   * ```
    */
   async sendErrorNotification(
     error: Error,
@@ -144,6 +221,44 @@ class NotificationService {
 
   /**
    * Send feedback notification to Discord
+   * Formats user feedback with optional screenshot attachment
+   * Never throws errors to prevent notification cascades
+   * 
+   * @param feedback - User feedback data
+   * @param feedback.userId - User ID
+   * @param feedback.userName - User's display name
+   * @param feedback.userEmail - User's email
+   * @param feedback.rating - Optional rating (1-5)
+   * @param feedback.category - Feedback category
+   * @param feedback.message - Feedback message
+   * @param feedback.screenshot - Optional base64 screenshot
+   * @param feedback.timestamp - Submission timestamp
+   * @returns Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * // Feedback with rating
+   * await service.sendFeedbackNotification({
+   *   userId: 'user_123',
+   *   userName: 'John Doe',
+   *   userEmail: 'john@example.com',
+   *   rating: 5,
+   *   category: 'feature-request',
+   *   message: 'Please add dark mode!',
+   *   timestamp: new Date()
+   * });
+   * 
+   * // Feedback with screenshot
+   * await service.sendFeedbackNotification({
+   *   userId: 'user_456',
+   *   userName: 'Jane Smith',
+   *   userEmail: 'jane@example.com',
+   *   category: 'bug-report',
+   *   message: 'Button not working',
+   *   screenshot: base64ImageData,
+   *   timestamp: new Date()
+   * });
+   * ```
    */
   async sendFeedbackNotification(feedback: FeedbackData): Promise<void> {
     try {
@@ -179,6 +294,46 @@ class NotificationService {
 
   /**
    * Send activity notification to Discord
+   * Notifies about user signups, purchases, and referrals
+   * Never throws errors to prevent notification cascades
+   * 
+   * @param type - Activity type ('signup', 'purchase', 'referral')
+   * @param data - Activity-specific data
+   * @returns Promise<void>
+   * 
+   * @example
+   * ```typescript
+   * // New user signup
+   * await service.sendActivityNotification('signup', {
+   *   signup: {
+   *     userName: 'John Doe',
+   *     userEmail: 'john@example.com',
+   *     referredBy: 'Jane Smith',
+   *     referralCode: 'JANE123'
+   *   }
+   * });
+   * 
+   * // Purchase notification
+   * await service.sendActivityNotification('purchase', {
+   *   purchase: {
+   *     userName: 'John Doe',
+   *     userEmail: 'john@example.com',
+   *     plan: 'Premium Monthly',
+   *     amount: 9.99
+   *   }
+   * });
+   * 
+   * // Referral notification
+   * await service.sendActivityNotification('referral', {
+   *   referral: {
+   *     referrerName: 'Jane Smith',
+   *     referrerEmail: 'jane@example.com',
+   *     refereeName: 'John Doe',
+   *     refereeEmail: 'john@example.com',
+   *     referralCode: 'JANE123'
+   *   }
+   * });
+   * ```
    */
   async sendActivityNotification(
     type: ActivityType,

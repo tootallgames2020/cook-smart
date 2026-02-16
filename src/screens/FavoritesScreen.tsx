@@ -85,7 +85,6 @@ export const FavoritesScreen: React.FC<Props> = ({ userId }) => {
 
   const handleRecipePress = (recipe: FavoriteRecipe) => {
     // Navigate to recipe detail
-    console.log('Recipe pressed:', recipe.title);
   };
 
   const renderFavorite = ({ item }: { item: FavoriteRecipe }) => (

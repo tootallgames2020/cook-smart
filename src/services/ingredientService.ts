@@ -36,26 +36,44 @@ export interface GetIngredientsResponse {
   total: number;
 }
 
+/**
+ * Service for managing user's ingredient inventory
+ * Handles CRUD operations for ingredients and category management
+ */
 class IngredientService {
+  /**
+   * Retrieves the authentication token from AsyncStorage
+   * @returns Promise<string> - The authentication token
+   * @throws Error if no token is found
+   * @private
+   */
   private async getAuthToken(): Promise<string> {
     const token = await AsyncStorage.getItem('auth_token');
-    console.log('[IngredientService] Retrieved token from storage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN FOUND');
-    
+
     if (!token) {
-      console.error('[IngredientService] No auth token found in AsyncStorage');
       throw new Error('Authorization required. Please log in again.');
     }
     return token;
   }
 
+  /**
+   * Get all ingredients in the user's inventory
+   * Returns both standard and custom ingredients
+   * 
+   * @returns Promise<GetIngredientsResponse> - User's ingredient inventory
+   * @throws Error if authentication fails or API request fails
+   * 
+   * @example
+   * ```typescript
+   * const response = await ingredientService.getUserIngredients();
+   * console.log(`You have ${response.total} ingredients`);
+   * response.ingredients.forEach(ing => {
+   *   console.log(`${ing.ingredient_name}: ${ing.quantity} ${ing.unit}`);
+   * });
+   * ```
+   */
   async getUserIngredients(): Promise<GetIngredientsResponse> {
     const token = await this.getAuthToken();
-
-    console.log(
-      '📤 Fetching ingredients with token:',
-      token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
-    );
-    console.log('📤 API URL:', `${API_BASE_URL}/api/v1/ingredients`);
 
     const response = await fetch(`${API_BASE_URL}/api/v1/ingredients`, {
       method: 'GET',
@@ -64,12 +82,7 @@ class IngredientService {
         'Content-Type': 'application/json',
       },
     });
-
-    console.log('📥 Response status:', response.status);
-    
     const data = await response.json();
-    console.log('📥 Response data:', data);
-
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
         console.error('🚨 Authentication failed - token may be invalid or expired');
@@ -86,6 +99,30 @@ class IngredientService {
     };
   }
 
+  /**
+   * Add a new ingredient to the user's inventory
+   * Can add either a standard ingredient by ID or a custom ingredient by name
+   * 
+   * @param ingredientData - The ingredient information to add
+   * @param ingredientData.ingredientId - ID of standard ingredient (optional)
+   * @param ingredientData.customName - Name for custom ingredient (optional)
+   * @param ingredientData.category - Ingredient category (optional)
+   * @param ingredientData.quantity - Amount of ingredient
+   * @param ingredientData.unit - Unit of measurement
+   * @param ingredientData.expirationDate - Expiration date (optional)
+   * @returns Promise<Ingredient> - The created ingredient
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const ingredient = await ingredientService.addIngredient({
+   *   ingredientId: 123,
+   *   quantity: 2,
+   *   unit: 'cups',
+   *   expirationDate: '2026-03-01'
+   * });
+   * ```
+   */
   async addIngredient(
     ingredientData: CreateIngredientDto,
   ): Promise<Ingredient> {
@@ -117,6 +154,26 @@ class IngredientService {
     return ingredient;
   }
 
+  /**
+   * Update an existing ingredient in the user's inventory
+   * 
+   * @param id - The unique identifier of the ingredient to update
+   * @param updates - The fields to update
+   * @param updates.quantity - New quantity (optional)
+   * @param updates.unit - New unit of measurement (optional)
+   * @param updates.expirationDate - New expiration date (optional)
+   * @param updates.category - New category (optional)
+   * @returns Promise<Ingredient> - The updated ingredient
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const updated = await ingredientService.updateIngredient(123, {
+   *   quantity: 1.5,
+   *   unit: 'lbs'
+   * });
+   * ```
+   */
   async updateIngredient(
     id: number,
     updates: UpdateIngredientDto,
@@ -141,12 +198,22 @@ class IngredientService {
     return data.ingredient;
   }
 
+  /**
+   * Remove an ingredient from the user's inventory
+   * 
+   * @param id - The unique identifier of the ingredient to delete
+   * @returns Promise<void>
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * await ingredientService.deleteIngredient(123);
+   * console.log('Ingredient deleted successfully');
+   * ```
+   */
   async deleteIngredient(id: number): Promise<void> {
     const token = await this.getAuthToken();
     const url = `${API_BASE_URL}/api/v1/ingredients/${id}`;
-
-    console.log('🗑️ Deleting ingredient:', {id, url});
-
     try {
       const response = await fetch(url, {
         method: 'DELETE',
@@ -155,25 +222,31 @@ class IngredientService {
           'Content-Type': 'application/json',
         },
       });
-
-      console.log('📡 Delete response:', {
-        status: response.status,
-        ok: response.ok,
-      });
-
       if (!response.ok) {
         const data = await response.json();
         console.error('❌ Delete failed:', data);
         throw new Error(data.error || 'Failed to delete ingredient');
       }
-
-      console.log('✅ Delete successful');
     } catch (error) {
       console.error('❌ Delete error:', error);
       throw error;
     }
   }
 
+  /**
+   * Search for ingredients by name
+   * Returns matching ingredients from the database
+   * 
+   * @param query - The search term to match against ingredient names
+   * @returns Promise<Ingredient[]> - Array of matching ingredients
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const results = await ingredientService.searchIngredients('chicken');
+   * results.forEach(ing => console.log(ing.ingredient_name));
+   * ```
+   */
   async searchIngredients(query: string): Promise<Ingredient[]> {
     const token = await this.getAuthToken();
 
@@ -197,6 +270,19 @@ class IngredientService {
     return data.ingredients || [];
   }
 
+  /**
+   * Automatically categorize ingredients that are missing categories
+   * Uses AI to assign appropriate categories to uncategorized ingredients
+   * 
+   * @returns Promise<{success: boolean; message: string; updated: any[]}> - Result of categorization
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const result = await ingredientService.fixUncategorizedIngredients();
+   * console.log(`Fixed ${result.updated.length} ingredients`);
+   * ```
+   */
   async fixUncategorizedIngredients(): Promise<{success: boolean; message: string; updated: any[]}> {
     const token = await this.getAuthToken();
 
@@ -213,11 +299,24 @@ class IngredientService {
     if (!response.ok) {
       throw new Error(data.error || 'Failed to fix categories');
     }
-
-    console.log('✅ Fixed categories:', data.message);
     return data;
   }
 
+  /**
+   * Get all available ingredient categories
+   * Returns categories with their icons for UI display
+   * 
+   * @returns Promise<Array<{id: string; name: string; icon: string}>> - Array of categories
+   * @throws Error if API request fails
+   * 
+   * @example
+   * ```typescript
+   * const categories = await ingredientService.getCategories();
+   * categories.forEach(cat => {
+   *   console.log(`${cat.icon} ${cat.name}`);
+   * });
+   * ```
+   */
   async getCategories(): Promise<Array<{id: string; name: string; icon: string}>> {
     const token = await this.getAuthToken();
 
